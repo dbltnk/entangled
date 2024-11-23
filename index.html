@@ -342,17 +342,6 @@
                 <h3><span>ℹ️</span> Status</h3>
                 <div class="stats">
                     <div class="stats-row">
-                        <span>Turn</span>
-                        <span id="turn-display">Black 1/12</span>
-                    </div>
-                    <div class="stats-row">
-                        <span>Stones</span>
-                        <div>
-                            <span class="stone-count">⚫ <span id="black-stones">25</span></span>
-                            <span class="stone-count">⚪ <span id="white-stones">25</span></span>
-                        </div>
-                    </div>
-                    <div class="stats-row">
                         <span>Score</span>
                         <span id="score-display">0 - 0</span>
                     </div>
@@ -449,13 +438,6 @@
 
             const state = game.getGameState();
 
-            document.getElementById('turn-display').textContent =
-                `${state.currentPlayer} ${state.currentTurn}/12`;
-
-            document.getElementById('black-stones').textContent =
-                state.remainingStones[PLAYERS.BLACK];
-            document.getElementById('white-stones').textContent =
-                state.remainingStones[PLAYERS.WHITE];
 
             const blackScore = game.getScore(PLAYERS.BLACK);
             const whiteScore = game.getScore(PLAYERS.WHITE);
