@@ -336,7 +336,6 @@
             <div class="control-group">
                 <h3><span>🎯</span> Game</h3>
                 <button id="new-game"><span>🔄</span> New Game</button>
-                <button id="undo" disabled><span>↩️</span> Undo</button>
             </div>
 
             <div class="control-group">
@@ -347,12 +346,7 @@
 
             <div class="control-group" id="ai-controls">
                 <h3><span>⚙️</span> AI Settings</h3>
-                <select id="ai-level">
-                    <option value="random">Random</option>
-                    <option value="greedy-high">Aggressive</option>
-                    <option value="greedy-low">Balanced</option>
-                    <option value="defensive">Defensive</option>
-                </select>
+                <select id="ai-level"></select>
                 <div>
                     <button id="play-black" class="active">⚫ Play Black</button>
                     <button id="play-white">⚪ Play White</button>
@@ -370,6 +364,21 @@
         let aiPlayer = null;
         let humanColor = PLAYERS.BLACK;
         let isAgainstAI = true;
+
+        function populateAISelect() {
+            const aiSelect = document.getElementById('ai-level');
+            import('./players.js').then(({ AI_PLAYERS }) => {
+                aiSelect.innerHTML = Object.values(AI_PLAYERS)
+                    .map(player => `<option value="${player.id}" title="${player.description}">${player.name}</option>`)
+                    .join('');
+                // Set the first strategy as default
+                aiSelect.value = Object.keys(AI_PLAYERS)[0];
+                // If a game is already in progress, reinitialize with the selected strategy
+                if (game) {
+                    initializeGame();
+                }
+            });
+        }
 
         // UI Functions
         function createCell(symbol, boardNum, row, col) {
@@ -503,14 +512,6 @@
                     updateCellHighlights(2, i, j, largestClusters);
                 }
             }
-
-            updateUndoButton();
-            if (state.gameOver) {
-                const winner = game.getWinner();
-                showWinner(winner);
-            } else if (isAgainstAI && state.currentPlayer !== humanColor) {
-                setTimeout(makeAIMove, 500);
-            }
         }
 
         function showWinner(winner) {
@@ -543,6 +544,14 @@
             if (game.isValidMove(symbol)) {
                 game.makeMove(symbol);
                 updateDisplay();
+
+                if (isAgainstAI && !game.isGameOver()) {
+                    setTimeout(makeAIMove, 500);
+                }
+
+                if (game.isGameOver()) {
+                    showWinner(game.getWinner());
+                }
             }
         }
 
@@ -553,21 +562,10 @@
             if (move) {
                 game.makeMove(move);
                 updateDisplay();
-            }
-        }
 
-        function updateUndoButton() {
-            const undoButton = document.getElementById('undo');
-            if (!game || game.moveHistory.length === 0) {
-                undoButton.disabled = true;
-                return;
-            }
-
-            if (isAgainstAI) {
-                const lastMove = game.moveHistory[game.moveHistory.length - 1];
-                undoButton.disabled = lastMove.player !== humanColor;
-            } else {
-                undoButton.disabled = false;
+                if (game.isGameOver()) {
+                    showWinner(game.getWinner());
+                }
             }
         }
 
@@ -610,14 +608,6 @@
 
             document.getElementById('new-game').addEventListener('click', initializeGame);
 
-            document.getElementById('undo').addEventListener('click', () => {
-                if (!game || game.moveHistory.length === 0) return;
-                const lastMove = game.moveHistory[game.moveHistory.length - 1];
-                if (isAgainstAI && lastMove.player !== humanColor) return;
-                game.undoLastMove();
-                updateDisplay();
-            });
-
             setupRulesToggle();
         }
 
@@ -647,8 +637,22 @@
 
             if (isAgainstAI) {
                 const aiColor = humanColor === PLAYERS.BLACK ? PLAYERS.WHITE : PLAYERS.BLACK;
-                const strategy = document.getElementById('ai-level').value;
-                aiPlayer = createPlayer(strategy, game, aiColor);
+                const aiSelect = document.getElementById('ai-level');
+                // Add a check to make sure we have a valid strategy
+                if (aiSelect.value) {
+                    const strategy = aiSelect.value;
+                    aiPlayer = createPlayer(strategy, game, aiColor);
+                } else {
+                    // If dropdown isn't populated yet, use the first strategy from AI_PLAYERS
+                    import('./players.js').then(({ AI_PLAYERS }) => {
+                        const defaultStrategy = Object.keys(AI_PLAYERS)[0];
+                        aiPlayer = createPlayer(defaultStrategy, game, aiColor);
+                        if (humanColor === PLAYERS.WHITE) {
+                            setTimeout(makeAIMove, 500);
+                        }
+                    });
+                    return;
+                }
             } else {
                 aiPlayer = null;
             }
@@ -666,12 +670,24 @@
         }
 
         function init() {
+            populateAISelect();  // Do this first
             initializeBoards();
             setupEventListeners();
             initializeGame();
         }
 
         window.addEventListener('load', init);
+    </script>
+
+    <script type="module">
+        import { GameController } from './game-controller.js';
+
+        // Initialize controller after DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => new GameController());
+        } else {
+            new GameController();
+        }
     </script>
 </body>
 
