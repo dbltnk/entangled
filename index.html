@@ -342,7 +342,6 @@
                 <h3><span>📊</span> Score</h3>
                 <div class="stats">
                     <div class="stats-row">
-                        <span>Score</span>
                         <span id="score-display">Black: 0 - White: 0</span>
                     </div>
                 </div>
@@ -433,7 +432,6 @@
             if (!game) return;
 
             const state = game.getGameState();
-
 
             const blackScore = game.getScore(PLAYERS.BLACK);
             const blackBoard1Score = game.findLargestCluster(game.getBoard1(), PLAYERS.BLACK);
