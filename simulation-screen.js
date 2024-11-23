@@ -113,7 +113,9 @@ class SimulationScreen {
         const pauseButton = this.container.querySelector('#pauseSimulation');
         const exportButton = this.container.querySelector('#exportResults');
         const randomizeCheckbox = this.container.querySelector('#randomize');
+        randomizeCheckbox.checked = true;
         const randomThresholdInput = this.container.querySelector('#randomThreshold');
+        randomThresholdInput.disabled = false;
 
         randomizeCheckbox.addEventListener('change', () => {
             randomThresholdInput.disabled = !randomizeCheckbox.checked;
