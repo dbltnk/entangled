@@ -132,6 +132,7 @@ class SimulationScreen {
         });
     }
 
+    // Update to startSimulation method in simulation-screen.js
     async startSimulation() {
         this.updateDebugInfo('Starting simulation');
         const selectedAIs = Array.from(this.selectedAIs);
@@ -152,15 +153,14 @@ class SimulationScreen {
 
         const matchups = [];
 
-        // Create matchups for all combinations
+        // Create matchups for all combinations including self-play
         for (let i = 0; i < selectedAIs.length; i++) {
-            for (let j = 0; j < selectedAIs.length; j++) {
-                if (i !== j) {
-                    matchups.push({
-                        player1: selectedAIs[i],
-                        player2: selectedAIs[j]
-                    });
-                }
+            for (let j = 0; j <= i; j++) {  // Changed from j < selectedAIs.length to j <= i
+                // Include matchup even when i === j (self-play)
+                matchups.push({
+                    player1: selectedAIs[i],
+                    player2: selectedAIs[j]
+                });
             }
         }
 
@@ -178,6 +178,7 @@ class SimulationScreen {
             aiConfig
         };
 
+        // Rest of the method remains the same...
         this.runner = new SimulationRunner(config);
         this.results = [];
 
@@ -309,7 +310,7 @@ class SimulationScreen {
 
     updateStartButton() {
         const startButton = this.container.querySelector('#startSimulation');
-        startButton.disabled = this.selectedAIs.size < 2;
+        startButton.disabled = this.selectedAIs.size < 1;  // Changed from 2 to 1
         this.updateDebugInfo(`Start button ${startButton.disabled ? 'disabled' : 'enabled'} (${this.selectedAIs.size} AIs selected)`);
     }
 
