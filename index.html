@@ -339,7 +339,7 @@
             </div>
 
             <div class="control-group">
-                <h3><span>ℹ️</span> Status</h3>
+                <h3><span>📊</span> Score</h3>
                 <div class="stats">
                     <div class="stats-row">
                         <span>Score</span>
@@ -443,8 +443,8 @@
             const whiteBoard1Score = game.findLargestCluster(game.getBoard1(), PLAYERS.WHITE);
             const whiteBoard2Score = game.findLargestCluster(game.getBoard2(), PLAYERS.WHITE);
 
-            document.getElementById('score-display').textContent =
-                `Black: ${blackScore} (${blackBoard1Score} + ${blackBoard2Score}) vs White: ${whiteScore} (${whiteBoard1Score} + ${whiteBoard2Score})`;
+            document.getElementById('score-display').innerHTML =
+                `<strong>⚫ ${blackScore}</strong> (${blackBoard1Score} + ${blackBoard2Score}) vs <strong>⚪ ${whiteScore}</strong> (${whiteBoard1Score} + ${whiteBoard2Score})`;
 
             // Update boards
             for (let i = 0; i < 5; i++) {
