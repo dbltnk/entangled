@@ -401,6 +401,11 @@ class EnhancedDefensivePlayer extends EntangledPlayer {
 }
 
 class MinimaxPlayer extends EntangledPlayer {
+    constructor(gameEngine, playerColor, config = {}) {
+        super(gameEngine, playerColor, config);
+        this.lookahead = config.lookahead || 2;  // Add this line to properly initialize lookahead
+    }
+
     chooseMove() {
         const validMoves = this.gameEngine.getValidMoves();
         const moveEvaluations = validMoves.map(move => {
@@ -421,16 +426,23 @@ class MinimaxPlayer extends EntangledPlayer {
     }
 
     minimax(game, depth, isMaximizing, alpha, beta) {
+        // Add early exit for performance
         if (depth === 0 || game.isGameOver()) {
             return this.evaluatePosition(game);
         }
 
         const validMoves = game.getValidMoves();
 
+        // Exit early if no valid moves
+        if (!validMoves || validMoves.length === 0) {
+            return this.evaluatePosition(game);
+        }
+
         if (isMaximizing) {
             let maxScore = -Infinity;
             for (const move of validMoves) {
                 const simGame = this.simulateGame(game.getGameState());
+                simGame.currentPlayer = this.playerColor; // Add this to ensure correct player state
                 simGame.makeMove(move);
                 const score = this.minimax(simGame, depth - 1, false, alpha, beta);
                 maxScore = Math.max(maxScore, score);
@@ -442,6 +454,8 @@ class MinimaxPlayer extends EntangledPlayer {
             let minScore = Infinity;
             for (const move of validMoves) {
                 const simGame = this.simulateGame(game.getGameState());
+                const opponentColor = this.playerColor === 'BLACK' ? 'WHITE' : 'BLACK';
+                simGame.currentPlayer = opponentColor; // Add this to ensure correct player state
                 simGame.makeMove(move);
                 const score = this.minimax(simGame, depth - 1, true, alpha, beta);
                 minScore = Math.min(minScore, score);
@@ -579,7 +593,7 @@ export const AI_PLAYERS = {
         defaultConfig: {
             randomize: false,
             randomThreshold: 0.1,
-            lookahead: 2
+            lookahead: 3
         }
     },
     mcts: {
