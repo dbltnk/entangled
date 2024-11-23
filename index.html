@@ -152,6 +152,14 @@
             background: #e0e0e0;
         }
 
+        .cell-highlight-black {
+            background-color: #404040;
+        }
+
+        .cell-highlight-white {
+            background-color: #e0e0e0;
+        }
+
         .cell-letter {
             position: absolute;
             z-index: 9999;
@@ -380,6 +388,29 @@
             return cell;
         }
 
+        function updateCellHighlights(boardNum, row, col, largestClusters) {
+            const cell = document.querySelector(
+                `.cell[data-board="${boardNum}"][data-row="${row}"][data-col="${col}"]`
+            );
+
+            // Remove existing highlights
+            cell.classList.remove('cell-highlight-black', 'cell-highlight-white');
+
+            // Check if cell is in black's largest cluster
+            const isInBlackCluster = largestClusters.black[`board${boardNum}`]
+                .some(pos => pos.row === row && pos.col === col);
+            if (isInBlackCluster) {
+                cell.classList.add('cell-highlight-black');
+            }
+
+            // Check if cell is in white's largest cluster
+            const isInWhiteCluster = largestClusters.white[`board${boardNum}`]
+                .some(pos => pos.row === row && pos.col === col);
+            if (isInWhiteCluster) {
+                cell.classList.add('cell-highlight-white');
+            }
+        }
+
         function initializeBoards() {
             const board1Element = document.getElementById('board1');
             const board2Element = document.getElementById('board2');
@@ -433,6 +464,18 @@
 
             const state = game.getGameState();
 
+            // Get largest clusters for both players
+            const blackClusters = {
+                board1: game.findLargestClusterCells(game.getBoard1(), PLAYERS.BLACK),
+                board2: game.findLargestClusterCells(game.getBoard2(), PLAYERS.BLACK)
+            };
+            const whiteClusters = {
+                board1: game.findLargestClusterCells(game.getBoard1(), PLAYERS.WHITE),
+                board2: game.findLargestClusterCells(game.getBoard2(), PLAYERS.WHITE)
+            };
+            const largestClusters = { black: blackClusters, white: whiteClusters };
+
+            // Update scores
             const blackScore = game.getScore(PLAYERS.BLACK);
             const blackBoard1Score = game.findLargestCluster(game.getBoard1(), PLAYERS.BLACK);
             const blackBoard2Score = game.findLargestCluster(game.getBoard2(), PLAYERS.BLACK);
@@ -449,6 +492,8 @@
                 for (let j = 0; j < 5; j++) {
                     updateCell(1, i, j, state.board1[i][j]);
                     updateCell(2, i, j, state.board2[i][j]);
+                    updateCellHighlights(1, i, j, largestClusters);
+                    updateCellHighlights(2, i, j, largestClusters);
                 }
             }
 

@@ -164,6 +164,47 @@ class EntangledGame {
         return size;
     }
 
+    findLargestClusterCells(board, player) {
+        const visited = Array(BOARD_SIZE).fill(false)
+            .map(() => Array(BOARD_SIZE).fill(false));
+        let largestCluster = [];
+
+        for (let row = 0; row < BOARD_SIZE; row++) {
+            for (let col = 0; col < BOARD_SIZE; col++) {
+                if (board[row][col] === player && !visited[row][col]) {
+                    const currentCluster = this.exploreClusterCells(board, row, col, player, visited);
+                    if (currentCluster.length > largestCluster.length) {
+                        largestCluster = currentCluster;
+                    }
+                }
+            }
+        }
+
+        return largestCluster;
+    }
+
+    exploreClusterCells(board, row, col, player, visited) {
+        if (row < 0 || row >= BOARD_SIZE || col < 0 || col >= BOARD_SIZE ||
+            visited[row][col] || board[row][col] !== player) {
+            return [];
+        }
+
+        visited[row][col] = true;
+        let cells = [{ row, col }];
+
+        for (const [dRow, dCol] of DIRECTIONS) {
+            cells = cells.concat(this.exploreClusterCells(
+                board,
+                row + dRow,
+                col + dCol,
+                player,
+                visited
+            ));
+        }
+
+        return cells;
+    }
+
     getScore(player) {
         const board1Score = this.findLargestCluster(this.board1, player);
         const board2Score = this.findLargestCluster(this.board2, player);
@@ -213,6 +254,15 @@ class EntangledGame {
     }
 
     getGameState() {
+        const blackClusters = {
+            board1: this.findLargestClusterCells(this.board1, PLAYERS.BLACK),
+            board2: this.findLargestClusterCells(this.board2, PLAYERS.BLACK)
+        };
+        const whiteClusters = {
+            board1: this.findLargestClusterCells(this.board1, PLAYERS.WHITE),
+            board2: this.findLargestClusterCells(this.board2, PLAYERS.WHITE)
+        };
+
         return {
             board1: this.getBoard1(),
             board2: this.getBoard2(),
@@ -221,7 +271,11 @@ class EntangledGame {
             gameOver: this.gameOver,
             remainingStones: { ...this.remainingStones },
             playerTurns: { ...this.playerTurns },
-            validMoves: this.getValidMoves()
+            validMoves: this.getValidMoves(),
+            largestClusters: {
+                black: blackClusters,
+                white: whiteClusters
+            }
         };
     }
 }
