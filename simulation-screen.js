@@ -68,7 +68,6 @@ class SimulationScreen {
                                     <div class="progress-fill"></div>
                                 </div>
                                 <div class="progress-text">0% Complete</div>
-                                <div id="debug-info" style="margin-top: 10px; font-family: monospace; white-space: pre;"></div>
                             </div>
                         </div>
                     </div>
@@ -134,7 +133,6 @@ class SimulationScreen {
 
     // Update to startSimulation method in simulation-screen.js
     async startSimulation() {
-        this.updateDebugInfo('Starting simulation');
         const selectedAIs = Array.from(this.selectedAIs);
         const randomize = this.container.querySelector('#randomize').checked;
         const randomThreshold = parseFloat(this.container.querySelector('#randomThreshold').value);
@@ -147,9 +145,6 @@ class SimulationScreen {
                 randomThreshold
             };
         });
-
-        this.updateDebugInfo(`Selected AIs: ${selectedAIs.join(', ')}`);
-        this.updateDebugInfo(`AI Config: ${JSON.stringify(aiConfig, null, 2)}`);
 
         const matchups = [];
 
@@ -164,12 +159,8 @@ class SimulationScreen {
             }
         }
 
-        this.updateDebugInfo(`Generated ${matchups.length} matchups`);
         const gamesPerMatchup = parseInt(this.container.querySelector('#gamesPerMatchup').value);
         const sampleRatio = parseFloat(this.container.querySelector('#sampleRatio').value);
-
-        this.updateDebugInfo(`Games per matchup: ${gamesPerMatchup}`);
-        this.updateDebugInfo(`Sample ratio: ${sampleRatio}`);
 
         const config = {
             matchups,
@@ -200,24 +191,19 @@ class SimulationScreen {
         this.runner.onProgress = (progress) => {
             progressBar.style.width = `${progress * 100}%`;
             progressText.textContent = `${Math.round(progress * 100)}% Complete`;
-            this.updateDebugInfo(`Progress: ${Math.round(progress * 100)}%`);
         };
 
         this.runner.onResult = (result) => {
-            this.updateDebugInfo(`Received result: ${result.matchup.player1} vs ${result.matchup.player2}`);
             this.results.push(result);
             this.updateResults();
         };
 
         try {
-            this.updateDebugInfo('Starting simulation runner');
             await this.runner.start();
-            this.updateDebugInfo('Simulation completed successfully');
             startButton.disabled = false;
             pauseButton.disabled = true;
         } catch (error) {
             console.error('Simulation error:', error);
-            this.updateDebugInfo(`Simulation failed with error: ${error.message}`);
             startButton.disabled = false;
             pauseButton.disabled = true;
             progressText.textContent = 'Simulation failed';
@@ -229,11 +215,9 @@ class SimulationScreen {
 
         const pauseButton = this.container.querySelector('#pauseSimulation');
         if (this.runner.isPaused) {
-            this.updateDebugInfo('Resuming simulation');
             this.runner.resume();
             pauseButton.textContent = 'Pause';
         } else {
-            this.updateDebugInfo('Pausing simulation');
             this.runner.pause();
             pauseButton.textContent = 'Resume';
         }
@@ -241,12 +225,8 @@ class SimulationScreen {
 
     // Update to simulation-screen.js - updateResults method
     updateResults() {
-        this.updateDebugInfo('Updating results display');
         const analyzer = new SimulationAnalyzer(this.results);
         const stats = analyzer.getMatchupStats();
-
-        this.updateDebugInfo(`Current results count: ${this.results.length}`);
-        this.updateDebugInfo(`Stats generated for ${stats.length} matchups`);
 
         const grid = this.container.querySelector('.results-grid');
 
@@ -299,7 +279,6 @@ class SimulationScreen {
     }
 
     switchTab(tabId) {
-        this.updateDebugInfo(`Switching to tab: ${tabId}`);
         this.container.querySelectorAll('.tab-button').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.tab === tabId);
         });
@@ -311,18 +290,9 @@ class SimulationScreen {
     updateStartButton() {
         const startButton = this.container.querySelector('#startSimulation');
         startButton.disabled = this.selectedAIs.size < 1;  // Changed from 2 to 1
-        this.updateDebugInfo(`Start button ${startButton.disabled ? 'disabled' : 'enabled'} (${this.selectedAIs.size} AIs selected)`);
-    }
-
-    updateDebugInfo(message) {
-        const debugInfo = this.container.querySelector('#debug-info');
-        const timestamp = new Date().toISOString().split('T')[1].slice(0, -1);
-        debugInfo.textContent += `[${timestamp}] ${message}\n`;
-        console.log(`Debug: ${message}`);
     }
 
     exportResults() {
-        this.updateDebugInfo('Exporting results');
         const analyzer = new SimulationAnalyzer(this.results);
         const exportData = analyzer.exportResults();
 
@@ -336,11 +306,9 @@ class SimulationScreen {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        this.updateDebugInfo('Results exported successfully');
     }
 
     viewGame(gameId) {
-        this.updateDebugInfo(`Viewing game: ${gameId}`);
         const [player1, player2, gameIndex] = gameId.split('-');
         const analyzer = new SimulationAnalyzer(this.results);
         const stats = analyzer.getMatchupStats();

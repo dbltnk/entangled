@@ -118,17 +118,6 @@
     color: #666;
 }
 
-.debug-info {
-    margin-top: 10px;
-    padding: 10px;
-    background: #f8f8f8;
-    border-radius: 4px;
-    font-family: monospace;
-    font-size: 12px;
-    max-height: 200px;
-    overflow-y: auto;
-}
-
 .results-section {
     padding: 20px;
 }
