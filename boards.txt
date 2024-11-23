@@ -1,0 +1,15 @@
+boards.txt
+
+Board 1
+ABCDE
+FGHIJ
+KLMNO
+PQRST
+UVWXY
+
+Board 2
+XCFNQ
+KSVEH
+BJMPW
+RUDGO
+ILTWA
