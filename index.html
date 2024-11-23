@@ -320,6 +320,25 @@
         </div>
 
         <div class="panel controls">
+
+            <div class="control-group">
+                <h3><span>📊</span> Score</h3>
+                <div class="stats">
+                    <div class="stats-row">
+                        <span id="score-display">Black: 0 - White: 0</span>
+                    </div>
+                    <div class="stats-row">
+                        <span id="current-player-display"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <h3><span>🎯</span> Game</h3>
+                <button id="new-game"><span>🔄</span> New Game</button>
+                <button id="undo" disabled><span>↩️</span> Undo</button>
+            </div>
+
             <div class="control-group">
                 <h3><span>🎮</span> Game Mode</h3>
                 <button id="hvh"><span>👥</span> Human vs Human</button>
@@ -337,21 +356,6 @@
                 <div>
                     <button id="play-black" class="active">⚫ Play Black</button>
                     <button id="play-white">⚪ Play White</button>
-                </div>
-            </div>
-
-            <div class="control-group">
-                <h3><span>🎯</span> Game</h3>
-                <button id="new-game"><span>🔄</span> New Game</button>
-                <button id="undo" disabled><span>↩️</span> Undo</button>
-            </div>
-
-            <div class="control-group">
-                <h3><span>📊</span> Score</h3>
-                <div class="stats">
-                    <div class="stats-row">
-                        <span id="score-display">Black: 0 - White: 0</span>
-                    </div>
                 </div>
             </div>
         </div>
@@ -486,6 +490,9 @@
 
             document.getElementById('score-display').innerHTML =
                 `<strong>⚫ ${blackScore}</strong> (${blackBoard1Score} + ${blackBoard2Score}) vs <strong>⚪ ${whiteScore}</strong> (${whiteBoard1Score} + ${whiteBoard2Score})`;
+
+            document.getElementById('current-player-display').textContent =
+                `Current player: ${state.currentPlayer === PLAYERS.BLACK ? '⚫ Black' : '⚪ White'}`;
 
             // Update boards
             for (let i = 0; i < 5; i++) {
