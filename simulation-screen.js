@@ -238,6 +238,7 @@ class SimulationScreen {
         }
     }
 
+    // Update to simulation-screen.js - updateResults method
     updateResults() {
         this.updateDebugInfo('Updating results display');
         const analyzer = new SimulationAnalyzer(this.results);
@@ -249,42 +250,48 @@ class SimulationScreen {
         const grid = this.container.querySelector('.results-grid');
 
         grid.innerHTML = `
-            <table class="results-table">
-                <thead>
+        <table class="results-table">
+            <thead>
+                <tr>
+                    <th>⚫ Player</th>
+                    <th>⚪ Player</th>
+                    <th>Games</th>
+                    <th>⚫ Wins</th>
+                    <th>⚪ Wins</th>
+                    <th>Draws</th>
+                    <th>⚫ Score</th>
+                    <th>⚪ Score</th>
+                    <th>Advantage</th>
+                    <th>Δ Score</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${stats.map(stat => `
                     <tr>
-                        <th>Matchup</th>
-                        <th>Games</th>
-                        <th>Player 1 Wins</th>
-                        <th>Player 2 Wins</th>
-                        <th>Draws</th>
-                        <th>Avg Score 1</th>
-                        <th>Avg Score 2</th>
+                        <td class="black-player">${AI_PLAYERS[stat.strategy1].name}</td>
+                        <td class="white-player">${AI_PLAYERS[stat.strategy2].name}</td>
+                        <td>${stat.games}</td>
+                        <td>${stat.blackWinRate}%</td>
+                        <td>${stat.whiteWinRate}%</td>
+                        <td>${stat.drawRate}%</td>
+                        <td>${stat.avgScoreBlack}</td>
+                        <td>${stat.avgScoreWhite}</td>
+                        <td class="${parseFloat(stat.winAdvantage) > 0 ? 'positive' : 'negative'}">${stat.winAdvantage}%</td>
+                        <td class="${parseFloat(stat.scoreAdvantage) > 0 ? 'positive' : 'negative'}">±${Math.abs(stat.scoreAdvantage)}</td>
                     </tr>
-                </thead>
-                <tbody>
-                    ${stats.map(stat => `
-                        <tr>
-                            <td>${AI_PLAYERS[stat.player1].name} vs ${AI_PLAYERS[stat.player2].name}</td>
-                            <td>${stat.games}</td>
-                            <td>${(stat.player1Wins / stat.games * 100).toFixed(1)}%</td>
-                            <td>${(stat.player2Wins / stat.games * 100).toFixed(1)}%</td>
-                            <td>${(stat.draws / stat.games * 100).toFixed(1)}%</td>
-                            <td>${stat.avgScore1.toFixed(1)}</td>
-                            <td>${stat.avgScore2.toFixed(1)}</td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-        `;
+                `).join('')}
+            </tbody>
+        </table>
+    `;
 
-        // Update game selector with sample games
+        // Update game selector with sample games but keep the original format for clarity
         const gameSelector = this.container.querySelector('#gameSelector');
         gameSelector.innerHTML = stats.flatMap(stat =>
             stat.histories.map((_, index) => `
-                <option value="${stat.player1}-${stat.player2}-${index}">
-                    ${AI_PLAYERS[stat.player1].name} vs ${AI_PLAYERS[stat.player2].name} - Game ${index + 1}
-                </option>
-            `)
+            <option value="${stat.strategy1}-${stat.strategy2}-${index}">
+                ⚫ ${AI_PLAYERS[stat.strategy1].name} vs ⚪ ${AI_PLAYERS[stat.strategy2].name} - Game ${index + 1}
+            </option>
+        `)
         ).join('');
 
         this.container.querySelector('#exportResults').disabled = false;

@@ -5,59 +5,71 @@ class SimulationAnalyzer {
     }
 
     getMatchupStats() {
-        const matchupStats = new Map();
+        // First, group results by strategy pairs regardless of color
+        const strategyPairs = new Map();
 
         for (const result of this.results) {
             const { matchup, winner, finalScore } = result;
-            const key = this.getMatchupKey(matchup);
+            const pairKey = this.getStrategyPairKey(matchup.player1, matchup.player2);
 
-            if (!matchupStats.has(key)) {
-                matchupStats.set(key, {
-                    player1: matchup.player1,
-                    player2: matchup.player2,
+            if (!strategyPairs.has(pairKey)) {
+                strategyPairs.set(pairKey, {
+                    strategy1: matchup.player1,
+                    strategy2: matchup.player2,
                     games: 0,
-                    player1Wins: 0,
-                    player2Wins: 0,
+                    blackWins: 0,
+                    whiteWins: 0,
                     draws: 0,
-                    avgScore1: 0,
-                    avgScore2: 0,
-                    avgMoves: 0,
+                    blackTotalScore: 0,
+                    whiteTotalScore: 0,
                     histories: []
                 });
             }
 
-            const stats = matchupStats.get(key);
+            const stats = strategyPairs.get(pairKey);
             stats.games++;
 
+            // Track wins by color
             if (winner === 'TIE') {
                 stats.draws++;
-            } else if (
-                (winner === 'BLACK' && matchup.asBlack) ||
-                (winner === 'WHITE' && !matchup.asBlack)
-            ) {
-                stats.player1Wins++;
+            } else if (winner === 'BLACK') {
+                stats.blackWins++;
             } else {
-                stats.player2Wins++;
+                stats.whiteWins++;
             }
 
-            // Update running averages
-            const score1 = matchup.asBlack ? finalScore.black : finalScore.white;
-            const score2 = matchup.asBlack ? finalScore.white : finalScore.black;
-
-            stats.avgScore1 = updateRunningAverage(stats.avgScore1, score1, stats.games);
-            stats.avgScore2 = updateRunningAverage(stats.avgScore2, score2, stats.games);
-            stats.avgMoves = updateRunningAverage(stats.avgMoves, result.moves, stats.games);
+            // Track scores by color
+            stats.blackTotalScore += finalScore.black;
+            stats.whiteTotalScore += finalScore.white;
 
             if (result.history) {
                 stats.histories.push(result.history);
             }
         }
 
-        return Array.from(matchupStats.values());
+        // Convert to final format
+        return Array.from(strategyPairs.values()).map(stats => ({
+            strategy1: stats.strategy1,
+            strategy2: stats.strategy2,
+            games: stats.games,
+            blackWinRate: (stats.blackWins / stats.games * 100).toFixed(1),
+            whiteWinRate: (stats.whiteWins / stats.games * 100).toFixed(1),
+            drawRate: (stats.draws / stats.games * 100).toFixed(1),
+            avgScoreBlack: (stats.blackTotalScore / stats.games).toFixed(1),
+            avgScoreWhite: (stats.whiteTotalScore / stats.games).toFixed(1),
+            winAdvantage: ((stats.blackWins - stats.whiteWins) / stats.games * 100).toFixed(1),
+            scoreAdvantage: ((stats.blackTotalScore - stats.whiteTotalScore) / stats.games).toFixed(1),
+            histories: stats.histories
+        }));
     }
 
-    getMatchupKey(matchup) {
-        return `${matchup.player1}-vs-${matchup.player2}`;
+    getStrategyPairKey(strategy1, strategy2) {
+        // For mirror matchups, order doesn't matter
+        if (strategy1 === strategy2) {
+            return `${strategy1}:${strategy2}`;
+        }
+        // For different strategies, use alphabetical order for consistency
+        return [strategy1, strategy2].sort().join(':');
     }
 
     exportResults() {
@@ -67,25 +79,22 @@ class SimulationAnalyzer {
         return {
             timestamp,
             summary: stats.map(stat => ({
-                matchup: `${stat.player1} vs ${stat.player2}`,
-                totalGames: stat.games,
-                player1WinRate: (stat.player1Wins / stat.games * 100).toFixed(1) + '%',
-                player2WinRate: (stat.player2Wins / stat.games * 100).toFixed(1) + '%',
-                drawRate: (stat.draws / stat.games * 100).toFixed(1) + '%',
-                avgScore1: stat.avgScore1.toFixed(1),
-                avgScore2: stat.avgScore2.toFixed(1),
-                avgMoves: stat.avgMoves.toFixed(1)
+                matchup: `${stat.strategy1} vs ${stat.strategy2}`,
+                games: stat.games,
+                blackWinRate: `${stat.blackWinRate}%`,
+                whiteWinRate: `${stat.whiteWinRate}%`,
+                drawRate: `${stat.drawRate}%`,
+                avgScoreBlack: stat.avgScoreBlack,
+                avgScoreWhite: stat.avgScoreWhite,
+                winAdvantage: `${stat.winAdvantage}%`,
+                scoreAdvantage: stat.scoreAdvantage
             })),
             sampleGames: stats.reduce((acc, stat) => {
-                acc[`${stat.player1}-vs-${stat.player2}`] = stat.histories;
+                acc[`${stat.strategy1}-vs-${stat.strategy2}`] = stat.histories;
                 return acc;
             }, {})
         };
     }
-}
-
-function updateRunningAverage(currentAvg, newValue, count) {
-    return currentAvg + (newValue - currentAvg) / count;
 }
 
 export { SimulationAnalyzer };

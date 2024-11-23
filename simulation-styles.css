@@ -137,26 +137,95 @@
     margin-bottom: 20px;
 }
 
+/* Updated Results Table Styles */
 .results-table {
     width: 100%;
     border-collapse: collapse;
     margin-bottom: 20px;
+    font-size: 0.95em;
+    table-layout: fixed;
 }
 
-.results-table th,
-.results-table td {
-    padding: 10px;
+.results-table td,
+.results-table th {
+    padding: 8px 12px;
     border: 1px solid #ddd;
-    text-align: left;
+    text-align: center;
+    white-space: nowrap;
 }
 
 .results-table th {
     background: #f5f5f5;
+    font-weight: 600;
+    font-size: 0.95em;
+}
+
+.results-table td:first-child,
+.results-table td:nth-child(2) {
+    text-align: left;
     font-weight: 500;
 }
 
+.black-player {
+    position: relative;
+    padding-left: 24px !important;
+}
+
+.black-player::before {
+    content: "⚫";
+    position: absolute;
+    left: 8px;
+    opacity: 0.7;
+}
+
+.white-player {
+    position: relative;
+    padding-left: 24px !important;
+}
+
+.white-player::before {
+    content: "⚪";
+    position: absolute;
+    left: 8px;
+    opacity: 0.7;
+}
+
+.results-table td.positive {
+    color: #2c7;
+    font-weight: 500;
+}
+
+.results-table td.negative {
+    color: #c27;
+    font-weight: 500;
+}
+
+.results-table tr:nth-child(even) {
+    background: #fafafa;
+}
+
 .results-table tr:hover {
-    background: #f8f8f8;
+    background: #f0f7ff;
+}
+
+/* Column width specifications */
+.results-table th:nth-child(1),
+.results-table th:nth-child(2) {
+    width: 15%;
+}
+
+.results-table th:nth-child(3),
+.results-table th:nth-child(6) {
+    width: 8%;
+}
+
+.results-table th:nth-child(4),
+.results-table th:nth-child(5),
+.results-table th:nth-child(7),
+.results-table th:nth-child(8),
+.results-table th:nth-child(9),
+.results-table th:nth-child(10) {
+    width: 9%;
 }
 
 .sample-games-section {
@@ -214,5 +283,20 @@
 
     .results-table {
         font-size: 14px;
+    }
+
+    .results-table td,
+    .results-table th {
+        padding: 6px 8px;
+    }
+
+    .black-player,
+    .white-player {
+        padding-left: 20px !important;
+    }
+
+    .black-player::before,
+    .white-player::before {
+        left: 4px;
     }
 }
