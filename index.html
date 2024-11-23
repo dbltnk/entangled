@@ -343,7 +343,7 @@
                 <div class="stats">
                     <div class="stats-row">
                         <span>Score</span>
-                        <span id="score-display">0 - 0</span>
+                        <span id="score-display">Black: 0 - White: 0</span>
                     </div>
                     <div class="stats-row">
                         <span>Clusters</span>
@@ -442,7 +442,7 @@
             const blackScore = game.getScore(PLAYERS.BLACK);
             const whiteScore = game.getScore(PLAYERS.WHITE);
             document.getElementById('score-display').textContent =
-                `${blackScore} - ${whiteScore}`;
+                `Black: ${blackScore} - White: ${whiteScore}`;
 
             const blackClusters = [
                 game.findLargestCluster(game.getBoard1(), PLAYERS.BLACK),
