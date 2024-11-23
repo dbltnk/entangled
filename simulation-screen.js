@@ -1,10 +1,11 @@
-// simulation-screen.js
+// simulation-screen.js with debug logging
 import { AI_PLAYERS } from './players.js';
 import { SimulationRunner } from './simulation-runner.js';
 import { SimulationAnalyzer } from './simulation-analyzer.js';
 
 class SimulationScreen {
     constructor(containerElement) {
+        console.log('Initializing SimulationScreen');
         this.container = containerElement;
         this.runner = null;
         this.results = [];
@@ -14,6 +15,7 @@ class SimulationScreen {
     }
 
     render() {
+        console.log('Rendering simulation screen');
         this.container.innerHTML = `
             <div class="panel simulation-panel">
                 <div class="simulation-header">
@@ -58,6 +60,7 @@ class SimulationScreen {
                                     <div class="progress-fill"></div>
                                 </div>
                                 <div class="progress-text">0% Complete</div>
+                                <div id="debug-info" style="margin-top: 10px; font-family: monospace; white-space: pre;"></div>
                             </div>
                         </div>
                     </div>
@@ -81,6 +84,7 @@ class SimulationScreen {
     }
 
     attachEventListeners() {
+        console.log('Attaching event listeners');
         // Tab navigation
         this.container.querySelectorAll('.tab-button').forEach(button => {
             button.addEventListener('click', () => this.switchTab(button.dataset.tab));
@@ -94,6 +98,7 @@ class SimulationScreen {
                 } else {
                     this.selectedAIs.delete(checkbox.value);
                 }
+                console.log('Selected AIs updated:', Array.from(this.selectedAIs));
                 this.updateStartButton();
             });
         });
@@ -117,61 +122,91 @@ class SimulationScreen {
         });
     }
 
-    switchTab(tabId) {
-        this.container.querySelectorAll('.tab-button').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.tab === tabId);
-        });
-        this.container.querySelectorAll('.tab-pane').forEach(pane => {
-            pane.classList.toggle('active', pane.id === `${tabId}-pane`);
-        });
-    }
-
-    updateStartButton() {
-        const startButton = this.container.querySelector('#startSimulation');
-        startButton.disabled = this.selectedAIs.size < 2;
+    updateDebugInfo(message) {
+        const debugInfo = this.container.querySelector('#debug-info');
+        const timestamp = new Date().toISOString().split('T')[1].slice(0, -1);
+        debugInfo.textContent += `[${timestamp}] ${message}\n`;
+        console.log(`Debug: ${message}`);
     }
 
     async startSimulation() {
+        this.updateDebugInfo('Starting simulation');
         const selectedAIs = Array.from(this.selectedAIs);
+        this.updateDebugInfo(`Selected AIs: ${selectedAIs.join(', ')}`);
         const matchups = [];
 
         // Create matchups for all combinations
         for (let i = 0; i < selectedAIs.length; i++) {
-            for (let j = i + 1; j < selectedAIs.length; j++) {
-                matchups.push({
-                    player1: selectedAIs[i],
-                    player2: selectedAIs[j]
-                });
+            for (let j = 0; j < selectedAIs.length; j++) {
+                if (i !== j) {
+                    matchups.push({
+                        player1: selectedAIs[i],
+                        player2: selectedAIs[j]
+                    });
+                }
             }
         }
 
+        this.updateDebugInfo(`Generated ${matchups.length} matchups:`);
+        matchups.forEach((matchup, index) => {
+            this.updateDebugInfo(`Matchup ${index + 1}: ${matchup.player1} vs ${matchup.player2}`);
+        });
+
+        const gamesPerMatchup = parseInt(this.container.querySelector('#gamesPerMatchup').value);
+        const sampleRatio = parseFloat(this.container.querySelector('#sampleRatio').value);
+
+        this.updateDebugInfo(`Games per matchup: ${gamesPerMatchup}`);
+        this.updateDebugInfo(`Sample ratio: ${sampleRatio}`);
+
         const config = {
             matchups,
-            gamesPerMatchup: parseInt(this.container.querySelector('#gamesPerMatchup').value),
-            sampleRatio: parseFloat(this.container.querySelector('#sampleRatio').value)
+            gamesPerMatchup,
+            sampleRatio
         };
 
         this.runner = new SimulationRunner(config);
         this.results = [];
 
         // Update UI for simulation start
-        this.container.querySelector('#startSimulation').disabled = true;
-        this.container.querySelector('#pauseSimulation').disabled = false;
-        this.container.querySelector('.progress-section').style.display = 'block';
+        const startButton = this.container.querySelector('#startSimulation');
+        const pauseButton = this.container.querySelector('#pauseSimulation');
+        const progressSection = this.container.querySelector('.progress-section');
+
+        startButton.disabled = true;
+        pauseButton.disabled = false;
+        progressSection.style.display = 'block';
+
+        // Reset progress
+        const progressBar = this.container.querySelector('.progress-fill');
+        const progressText = this.container.querySelector('.progress-text');
+        progressBar.style.width = '0%';
+        progressText.textContent = '0% Complete';
 
         this.runner.onProgress = (progress) => {
-            const progressBar = this.container.querySelector('.progress-fill');
-            const progressText = this.container.querySelector('.progress-text');
             progressBar.style.width = `${progress * 100}%`;
             progressText.textContent = `${Math.round(progress * 100)}% Complete`;
+            this.updateDebugInfo(`Progress: ${Math.round(progress * 100)}%`);
         };
 
         this.runner.onResult = (result) => {
+            this.updateDebugInfo(`Received result: ${result.matchup.player1} vs ${result.matchup.player2}`);
             this.results.push(result);
             this.updateResults();
         };
 
-        await this.runner.start();
+        try {
+            this.updateDebugInfo('Starting simulation runner');
+            await this.runner.start();
+            this.updateDebugInfo('Simulation completed successfully');
+            startButton.disabled = false;
+            pauseButton.disabled = true;
+        } catch (error) {
+            console.error('Simulation error:', error);
+            this.updateDebugInfo(`Simulation failed with error: ${error.message}`);
+            startButton.disabled = false;
+            pauseButton.disabled = true;
+            progressText.textContent = 'Simulation failed';
+        }
     }
 
     togglePause() {
@@ -179,17 +214,24 @@ class SimulationScreen {
 
         const pauseButton = this.container.querySelector('#pauseSimulation');
         if (this.runner.isPaused) {
+            this.updateDebugInfo('Resuming simulation');
             this.runner.resume();
             pauseButton.textContent = 'Pause';
         } else {
+            this.updateDebugInfo('Pausing simulation');
             this.runner.pause();
             pauseButton.textContent = 'Resume';
         }
     }
 
     updateResults() {
+        this.updateDebugInfo('Updating results display');
         const analyzer = new SimulationAnalyzer(this.results);
         const stats = analyzer.getMatchupStats();
+
+        this.updateDebugInfo(`Current results count: ${this.results.length}`);
+        this.updateDebugInfo(`Stats generated for ${stats.length} matchups`);
+
         const grid = this.container.querySelector('.results-grid');
 
         grid.innerHTML = `
@@ -221,7 +263,7 @@ class SimulationScreen {
             </table>
         `;
 
-        // Update game selector
+        // Update game selector with sample games
         const gameSelector = this.container.querySelector('#gameSelector');
         gameSelector.innerHTML = stats.flatMap(stat =>
             stat.histories.map((_, index) => `
@@ -234,7 +276,24 @@ class SimulationScreen {
         this.container.querySelector('#exportResults').disabled = false;
     }
 
+    switchTab(tabId) {
+        this.updateDebugInfo(`Switching to tab: ${tabId}`);
+        this.container.querySelectorAll('.tab-button').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.tab === tabId);
+        });
+        this.container.querySelectorAll('.tab-pane').forEach(pane => {
+            pane.classList.toggle('active', pane.id === `${tabId}-pane`);
+        });
+    }
+
+    updateStartButton() {
+        const startButton = this.container.querySelector('#startSimulation');
+        startButton.disabled = this.selectedAIs.size < 2;
+        this.updateDebugInfo(`Start button ${startButton.disabled ? 'disabled' : 'enabled'} (${this.selectedAIs.size} AIs selected)`);
+    }
+
     exportResults() {
+        this.updateDebugInfo('Exporting results');
         const analyzer = new SimulationAnalyzer(this.results);
         const exportData = analyzer.exportResults();
 
@@ -243,16 +302,28 @@ class SimulationScreen {
 
         const a = document.createElement('a');
         a.href = url;
-        a.download = `simulation-results-${exportData.timestamp}.json`;
+        a.download = `simulation-results-${new Date().toISOString()}.json`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
+        this.updateDebugInfo('Results exported successfully');
     }
 
     viewGame(gameId) {
-        // We'll implement this in the next batch with the game replay functionality
-        console.log('Viewing game:', gameId);
+        this.updateDebugInfo(`Viewing game: ${gameId}`);
+        const [player1, player2, gameIndex] = gameId.split('-');
+        const analyzer = new SimulationAnalyzer(this.results);
+        const stats = analyzer.getMatchupStats();
+        const matchup = stats.find(s => s.player1 === player1 && s.player2 === player2);
+
+        if (matchup && matchup.histories[gameIndex]) {
+            const matchupInfo = {
+                player1: AI_PLAYERS[player1].name,
+                player2: AI_PLAYERS[player2].name
+            };
+            window.viewReplay(matchup.histories[gameIndex], matchupInfo);
+        }
     }
 }
 
