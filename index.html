@@ -345,10 +345,6 @@
                         <span>Score</span>
                         <span id="score-display">Black: 0 - White: 0</span>
                     </div>
-                    <div class="stats-row">
-                        <span>Clusters</span>
-                        <span id="cluster-display">0,0 - 0,0</span>
-                    </div>
                 </div>
             </div>
         </div>
@@ -440,20 +436,15 @@
 
 
             const blackScore = game.getScore(PLAYERS.BLACK);
-            const whiteScore = game.getScore(PLAYERS.WHITE);
-            document.getElementById('score-display').textContent =
-                `Black: ${blackScore} - White: ${whiteScore}`;
+            const blackBoard1Score = game.findLargestCluster(game.getBoard1(), PLAYERS.BLACK);
+            const blackBoard2Score = game.findLargestCluster(game.getBoard2(), PLAYERS.BLACK);
 
-            const blackClusters = [
-                game.findLargestCluster(game.getBoard1(), PLAYERS.BLACK),
-                game.findLargestCluster(game.getBoard2(), PLAYERS.BLACK)
-            ];
-            const whiteClusters = [
-                game.findLargestCluster(game.getBoard1(), PLAYERS.WHITE),
-                game.findLargestCluster(game.getBoard2(), PLAYERS.WHITE)
-            ];
-            document.getElementById('cluster-display').textContent =
-                `${blackClusters.join(',')} - ${whiteClusters.join(',')}`;
+            const whiteScore = game.getScore(PLAYERS.WHITE);
+            const whiteBoard1Score = game.findLargestCluster(game.getBoard1(), PLAYERS.WHITE);
+            const whiteBoard2Score = game.findLargestCluster(game.getBoard2(), PLAYERS.WHITE);
+
+            document.getElementById('score-display').textContent =
+                `Black: ${blackScore} (${blackBoard1Score} + ${blackBoard2Score}) vs White: ${whiteScore} (${whiteBoard1Score} + ${whiteBoard2Score})`;
 
             // Update boards
             for (let i = 0; i < 5; i++) {
