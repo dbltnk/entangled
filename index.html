@@ -282,6 +282,30 @@
             border-radius: 4px;
             margin-top: 1rem;
         }
+
+        .player-select {
+            margin-bottom: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .player-select label {
+            font-weight: 600;
+        }
+
+        .player-select select {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #333;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+
+        #start-game {
+            width: 100%;
+            margin-top: 0.5rem;
+        }
     </style>
 </head>
 
@@ -318,7 +342,6 @@
         </div>
 
         <div class="panel controls">
-
             <div class="control-group">
                 <h3><span>📊</span> Score</h3>
                 <div class="stats">
@@ -332,23 +355,30 @@
             </div>
 
             <div class="control-group">
-                <h3><span>🎯</span> Game</h3>
-                <button id="new-game"><span>🔄</span> New Game</button>
-            </div>
-
-            <div class="control-group">
-                <h3><span>🎮</span> Game Mode</h3>
-                <button id="hvh"><span>👥</span> Human vs Human</button>
-                <button id="hva" class="active"><span>🤖</span> Human vs AI</button>
-            </div>
-
-            <div class="control-group" id="ai-controls">
-                <h3><span>⚙️</span> AI Settings</h3>
-                <select id="ai-level"></select>
-                <div>
-                    <button id="play-black" class="active">⚫ Play Black</button>
-                    <button id="play-white">⚪ Play White</button>
+                <h3><span>🎮</span> Game Setup</h3>
+                <div class="player-select">
+                    <label for="black-player">⚫ Black:</label>
+                    <select id="black-player">
+                        <option value="human">Human</option>
+                        <option value="random">Random AI</option>
+                        <option value="greedy-high">Greedy High AI</option>
+                        <option value="greedy-low">Greedy Low AI</option>
+                        <option value="defensive">Defensive AI</option>
+                    </select>
                 </div>
+
+                <div class="player-select">
+                    <label for="white-player">⚪ White:</label>
+                    <select id="white-player">
+                        <option value="human">Human</option>
+                        <option value="random">Random AI</option>
+                        <option value="greedy-high">Greedy High AI</option>
+                        <option value="greedy-low">Greedy Low AI</option>
+                        <option value="defensive">Defensive AI</option>
+                    </select>
+                </div>
+
+                <button id="start-game"><span>🔄</span> Start Game</button>
             </div>
         </div>
     </div>
@@ -356,29 +386,32 @@
     <script type="module">
         import BOARD_LAYOUTS from './boards.js';
         import { EntangledGame, PLAYERS } from './gameplay.js';
-        import { createPlayer } from './players.js';
+        import { createPlayer, AI_PLAYERS } from './players.js';
 
         let game = null;
-        let aiPlayer = null;
-        let humanColor = PLAYERS.BLACK;
-        let isAgainstAI = true;
 
-        function populateAISelect() {
-            const aiSelect = document.getElementById('ai-level');
-            import('./players.js').then(({ AI_PLAYERS }) => {
-                aiSelect.innerHTML = Object.values(AI_PLAYERS)
-                    .map(player => `<option value="${player.id}" title="${player.description}">${player.name}</option>`)
-                    .join('');
-                // Set the first strategy as default
-                aiSelect.value = Object.keys(AI_PLAYERS)[0];
-                // If a game is already in progress, reinitialize with the selected strategy
-                if (game) {
-                    initializeGame();
-                }
+        function populatePlayerDropdowns() {
+            const blackSelect = document.getElementById('black-player');
+            const whiteSelect = document.getElementById('white-player');
+
+            // Clear existing options
+            blackSelect.innerHTML = '';
+            whiteSelect.innerHTML = '';
+
+            // Add human option first
+            const humanOption = new Option('Human', 'human');
+            blackSelect.add(humanOption.cloneNode(true));
+            whiteSelect.add(humanOption.cloneNode(true));
+
+            // Add AI options using the metadata from players.js
+            Object.values(AI_PLAYERS).forEach(player => {
+                const option = new Option(player.name, player.id);
+                option.title = player.description; // Add tooltip with description
+                blackSelect.add(option.cloneNode(true));
+                whiteSelect.add(option.cloneNode(true));
             });
         }
 
-        // UI Functions
         function createCell(symbol, boardNum, row, col) {
             const cell = document.createElement('div');
             cell.className = 'cell';
@@ -535,78 +568,47 @@
         function handleCellClick(symbol) {
             if (!game || game.isGameOver()) return;
 
-            const state = game.getGameState();
+            const currentPlayer = game.getCurrentPlayer();
+            const playerType = document.getElementById(`${currentPlayer.toLowerCase()}-player`).value;
 
-            if (isAgainstAI && state.currentPlayer !== humanColor) return;
+            if (playerType !== 'human') return;
 
             if (game.isValidMove(symbol)) {
                 game.makeMove(symbol);
                 updateDisplay();
 
-                if (isAgainstAI && !game.isGameOver()) {
-                    setTimeout(makeAIMove, 500);
-                }
-
                 if (game.isGameOver()) {
                     showWinner(game.getWinner());
+                } else {
+                    makeAIMove();
                 }
             }
         }
 
         function makeAIMove() {
-            if (!aiPlayer || !game) return;
+            if (!game || game.isGameOver()) return;
 
-            const move = aiPlayer.chooseMove();
-            if (move) {
-                game.makeMove(move);
-                updateDisplay();
+            const currentPlayer = game.getCurrentPlayer();
+            const playerType = document.getElementById(`${currentPlayer.toLowerCase()}-player`).value;
 
-                if (game.isGameOver()) {
-                    showWinner(game.getWinner());
-                }
+            if (playerType !== 'human') {
+                setTimeout(() => {
+                    const ai = createPlayer(playerType, game, currentPlayer);
+                    if (ai) {
+                        const move = ai.chooseMove();
+                        if (move) {
+                            game.makeMove(move);
+                            updateDisplay();
+
+                            if (game.isGameOver()) {
+                                showWinner(game.getWinner());
+                            } else {
+                                makeAIMove(); // Check if next player is also AI
+                            }
+                        }
+                    }
+                }, 500);
             }
-        }
-
-        function setupEventListeners() {
-            document.getElementById('hvh').addEventListener('click', () => {
-                isAgainstAI = false;
-                document.getElementById('hvh').classList.add('active');
-                document.getElementById('hva').classList.remove('active');
-                document.getElementById('ai-controls').style.display = 'none';
-                initializeGame();
-            });
-
-            document.getElementById('hva').addEventListener('click', () => {
-                isAgainstAI = true;
-                document.getElementById('hva').classList.add('active');
-                document.getElementById('hvh').classList.remove('active');
-                document.getElementById('ai-controls').style.display = 'block';
-                initializeGame();
-            });
-
-            document.getElementById('play-black').addEventListener('click', () => {
-                humanColor = PLAYERS.BLACK;
-                document.getElementById('play-black').classList.add('active');
-                document.getElementById('play-white').classList.remove('active');
-                initializeGame();
-            });
-
-            document.getElementById('play-white').addEventListener('click', () => {
-                humanColor = PLAYERS.WHITE;
-                document.getElementById('play-black').classList.remove('active');
-                document.getElementById('play-white').classList.add('active');
-                initializeGame();
-            });
-
-            document.getElementById('ai-level').addEventListener('change', () => {
-                if (isAgainstAI) {
-                    initializeGame();
-                }
-            });
-
-            document.getElementById('new-game').addEventListener('click', initializeGame);
-
-            setupRulesToggle();
         }
 
         function setupRulesToggle() {
@@ -632,45 +634,23 @@
 
         function initializeGame() {
             game = new EntangledGame();
-
-            if (isAgainstAI) {
-                const aiColor = humanColor === PLAYERS.BLACK ? PLAYERS.WHITE : PLAYERS.BLACK;
-                const aiSelect = document.getElementById('ai-level');
-                // Add a check to make sure we have a valid strategy
-                if (aiSelect.value) {
-                    const strategy = aiSelect.value;
-                    aiPlayer = createPlayer(strategy, game, aiColor);
-                } else {
-                    // If dropdown isn't populated yet, use the first strategy from AI_PLAYERS
-                    import('./players.js').then(({ AI_PLAYERS }) => {
-                        const defaultStrategy = Object.keys(AI_PLAYERS)[0];
-                        aiPlayer = createPlayer(defaultStrategy, game, aiColor);
-                        if (humanColor === PLAYERS.WHITE) {
-                            setTimeout(makeAIMove, 500);
-                        }
-                    });
-                    return;
-                }
-            } else {
-                aiPlayer = null;
-            }
-
             const existingWinner = document.querySelector('.winner');
             if (existingWinner) {
                 existingWinner.remove();
             }
-
             updateDisplay();
-
-            if (isAgainstAI && humanColor === PLAYERS.WHITE) {
-                setTimeout(makeAIMove, 500);
-            }
+            makeAIMove(); // In case Black is AI
         }
 
         function init() {
-            populateAISelect();  // Do this first
             initializeBoards();
-            setupEventListeners();
+            setupRulesToggle();
+            populatePlayerDropdowns();
+
+            // Set up start game button
+            document.getElementById('start-game').addEventListener('click', initializeGame);
+
+            // Initialize first game
             initializeGame();
         }
 

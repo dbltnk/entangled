@@ -1,7 +1,5 @@
-// game-controller.js
-
 import { EntangledGame, PLAYERS } from './gameplay.js';
-import { createPlayer, AI_PLAYERS } from './players.js';
+import { createPlayer } from './players.js';
 
 class GameController {
     constructor() {
@@ -10,77 +8,31 @@ class GameController {
             [PLAYERS.BLACK]: null,
             [PLAYERS.WHITE]: null
         };
-        this.isAIGame = false;
-        this.setupAIControls();
+        this.setupControls();
     }
 
-    setupAIControls() {
-        const aiControls = document.getElementById('ai-controls');
-        if (!aiControls) return;
+    setupControls() {
+        const blackSelect = document.getElementById('black-player');
+        const whiteSelect = document.getElementById('white-player');
+        const startButton = document.getElementById('start-game');
 
-        // Create strategy buttons using AI_PLAYERS definitions
-        const strategyContainer = aiControls.querySelector('.strategy-buttons') ||
-            aiControls.appendChild(document.createElement('div'));
-        strategyContainer.className = 'strategy-buttons';
-        strategyContainer.innerHTML = '';
+        if (startButton) {
+            startButton.addEventListener('click', () => {
+                // Reset game
+                this.game = new EntangledGame();
 
-        Object.values(AI_PLAYERS).forEach(player => {
-            const button = document.createElement('button');
-            button.setAttribute('data-strategy', player.id);
-            button.title = player.description;
-            button.textContent = player.name;
-            button.addEventListener('click', () => this.setAIStrategy(player.id));
-            strategyContainer.appendChild(button);
-        });
+                // Set up players based on dropdowns
+                this.players[PLAYERS.BLACK] = blackSelect.value === 'human' ?
+                    null : createPlayer(blackSelect.value, this.game, PLAYERS.BLACK);
 
-        // Color selection
-        const blackButton = aiControls.querySelector('button[data-color="black"]');
-        const whiteButton = aiControls.querySelector('button[data-color="white"]');
-        if (blackButton) blackButton.addEventListener('click', () => this.setPlayerColor(PLAYERS.BLACK));
-        if (whiteButton) whiteButton.addEventListener('click', () => this.setPlayerColor(PLAYERS.WHITE));
+                this.players[PLAYERS.WHITE] = whiteSelect.value === 'human' ?
+                    null : createPlayer(whiteSelect.value, this.game, PLAYERS.WHITE);
 
-        // Add AI mode toggle
-        const humanVsAI = document.querySelector('button[data-mode="human-vs-ai"]');
-        if (humanVsAI) {
-            humanVsAI.addEventListener('click', () => {
-                this.isAIGame = true;
-                aiControls.style.display = 'block';
+                // Make AI move if AI is playing black
+                if (this.players[PLAYERS.BLACK]) {
+                    this.makeAIMove();
+                }
             });
-        }
-
-        const humanVsHuman = document.querySelector('button[data-mode="human-vs-human"]');
-        if (humanVsHuman) {
-            humanVsHuman.addEventListener('click', () => {
-                this.isAIGame = false;
-                aiControls.style.display = 'none';
-                this.players = {
-                    [PLAYERS.BLACK]: null,
-                    [PLAYERS.WHITE]: null
-                };
-            });
-        }
-    }
-
-    setAIStrategy(strategyId) {
-        const aiColor = this.players[PLAYERS.BLACK] ? PLAYERS.WHITE : PLAYERS.BLACK;
-        this.players[aiColor] = createPlayer(strategyId, this.game, aiColor);
-        if (this.game.getCurrentPlayer() === aiColor) {
-            this.makeAIMove();
-        }
-    }
-
-    setPlayerColor(color) {
-        const aiColor = color === PLAYERS.BLACK ? PLAYERS.WHITE : PLAYERS.BLACK;
-        const currentAI = this.players[aiColor];
-        const strategyId = currentAI ?
-            Object.keys(AI_PLAYERS).find(key => this.players[aiColor] instanceof AI_PLAYERS[key].implementation) :
-            'random';
-
-        this.players[aiColor] = createPlayer(strategyId, this.game, aiColor);
-        this.players[color] = null; // Human player
-
-        if (this.game.getCurrentPlayer() === aiColor) {
-            this.makeAIMove();
         }
     }
 
@@ -92,6 +44,13 @@ class GameController {
             const move = ai.chooseMove();
             if (move) {
                 this.game.makeMove(move);
+
+                // Check if next player is also AI
+                const nextPlayer = this.game.getCurrentPlayer();
+                if (this.players[nextPlayer]) {
+                    // Add small delay for better visualization
+                    setTimeout(() => this.makeAIMove(), 500);
+                }
             }
         }
     }
