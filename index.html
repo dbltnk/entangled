@@ -130,7 +130,7 @@
             background: #ddd;
             padding: 2px;
             width: 100%;
-            max-width: 500px;
+            max-width: 200px;
             aspect-ratio: 1;
         }
 
@@ -154,14 +154,16 @@
 
         .cell-letter {
             position: absolute;
-            z-index: 1;
-            color: #000;
-            font-size: 2.5rem;
+            z-index: 9999;
+            color: #777;
+            font-size: 2.0 rem;
             transition: color 0.2s;
+            font-weight: 900;
         }
 
         .cell.has-stone .cell-letter {
-            color: #ccc;
+            color: #ddd;
+            font-weight: 300;
         }
 
         .stone {
