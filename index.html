@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Entangled</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            line-height: 1.5;
+            height: 100vh;
+            display: grid;
+            grid-template-columns: 1fr 2fr 1fr;
+            padding: 2rem;
+            gap: 2rem;
+            background: #fafafa;
+            color: #333;
+        }
+
+        .panel {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            overflow-y: auto;
+        }
+
+        /* Rules Panel */
+        .rules h1 {
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .rules h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.5rem;
+        }
+
+        .rules p {
+            margin-bottom: 1rem;
+        }
+
+        /* Game Boards */
+        .boards {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        .board-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .board-label {
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 2px;
+            background: #ddd;
+            padding: 2px;
+            width: 100%;
+            max-width: 400px;
+            aspect-ratio: 1;
+        }
+
+        .cell {
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            position: relative;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .cell:hover {
+            background: #f0f0f0;
+        }
+
+        .cell.highlighted {
+            background: #e0e0e0;
+        }
+
+        .stone {
+            position: absolute;
+            width: 80%;
+            height: 80%;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .stone.black {
+            background: #000;
+        }
+
+        .stone.white {
+            background: #fff;
+            border: 2px solid #000;
+        }
+
+        /* Controls Panel */
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .control-group h3 {
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        button {
+            padding: 0.5rem 1rem;
+            background: white;
+            border: 1px solid #333;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            background: #f0f0f0;
+        }
+
+        button:active {
+            background: #e0e0e0;
+        }
+
+        button.active {
+            background: #333;
+            color: white;
+        }
+
+        select {
+            padding: 0.5rem;
+            border: 1px solid #333;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+
+        .stats {
+            display: grid;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .stats-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.25rem 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .stone-count {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .stone-icon {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .stone-icon.black {
+            background: #000;
+        }
+
+        .stone-icon.white {
+            background: #fff;
+            border: 1px solid #000;
+        }
+
+        .winner {
+            font-weight: bold;
+            color: #000;
+            padding: 1rem;
+            text-align: center;
+            background: #f0f0f0;
+            border-radius: 4px;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="panel rules">
+        <h1>Entangled</h1>
+        <p>A 2-player abstract game inspired by quantum entanglement.</p>
+
+        <h2>Setup</h2>
+        <p>Two 5×5 boards are played in parallel. Each space has a matching symbol on both boards.</p>
+
+        <h2>Starting</h2>
+        <p>Black stone starts at center of Board 1, white stone at center of Board 2.</p>
+
+        <h2>Playing</h2>
+        <p>On your turn, place a stone on any empty space. A matching stone must be placed on the corresponding space on
+            the other board.</p>
+
+        <h2>Winning</h2>
+        <p>Game ends after all stones are placed. Count your largest orthogonally connected group on each board. Add
+            these numbers for your final score.</p>
+    </div>
+
+    <div class="boards panel">
+        <div class="board-container">
+            <div class="board-label">Board 1</div>
+            <div class="board" id="board1"></div>
+        </div>
+        <div class="board-container">
+            <div class="board-label">Board 2</div>
+            <div class="board" id="board2"></div>
+        </div>
+    </div>
+
+    <div class="panel controls">
+        <div class="control-group">
+            <h3>Game Mode</h3>
+            <button id="hvh">Human vs Human</button>
+            <button id="hva" class="active">Human vs AI</button>
+        </div>
+
+        <div class="control-group" id="ai-controls">
+            <h3>AI Settings</h3>
+            <select id="ai-level">
+                <option value="random">Random</option>
+                <option value="greedy-high">Aggressive</option>
+                <option value="greedy-low">Balanced</option>
+                <option value="defensive">Defensive</option>
+            </select>
+            <div>
+                <button id="play-black" class="active">Play Black</button>
+                <button id="play-white">Play White</button>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <h3>Game</h3>
+            <button id="new-game">New Game</button>
+        </div>
+
+        <div class="control-group">
+            <h3>Status</h3>
+            <div class="stats">
+                <div class="stats-row">
+                    <span>Turn</span>
+                    <span id="turn-display">Black 1/12</span>
+                </div>
+                <div class="stats-row">
+                    <span>Stones</span>
+                    <div>
+                        <span class="stone-count">
+                            <span class="stone-icon black"></span>
+                            <span id="black-stones">25</span>
+                        </span>
+                        <span class="stone-count">
+                            <span class="stone-icon white"></span>
+                            <span id="white-stones">25</span>
+                        </span>
+                    </div>
+                </div>
+                <div class="stats-row">
+                    <span>Score</span>
+                    <span id="score-display">0 - 0</span>
+                </div>
+                <div class="stats-row">
+                    <span>Clusters</span>
+                    <span id="cluster-display">0,0 - 0,0</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Game board layouts
+        const board1 = [
+            ['A', 'B', 'C', 'D', 'E'],
+            ['F', 'G', 'H', 'I', 'J'],
+            ['K', 'L', 'M', 'N', 'O'],
+            ['P', 'Q', 'R', 'S', 'T'],
+            ['U', 'V', 'W', 'X', 'Y']
+        ];
+
+        const board2 = [
+            ['X', 'C', 'F', 'N', 'Q'],
+            ['K', 'S', 'V', 'E', 'H'],
+            ['B', 'J', 'M', 'P', 'W'],
+            ['R', 'U', 'D', 'G', 'O'],
+            ['I', 'L', 'T', 'W', 'A']
+        ];
+
+        // Constants
+        const BOARD_SIZE = 5;
+        const STONES_PER_PLAYER = 25;
+        const TURNS_PER_PLAYER = 12;
+        const PLAYERS = {
+            BLACK: 'BLACK',
+            WHITE: 'WHITE'
+        };
+
+        // Game state
+        let game = null;
+        let aiPlayer = null;
+        let humanColor = PLAYERS.BLACK;
+        let isAgainstAI = true;
+
+        // Initialize the game boards
+        function initializeBoards() {
+            const board1Element = document.getElementById('board1');
+            const board2Element = document.getElementById('board2');
+
+            board1Element.innerHTML = '';
+            board2Element.innerHTML = '';
+
+            for (let i = 0; i < BOARD_SIZE; i++) {
+                for (let j = 0; j < BOARD_SIZE; j++) {
+                    const cell1 = createCell(board1[i][j], 1, i, j);
+                    const cell2 = createCell(board2[i][j], 2, i, j);
+
+                    board1Element.appendChild(cell1);
+                    board2Element.appendChild(cell2);
+                }
+            }
+        }
+
+        // Create a single cell element
+        function createCell(symbol, boardNum, row, col) {
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            cell.dataset.symbol = symbol;
+            cell.dataset.board = boardNum;
+            cell.dataset.row = row;
+            cell.dataset.col = col;
+            cell.textContent = symbol;
+
+            // Add hover handlers for corresponding cells
+            cell.addEventListener('mouseenter', () => highlightCorrespondingCells(symbol));
+            cell.addEventListener('mouseleave', () => removeHighlights());
+
+            // Add click handler for moves
+            cell.addEventListener('click', () => handleCellClick(symbol));
+
+            return cell;
+        }
+
+        // Highlight corresponding cells
+        function highlightCorrespondingCells(symbol) {
+            const cells = document.querySelectorAll(`.cell[data-symbol="${symbol}"]`);
+            cells.forEach(cell => cell.classList.add('highlighted'));
+        }
+
+        // Remove cell highlights
+        function removeHighlights() {
+            const cells = document.querySelectorAll('.cell');
+            cells.forEach(cell => cell.classList.remove('highlighted'));
+        }
+
+        // Update the game display
+        function updateDisplay() {
+            if (!game) return;
+
+            const state = game.getGameState();
+
+            // Update turn display
+            const turnText = `${state.currentPlayer} ${state.currentTurn}/12`;
+            document.getElementById('turn-display').textContent = turnText;
+
+            // Update stones remaining
+            document.getElementById('black-stones').textContent = state.remainingStones[PLAYERS.BLACK];
+            document.getElementById('white-stones').textContent = state.remainingStones[PLAYERS.WHITE];
+
+            // Update scores
+            const blackScore = game.getScore(PLAYERS.BLACK);
+            const whiteScore = game.getScore(PLAYERS.WHITE);
+            document.getElementById('score-display').textContent = `${blackScore} - ${whiteScore}`;
+
+            // Update cluster sizes
+            const blackClusters = [
+                game.findLargestCluster(game.getBoard1(), PLAYERS.BLACK),
+                game.findLargestCluster(game.getBoard2(), PLAYERS.BLACK)
+            ];
+            const whiteClusters = [
+                game.findLargestCluster(game.getBoard1(), PLAYERS.WHITE),
+                game.findLargestCluster(game.getBoard2(), PLAYERS.WHITE)
+            ];
+            document.getElementById('cluster-display').textContent =
+                `${blackClusters.join(',')} - ${whiteClusters.join(',')}`;
+
+            // Update board display
+            updateBoards();
+
+            // Check for game over
+            if (state.gameOver) {
+                const winner = game.getWinner();
+                showWinner(winner);
+            }
+
+            // Handle AI move if necessary
+            if (isAgainstAI &&
+                !state.gameOver &&
+                state.currentPlayer !== humanColor) {
+                setTimeout(makeAIMove, 500);
+            }
+        }
+
+        // Update the visual representation of the boards
+        function updateBoards() {
+            const board1State = game.getBoard1();
+            const board2State = game.getBoard2();
+
+            // Update Board 1
+            for (let i = 0; i < BOARD_SIZE; i++) {
+                for (let j = 0; j < BOARD_SIZE; j++) {
+                    updateCell(1, i, j, board1State[i][j]);
+                    updateCell(2, i, j, board2State[i][j]);
+                }
+            }
+        }
+
+        // Update a single cell's visual state
+        function updateCell(boardNum, row, col, player) {
+            const cell = document.querySelector(
+                `.cell[data-board="${boardNum}"][data-row="${row}"][data-col="${col}"]`
+            );
+
+            // Remove any existing stone
+            const existingStone = cell.querySelector('.stone');
+            if (existingStone) {
+                cell.removeChild(existingStone);
+            }
+
+            // Add new stone if there is one
+            if (player) {
+                const stone = document.createElement('div');
+                stone.className = `stone ${player.toLowerCase()}`;
+                cell.appendChild(stone);
+            }
+        }
+
+        // Handle cell clicks
+        function handleCellClick(symbol) {
+            if (!game || game.isGameOver()) return;
+
+            const state = game.getGameState();
+
+            // Check if it's human's turn
+            if (isAgainstAI && state.currentPlayer !== humanColor) return;
+
+            if (game.isValidMove(symbol)) {
+                game.makeMove(symbol);
+                updateDisplay();
+            }
+        }
+
+        // Make AI move
+        function makeAIMove() {
+            if (!aiPlayer || !game) return;
+
+            const move = aiPlayer.chooseMove();
+            if (move) {
+                game.makeMove(move);
+                updateDisplay();
+            }
+        }
+
+        // Show winner
+        function showWinner(winner) {
+            const existingWinner = document.querySelector('.winner');
+            if (existingWinner) {
+                existingWinner.remove();
+            }
+
+            const winnerDisplay = document.createElement('div');
+            winnerDisplay.className = 'winner';
+
+            if (winner === 'TIE') {
+                winnerDisplay.textContent = 'Game Over - Tie!';
+            } else {
+                const blackScore = game.getScore(PLAYERS.BLACK);
+                const whiteScore = game.getScore(PLAYERS.WHITE);
+                winnerDisplay.textContent = `${winner} wins! (${blackScore} - ${whiteScore})`;
+            }
+
+            document.querySelector('.stats').appendChild(winnerDisplay);
+        }
+
+        // Initialize a new game
+        function initializeGame() {
+            // Create new game instance
+            game = new EntangledGame(board1, board2);
+
+            // Create AI player if needed
+            if (isAgainstAI) {
+                const aiColor = humanColor === PLAYERS.BLACK ? PLAYERS.WHITE : PLAYERS.BLACK;
+                const aiStrategy = document.getElementById('ai-level').value;
+                aiPlayer = createPlayer(aiStrategy, game, aiColor);
+            } else {
+                aiPlayer = null;
+            }
+
+            // Reset display
+            const existingWinner = document.querySelector('.winner');
+            if (existingWinner) {
+                existingWinner.remove();
+            }
+
+            updateDisplay();
+
+            // Make AI move if AI plays black
+            if (isAgainstAI && humanColor === PLAYERS.WHITE) {
+                setTimeout(makeAIMove, 500);
+            }
+        }
+
+        // Setup event listeners
+        function setupEventListeners() {
+            // Game mode buttons
+            document.getElementById('hvh').addEventListener('click', () => {
+                isAgainstAI = false;
+                document.getElementById('hvh').classList.add('active');
+                document.getElementById('hva').classList.remove('active');
+                document.getElementById('ai-controls').style.display = 'none';
+                initializeGame();
+            });
+
+            document.getElementById('hva').addEventListener('click', () => {
+                isAgainstAI = true;
+                document.getElementById('hva').classList.add('active');
+                document.getElementById('hvh').classList.remove('active');
+                document.getElementById('ai-controls').style.display = 'block';
+                initializeGame();
+            });
+
+            // Color selection buttons
+            document.getElementById('play-black').addEventListener('click', () => {
+                humanColor = PLAYERS.BLACK;
+                document.getElementById('play-black').classList.add('active');
+                document.getElementById('play-white').classList.remove('active');
+                initializeGame();
+            });
+
+            document.getElementById('play-white').addEventListener('click', () => {
+                humanColor = PLAYERS.WHITE;
+                document.getElementById('play-black').classList.remove('active');
+                document.getElementById('play-white').classList.add('active');
+                initializeGame();
+            });
+
+            // AI strategy selection
+            document.getElementById('ai-level').addEventListener('change', () => {
+                if (isAgainstAI) {
+                    initializeGame();
+                }
+            });
+
+            // New game button
+            document.getElementById('new-game').addEventListener('click', initializeGame);
+        }
+
+        // EntangledGame class implementation
+        class EntangledGame {
+            constructor(board1Layout, board2Layout) {
+                this.board1Layout = board1Layout;
+                this.board2Layout = board2Layout;
+                this.board1 = Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(null));
+                this.board2 = Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(null));
+                this.symbolToPosition = new Map();
+                this.initializeSymbolMaps();
+                this.currentPlayer = PLAYERS.BLACK;
+                this.playerTurns = {
+                    [PLAYERS.BLACK]: 0,
+                    [PLAYERS.WHITE]: 0
+                };
+                this.remainingStones = {
+                    [PLAYERS.BLACK]: STONES_PER_PLAYER,
+                    [PLAYERS.WHITE]: STONES_PER_PLAYER
+                };
+                this.gameOver = false;
+
+                // Initialize center positions
+                const center = Math.floor(BOARD_SIZE / 2);
+                this.board1[center][center] = PLAYERS.BLACK;
+                this.board2[center][center] = PLAYERS.WHITE;
+                this.remainingStones[PLAYERS.BLACK]--;
+                this.remainingStones[PLAYERS.WHITE]--;
+            }
+
+            initializeSymbolMaps() {
+                for (let row = 0; row < BOARD_SIZE; row++) {
+                    for (let col = 0; col < BOARD_SIZE; col++) {
+                        const symbol = this.board1Layout[row][col];
+                        this.symbolToPosition.set(symbol, {
+                            board1: { row, col },
+                            board2: this.findSymbolPosition(symbol, this.board2Layout)
+                        });
+                    }
+                }
+            }
+
+            findSymbolPosition(symbol, board) {
+                for (let row = 0; row < BOARD_SIZE; row++) {
+                    for (let col = 0; col < BOARD_SIZE; col++) {
+                        if (board[row][col] === symbol) {
+                            return { row, col };
+                        }
+                    }
+                }
+                return null;
+            }
+
+            isValidMove(symbol) {
+                if (!this.symbolToPosition.has(symbol)) return false;
+                if (this.remainingStones[this.currentPlayer] < 2) return false;
+                if (this.playerTurns[this.currentPlayer] >= TURNS_PER_PLAYER) return false;
+
+                const { board1, board2 } = this.symbolToPosition.get(symbol);
+                return this.board1[board1.row][board1.col] === null &&
+                    this.board2[board2.row][board2.col] === null;
+            }
+
+            makeMove(symbol) {
+                if (!this.isValidMove(symbol)) {
+                    return false;
+                }
+
+                const { board1, board2 } = this.symbolToPosition.get(symbol);
+
+                this.board1[board1.row][board1.col] = this.currentPlayer;
+                this.board2[board2.row][board2.col] = this.currentPlayer;
+
+                this.remainingStones[this.currentPlayer] -= 2;
+                this.playerTurns[this.currentPlayer]++;
+
+                if (this.currentPlayer === PLAYERS.WHITE &&
+                    this.playerTurns[PLAYERS.WHITE] >= TURNS_PER_PLAYER) {
+                    this.gameOver = true;
+                } else {
+                    this.currentPlayer =
+                        this.currentPlayer === PLAYERS.BLACK ? PLAYERS.WHITE : PLAYERS.BLACK;
+                }
+
+                return true;
+            }
+
+            findLargestCluster(board, player) {
+                const visited = Array(BOARD_SIZE).fill(false)
+                    .map(() => Array(BOARD_SIZE).fill(false));
+                let largestClusterSize = 0;
+
+                for (let row = 0; row < BOARD_SIZE; row++) {
+                    for (let col = 0; col < BOARD_SIZE; col++) {
+                        if (board[row][col] === player && !visited[row][col]) {
+                            largestClusterSize = Math.max(
+                                largestClusterSize,
+                                this.exploreCluster(board, row, col, player, visited)
+                            );
+                        }
+                    }
+                }
+
+                return largestClusterSize;
+            }
+
+            exploreCluster(board, row, col, player, visited) {
+                if (row < 0 || row >= BOARD_SIZE || col < 0 || col >= BOARD_SIZE ||
+                    visited[row][col] || board[row][col] !== player) {
+                    return 0;
+                }
+
+                visited[row][col] = true;
+                let size = 1;
+
+                // Check orthogonally adjacent cells
+                const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+                for (const [dRow, dCol] of directions) {
+                    size += this.exploreCluster(board, row + dRow, col + dCol, player, visited);
+                }
+
+                return size;
+            }
+
+            getBoard1() { return this.board1.map(row => [...row]); }
+            getBoard2() { return this.board2.map(row => [...row]); }
+            getCurrentPlayer() { return this.currentPlayer; }
+            getCurrentTurn() { return this.playerTurns[this.currentPlayer] + 1; }
+            getRemainingStones(player) { return this.remainingStones[player]; }
+            isGameOver() { return this.gameOver; }
+
+            getValidMoves() {
+                return Array.from(this.symbolToPosition.keys())
+                    .filter(symbol => this.isValidMove(symbol));
+            }
+
+            getScore(player) {
+                return this.findLargestCluster(this.board1, player) +
+                    this.findLargestCluster(this.board2, player);
+            }
+
+            getWinner() {
+                if (!this.gameOver) return null;
+                const blackScore = this.getScore(PLAYERS.BLACK);
+                const whiteScore = this.getScore(PLAYERS.WHITE);
+                if (blackScore > whiteScore) return PLAYERS.BLACK;
+                if (whiteScore > blackScore) return PLAYERS.WHITE;
+                return 'TIE';
+            }
+
+            getGameState() {
+                return {
+                    board1: this.getBoard1(),
+                    board2: this.getBoard2(),
+                    currentPlayer: this.currentPlayer,
+                    currentTurn: this.getCurrentTurn(),
+                    gameOver: this.gameOver,
+                    remainingStones: { ...this.remainingStones },
+                    playerTurns: { ...this.playerTurns }
+                };
+            }
+        }
+
+        // Player class implementation
+        class EntangledPlayer {
+            constructor(game, playerColor) {
+                this.game = game;
+                this.playerColor = playerColor;
+            }
+
+            chooseMove() {
+                const validMoves = this.game.getValidMoves();
+                return validMoves[Math.floor(Math.random() * validMoves.length)];
+            }
+        }
+
+        // Initialize the game interface
+        function init() {
+            initializeBoards();
+            setupEventListeners();
+            initializeGame();
+        }
+
+        // Create player factory function
+        function createPlayer(strategy, game, playerColor) {
+            return new EntangledPlayer(game, playerColor);
+        }
+
+        // Start the game when the page loads
+        window.addEventListener('load', init);
+    </script>
+</body>
+
+</html>
