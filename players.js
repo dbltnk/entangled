@@ -151,14 +151,18 @@ class EntangledPlayer {
     }
 }
 
+class DeterministicPlayer extends EntangledPlayer {
+    chooseMove() {
+        const validMoves = this.gameEngine.getValidMoves();
+        return validMoves[0];
+    }
+}
+
 class RandomPlayer extends EntangledPlayer {
     chooseMove() {
         const validMoves = this.gameEngine.getValidMoves();
-        if (this.randomize) {
-            return validMoves[Math.floor(Math.random() * validMoves.length)];
-        }
-        // Even in deterministic mode, Random player uses first valid move
-        return validMoves[0];
+        const randomIndex = Math.floor(Math.random() * validMoves.length);
+        return validMoves[randomIndex];
     }
 }
 
@@ -512,15 +516,17 @@ class MCTSPlayer extends EntangledPlayer {
 }
 
 export const AI_PLAYERS = {
+    deterministic: {
+        id: 'deterministic',
+        name: 'Deterministic',
+        description: 'Always uses the first available move',
+        implementation: DeterministicPlayer
+    },
     random: {
         id: 'random',
         name: 'Random',
         description: 'Makes random valid moves',
-        implementation: RandomPlayer,
-        defaultConfig: {
-            randomize: false,
-            randomThreshold: 0.1
-        }
+        implementation: RandomPlayer
     },
     aggressive: {
         id: 'aggressive',
