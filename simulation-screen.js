@@ -1,4 +1,4 @@
-// simulation-screen.js with debug logging
+// simulation-screen.js
 import { AI_PLAYERS } from './players.js';
 import { SimulationRunner } from './simulation-runner.js';
 import { SimulationAnalyzer } from './simulation-analyzer.js';
@@ -48,6 +48,14 @@ class SimulationScreen {
                                     <label for="sampleRatio">Sample Ratio:</label>
                                     <input type="number" id="sampleRatio" value="0.01" min="0" max="1" step="0.01">
                                 </div>
+                                <div class="param-group">
+                                    <label for="randomize">Enable Non-deterministic Play:</label>
+                                    <input type="checkbox" id="randomize">
+                                </div>
+                                <div class="param-group">
+                                    <label for="randomThreshold">Random Threshold:</label>
+                                    <input type="number" id="randomThreshold" value="0.1" min="0" max="1" step="0.01" disabled>
+                                </div>
                             </div>
 
                             <div class="simulation-controls">
@@ -84,13 +92,11 @@ class SimulationScreen {
     }
 
     attachEventListeners() {
-        console.log('Attaching event listeners');
-        // Tab navigation
+        // Previous event listeners...
         this.container.querySelectorAll('.tab-button').forEach(button => {
             button.addEventListener('click', () => this.switchTab(button.dataset.tab));
         });
 
-        // AI selection
         this.container.querySelectorAll('.ai-option input').forEach(checkbox => {
             checkbox.addEventListener('change', () => {
                 if (checkbox.checked) {
@@ -103,16 +109,20 @@ class SimulationScreen {
             });
         });
 
-        // Simulation controls
         const startButton = this.container.querySelector('#startSimulation');
         const pauseButton = this.container.querySelector('#pauseSimulation');
         const exportButton = this.container.querySelector('#exportResults');
+        const randomizeCheckbox = this.container.querySelector('#randomize');
+        const randomThresholdInput = this.container.querySelector('#randomThreshold');
+
+        randomizeCheckbox.addEventListener('change', () => {
+            randomThresholdInput.disabled = !randomizeCheckbox.checked;
+        });
 
         startButton.addEventListener('click', () => this.startSimulation());
         pauseButton.addEventListener('click', () => this.togglePause());
         exportButton.addEventListener('click', () => this.exportResults());
 
-        // Game viewer
         this.container.querySelector('#viewGame').addEventListener('click', () => {
             const gameSelector = this.container.querySelector('#gameSelector');
             const selectedGame = gameSelector.value;
@@ -122,17 +132,24 @@ class SimulationScreen {
         });
     }
 
-    updateDebugInfo(message) {
-        const debugInfo = this.container.querySelector('#debug-info');
-        const timestamp = new Date().toISOString().split('T')[1].slice(0, -1);
-        debugInfo.textContent += `[${timestamp}] ${message}\n`;
-        console.log(`Debug: ${message}`);
-    }
-
     async startSimulation() {
         this.updateDebugInfo('Starting simulation');
         const selectedAIs = Array.from(this.selectedAIs);
+        const randomize = this.container.querySelector('#randomize').checked;
+        const randomThreshold = parseFloat(this.container.querySelector('#randomThreshold').value);
+
+        // Create AI configuration for all selected AIs
+        const aiConfig = {};
+        selectedAIs.forEach(ai => {
+            aiConfig[ai] = {
+                randomize,
+                randomThreshold
+            };
+        });
+
         this.updateDebugInfo(`Selected AIs: ${selectedAIs.join(', ')}`);
+        this.updateDebugInfo(`AI Config: ${JSON.stringify(aiConfig, null, 2)}`);
+
         const matchups = [];
 
         // Create matchups for all combinations
@@ -147,11 +164,7 @@ class SimulationScreen {
             }
         }
 
-        this.updateDebugInfo(`Generated ${matchups.length} matchups:`);
-        matchups.forEach((matchup, index) => {
-            this.updateDebugInfo(`Matchup ${index + 1}: ${matchup.player1} vs ${matchup.player2}`);
-        });
-
+        this.updateDebugInfo(`Generated ${matchups.length} matchups`);
         const gamesPerMatchup = parseInt(this.container.querySelector('#gamesPerMatchup').value);
         const sampleRatio = parseFloat(this.container.querySelector('#sampleRatio').value);
 
@@ -161,7 +174,8 @@ class SimulationScreen {
         const config = {
             matchups,
             gamesPerMatchup,
-            sampleRatio
+            sampleRatio,
+            aiConfig
         };
 
         this.runner = new SimulationRunner(config);
@@ -290,6 +304,13 @@ class SimulationScreen {
         const startButton = this.container.querySelector('#startSimulation');
         startButton.disabled = this.selectedAIs.size < 2;
         this.updateDebugInfo(`Start button ${startButton.disabled ? 'disabled' : 'enabled'} (${this.selectedAIs.size} AIs selected)`);
+    }
+
+    updateDebugInfo(message) {
+        const debugInfo = this.container.querySelector('#debug-info');
+        const timestamp = new Date().toISOString().split('T')[1].slice(0, -1);
+        debugInfo.textContent += `[${timestamp}] ${message}\n`;
+        console.log(`Debug: ${message}`);
     }
 
     exportResults() {

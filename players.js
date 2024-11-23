@@ -1,15 +1,57 @@
 // players.js
-
 import { EntangledGame } from './gameplay.js';
 
 // Define base player class
 class EntangledPlayer {
-    constructor(gameEngine, playerColor) {
+    constructor(gameEngine, playerColor, config = {}) {
         this.gameEngine = gameEngine;
         this.playerColor = playerColor;
+        this.randomize = config.randomize || false;
+        this.randomThreshold = config.randomThreshold || 0.1;
+    }
+
+    // Fix the randomizeChoice method to handle empty or invalid moves
+    randomizeChoice(moves, scores) {
+        if (!moves || moves.length === 0) {
+            return null;
+        }
+
+        if (!this.randomize) {
+            return moves[0];
+        }
+
+        // Ensure we have valid scores array matching moves
+        if (!scores || scores.length !== moves.length) {
+            return moves[0];
+        }
+
+        // Find best score
+        const bestScore = Math.max(...scores);
+
+        // Filter valid moves within threshold
+        const viableMoves = moves.filter((move, i) => {
+            // Protect against NaN or invalid scores
+            if (typeof scores[i] !== 'number' || isNaN(scores[i])) {
+                return false;
+            }
+            return bestScore - scores[i] <= this.randomThreshold * Math.abs(bestScore);
+        });
+
+        // If no viable moves found, return first valid move
+        if (viableMoves.length === 0) {
+            return moves[0];
+        }
+
+        // Select random viable move
+        const randomIndex = Math.floor(Math.random() * viableMoves.length);
+        return viableMoves[randomIndex];
     }
 
     chooseMove() {
+        const validMoves = this.gameEngine.getValidMoves();
+        if (!validMoves || validMoves.length === 0) {
+            return null;
+        }
         throw new Error('Strategy not implemented');
     }
 
@@ -31,7 +73,6 @@ class EntangledPlayer {
         };
     }
 
-    // Utility method for creating a game simulation
     simulateGame(state) {
         const simGame = new EntangledGame();
         for (let i = 0; i < 5; i++) {
@@ -47,14 +88,11 @@ class EntangledPlayer {
         return simGame;
     }
 
-    // Common evaluation function
     evaluatePosition(game) {
         const myScore = game.getScore(this.playerColor);
         const opponentColor = this.playerColor === 'BLACK' ? 'WHITE' : 'BLACK';
         const opponentScore = game.getScore(opponentColor);
-
         const centerBonus = this.evaluateCenterControl(game);
-
         return myScore - opponentScore + centerBonus;
     }
 
@@ -77,7 +115,6 @@ class EntangledPlayer {
         return bonus;
     }
 
-    // Enhanced evaluation methods that can be used by improved strategies
     evaluateConnectivity(game, board) {
         let value = 0;
         const clusters = game.findLargestClusterCells(board, this.playerColor);
@@ -114,49 +151,58 @@ class EntangledPlayer {
     }
 }
 
-// Original Simple Strategies
-
 class RandomPlayer extends EntangledPlayer {
     chooseMove() {
         const validMoves = this.gameEngine.getValidMoves();
-        return validMoves[Math.floor(Math.random() * validMoves.length)];
+        if (this.randomize) {
+            return validMoves[Math.floor(Math.random() * validMoves.length)];
+        }
+        // Even in deterministic mode, Random player uses first valid move
+        return validMoves[0];
     }
 }
 
 class GreedyHighPlayer extends EntangledPlayer {
     chooseMove() {
         const validMoves = this.gameEngine.getValidMoves();
-        return validMoves.reduce((best, move) => {
-            const evaluation = this.evaluateMove(move);
-            if (!best || evaluation.totalScore > this.evaluateMove(best).totalScore) {
-                return move;
-            }
-            return best;
-        }, null);
+        const moveEvaluations = validMoves.map(move => ({
+            move,
+            score: this.evaluateMove(move).totalScore
+        }));
+
+        moveEvaluations.sort((a, b) => b.score - a.score);
+
+        return this.randomizeChoice(
+            moveEvaluations.map(m => m.move),
+            moveEvaluations.map(m => m.score)
+        );
     }
 }
 
 class GreedyLowPlayer extends EntangledPlayer {
     chooseMove() {
         const validMoves = this.gameEngine.getValidMoves();
-        return validMoves.reduce((best, move) => {
-            const evaluation = this.evaluateMove(move);
-            const bestEval = best ? this.evaluateMove(best) : { difference: Infinity, totalScore: -1 };
+        const moveEvaluations = validMoves.map(move => {
+            const moveEval = this.evaluateMove(move);
+            return {
+                move,
+                score: -moveEval.difference + (moveEval.totalScore * 0.001) // Small weight for total score as tiebreaker
+            };
+        });
 
-            if (evaluation.difference < bestEval.difference ||
-                (evaluation.difference === bestEval.difference &&
-                    evaluation.totalScore > bestEval.totalScore)) {
-                return move;
-            }
-            return best;
-        }, null);
+        moveEvaluations.sort((a, b) => b.score - a.score);
+
+        return this.randomizeChoice(
+            moveEvaluations.map(m => m.move),
+            moveEvaluations.map(m => m.score)
+        );
     }
 }
 
 class DefensivePlayer extends EntangledPlayer {
     chooseMove() {
         const validMoves = this.gameEngine.getValidMoves();
-        return validMoves.reduce((best, move) => {
+        const moveEvaluations = validMoves.map(move => {
             const ourEvaluation = this.evaluateMove(move);
             const opponentColor = this.playerColor === 'BLACK' ? 'WHITE' : 'BLACK';
             const simGame = this.simulateGame(this.gameEngine.getGameState());
@@ -170,33 +216,35 @@ class DefensivePlayer extends EntangledPlayer {
                 return Math.max(worst, oppEval.totalScore);
             }, -Infinity);
 
-            const moveScore = ourEvaluation.totalScore - worstOpponentScore;
+            return {
+                move,
+                score: ourEvaluation.totalScore - worstOpponentScore
+            };
+        });
 
-            if (!best || moveScore > best.score) {
-                return { move, score: moveScore };
-            }
-            return best;
-        }, null).move;
+        moveEvaluations.sort((a, b) => b.score - a.score);
+
+        return this.randomizeChoice(
+            moveEvaluations.map(m => m.move),
+            moveEvaluations.map(m => m.score)
+        );
     }
 }
 
-// Enhanced Versions of Original Strategies
-
 class EnhancedGreedyPlayer extends EntangledPlayer {
-    constructor(gameEngine, playerColor, lookahead = 2) {
-        super(gameEngine, playerColor);
-        this.lookahead = lookahead;
-    }
-
     chooseMove() {
         const validMoves = this.gameEngine.getValidMoves();
-        return validMoves.reduce((best, move) => {
-            const score = this.evaluateMoveWithLookahead(move);
-            if (!best || score > best.score) {
-                return { move, score };
-            }
-            return best;
-        }, null).move;
+        const moveEvaluations = validMoves.map(move => ({
+            move,
+            score: this.evaluateMoveWithLookahead(move)
+        }));
+
+        moveEvaluations.sort((a, b) => b.score - a.score);
+
+        return this.randomizeChoice(
+            moveEvaluations.map(m => m.move),
+            moveEvaluations.map(m => m.score)
+        );
     }
 
     evaluateMoveWithLookahead(move) {
@@ -210,7 +258,6 @@ class EnhancedGreedyPlayer extends EntangledPlayer {
         let score = this.evaluatePosition(simGame);
         const growthPotential = this.evaluateGrowthPotential(simGame);
 
-        // Look ahead at opponent's best responses
         const opponentMoves = simGame.getValidMoves();
         const opponentColor = this.playerColor === 'BLACK' ? 'WHITE' : 'BLACK';
 
@@ -227,30 +274,22 @@ class EnhancedGreedyPlayer extends EntangledPlayer {
 }
 
 class EnhancedBalancedPlayer extends EntangledPlayer {
-    constructor(gameEngine, playerColor, lookahead = 2) {
-        super(gameEngine, playerColor);
-        this.lookahead = lookahead;
-    }
-
     chooseMove() {
         const validMoves = this.gameEngine.getValidMoves();
-        let bestMove = null;
-        let bestScore = -Infinity;
-        let bestBalance = Infinity;
-
-        for (const move of validMoves) {
+        const moveEvaluations = validMoves.map(move => {
             const evaluation = this.evaluateBalancedMove(move);
+            return {
+                move,
+                score: -evaluation.balance + (evaluation.score * 0.001)
+            };
+        });
 
-            if (evaluation.balance < bestBalance ||
-                (Math.abs(evaluation.balance - bestBalance) < 0.5 &&
-                    evaluation.score > bestScore)) {
-                bestBalance = evaluation.balance;
-                bestScore = evaluation.score;
-                bestMove = move;
-            }
-        }
+        moveEvaluations.sort((a, b) => b.score - a.score);
 
-        return bestMove;
+        return this.randomizeChoice(
+            moveEvaluations.map(m => m.move),
+            moveEvaluations.map(m => m.score)
+        );
     }
 
     evaluateBalancedMove(move) {
@@ -264,7 +303,6 @@ class EnhancedBalancedPlayer extends EntangledPlayer {
         const growthPotential = this.evaluateGrowthPotential(simGame);
         const positionScore = this.evaluatePosition(simGame);
 
-        // Consider opponent's responses if not game over
         let opponentPressure = 0;
         if (!simGame.isGameOver()) {
             const opponentColor = this.playerColor === 'BLACK' ? 'WHITE' : 'BLACK';
@@ -289,20 +327,19 @@ class EnhancedBalancedPlayer extends EntangledPlayer {
 }
 
 class EnhancedDefensivePlayer extends EntangledPlayer {
-    constructor(gameEngine, playerColor, lookahead = 2) {
-        super(gameEngine, playerColor);
-        this.lookahead = lookahead;
-    }
-
     chooseMove() {
         const validMoves = this.gameEngine.getValidMoves();
-        return validMoves.reduce((best, move) => {
-            const score = this.evaluateDefensiveMove(move);
-            if (!best || score > best.score) {
-                return { move, score };
-            }
-            return best;
-        }, null).move;
+        const moveEvaluations = validMoves.map(move => ({
+            move,
+            score: this.evaluateDefensiveMove(move)
+        }));
+
+        moveEvaluations.sort((a, b) => b.score - a.score);
+
+        return this.randomizeChoice(
+            moveEvaluations.map(m => m.move),
+            moveEvaluations.map(m => m.score)
+        );
     }
 
     evaluateDefensiveMove(move) {
@@ -313,7 +350,6 @@ class EnhancedDefensivePlayer extends EntangledPlayer {
         const growthPotential = this.evaluateGrowthPotential(simGame);
         const blockingValue = this.evaluateBlocking(simGame);
 
-        // Consider opponent's responses
         const opponentColor = this.playerColor === 'BLACK' ? 'WHITE' : 'BLACK';
         const opponentMoves = simGame.getValidMoves();
         let opponentBestScore = -Infinity;
@@ -364,30 +400,24 @@ class EnhancedDefensivePlayer extends EntangledPlayer {
     }
 }
 
-// Minimax and MCTS Players remain the same
 class MinimaxPlayer extends EntangledPlayer {
-    constructor(gameEngine, playerColor, depth = 2) {
-        super(gameEngine, playerColor);
-        this.depth = depth;
-    }
-
     chooseMove() {
         const validMoves = this.gameEngine.getValidMoves();
-        let bestScore = -Infinity;
-        let bestMove = null;
-
-        for (const move of validMoves) {
+        const moveEvaluations = validMoves.map(move => {
             const simGame = this.simulateGame(this.gameEngine.getGameState());
             simGame.makeMove(move);
-            const score = this.minimax(simGame, this.depth - 1, false, -Infinity, Infinity);
+            return {
+                move,
+                score: this.minimax(simGame, this.lookahead - 1, false, -Infinity, Infinity)
+            };
+        });
 
-            if (score > bestScore) {
-                bestScore = score;
-                bestMove = move;
-            }
-        }
+        moveEvaluations.sort((a, b) => b.score - a.score);
 
-        return bestMove;
+        return this.randomizeChoice(
+            moveEvaluations.map(m => m.move),
+            moveEvaluations.map(m => m.score)
+        );
     }
 
     minimax(game, depth, isMaximizing, alpha, beta) {
@@ -424,16 +454,14 @@ class MinimaxPlayer extends EntangledPlayer {
 }
 
 class MCTSPlayer extends EntangledPlayer {
-    constructor(gameEngine, playerColor, simulationCount = 100) {
-        super(gameEngine, playerColor);
-        this.simulationCount = simulationCount;
+    constructor(gameEngine, playerColor, config = {}) {
+        super(gameEngine, playerColor, config);
+        this.simulationCount = config.simulationCount || 100;
     }
 
     chooseMove() {
         const validMoves = this.gameEngine.getValidMoves();
-        const moveScores = new Map();
-
-        for (const move of validMoves) {
+        const moveEvaluations = validMoves.map(move => {
             let totalScore = 0;
 
             for (let i = 0; i < this.simulationCount; i++) {
@@ -442,20 +470,18 @@ class MCTSPlayer extends EntangledPlayer {
                 totalScore += this.playRandomGame(simGame);
             }
 
-            moveScores.set(move, totalScore / this.simulationCount);
-        }
+            return {
+                move,
+                score: totalScore / this.simulationCount
+            };
+        });
 
-        let bestMove = validMoves[0];
-        let bestScore = moveScores.get(bestMove);
+        moveEvaluations.sort((a, b) => b.score - a.score);
 
-        for (const [move, score] of moveScores) {
-            if (score > bestScore) {
-                bestScore = score;
-                bestMove = move;
-            }
-        }
-
-        return bestMove;
+        return this.randomizeChoice(
+            moveEvaluations.map(m => m.move),
+            moveEvaluations.map(m => m.score)
+        );
     }
 
     playRandomGame(game) {
@@ -471,69 +497,115 @@ class MCTSPlayer extends EntangledPlayer {
     }
 }
 
-// Define all available AI players with their metadata
 export const AI_PLAYERS = {
     random: {
         id: 'random',
         name: 'Random',
         description: 'Makes random valid moves',
-        implementation: RandomPlayer
+        implementation: RandomPlayer,
+        defaultConfig: {
+            randomize: false,
+            randomThreshold: 0.1
+        }
     },
     aggressive: {
         id: 'aggressive',
         name: 'Aggressive',
         description: 'Maximizes current turn score',
-        implementation: GreedyHighPlayer
+        implementation: GreedyHighPlayer,
+        defaultConfig: {
+            randomize: false,
+            randomThreshold: 0.1
+        }
     },
     balanced: {
         id: 'balanced',
         name: 'Balanced',
         description: 'Balances cluster sizes across boards',
-        implementation: GreedyLowPlayer
+        implementation: GreedyLowPlayer,
+        defaultConfig: {
+            randomize: false,
+            randomThreshold: 0.1
+        }
     },
     defensive: {
         id: 'defensive',
         name: 'Defensive',
         description: 'Considers opponent\'s potential responses',
-        implementation: DefensivePlayer
+        implementation: DefensivePlayer,
+        defaultConfig: {
+            randomize: false,
+            randomThreshold: 0.1
+        }
     },
     enhancedAggressive: {
         id: 'enhancedAggressive',
         name: 'Enhanced Aggressive',
         description: 'Advanced aggressive strategy with lookahead',
-        implementation: EnhancedGreedyPlayer
+        implementation: EnhancedGreedyPlayer,
+        defaultConfig: {
+            randomize: false,
+            randomThreshold: 0.1,
+            lookahead: 2
+        }
     },
     enhancedBalanced: {
         id: 'enhancedBalanced',
         name: 'Enhanced Balanced',
         description: 'Advanced balanced strategy with lookahead',
-        implementation: EnhancedBalancedPlayer
+        implementation: EnhancedBalancedPlayer,
+        defaultConfig: {
+            randomize: false,
+            randomThreshold: 0.1,
+            lookahead: 2
+        }
     },
     enhancedDefensive: {
         id: 'enhancedDefensive',
         name: 'Enhanced Defensive',
         description: 'Advanced defensive strategy with lookahead',
-        implementation: EnhancedDefensivePlayer
+        implementation: EnhancedDefensivePlayer,
+        defaultConfig: {
+            randomize: false,
+            randomThreshold: 0.1,
+            lookahead: 2
+        }
     },
     minimax: {
         id: 'minimax',
         name: 'Minimax',
         description: 'Uses minimax algorithm with alpha-beta pruning',
-        implementation: MinimaxPlayer
+        implementation: MinimaxPlayer,
+        defaultConfig: {
+            randomize: false,
+            randomThreshold: 0.1,
+            lookahead: 2
+        }
     },
     mcts: {
         id: 'mcts',
         name: 'Monte Carlo',
         description: 'Uses Monte Carlo Tree Search simulation',
-        implementation: MCTSPlayer
+        implementation: MCTSPlayer,
+        defaultConfig: {
+            randomize: false,
+            randomThreshold: 0.1,
+            simulationCount: 100
+        }
     }
 };
 
-// Factory function to create player instances
-export function createPlayer(strategyId, gameEngine, playerColor) {
+export function createPlayer(strategyId, gameEngine, playerColor, config = {}) {
     const player = AI_PLAYERS[strategyId];
     if (!player) {
         throw new Error(`Unknown strategy: ${strategyId}`);
     }
-    return new player.implementation(gameEngine, playerColor);
+
+    // Merge default config with provided config
+    const finalConfig = {
+        ...player.defaultConfig,
+        ...config
+    };
+
+    return new player.implementation(gameEngine, playerColor, finalConfig);
 }

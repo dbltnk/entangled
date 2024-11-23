@@ -16,8 +16,15 @@ class SimulationRunner {
     }
 
     async start() {
-        const { matchups, gamesPerMatchup, maxWorkers = 4 } = this.config;
+        const {
+            matchups,
+            gamesPerMatchup,
+            maxWorkers = 4,
+            aiConfig = {}
+        } = this.config;
+
         console.log(`Starting simulation with ${matchups.length} matchups, ${gamesPerMatchup} games each`);
+        console.log('AI Configuration:', aiConfig);
 
         // Create full set of matchups
         const fullMatchups = matchups;
@@ -121,7 +128,8 @@ class SimulationRunner {
             worker.postMessage({
                 matchup,
                 gameIndex: currentTotal,
-                shouldSaveHistory
+                shouldSaveHistory,
+                aiConfig: this.config.aiConfig // Pass AI configuration to worker
             });
             this.activeGames++;
         }
