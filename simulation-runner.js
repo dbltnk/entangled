@@ -19,7 +19,7 @@ class SimulationRunner {
         const {
             matchups,
             gamesPerMatchup,
-            maxWorkers = 4,
+            maxWorkers = 16,
             aiConfig = {}
         } = this.config;
 
@@ -39,7 +39,7 @@ class SimulationRunner {
         this.currentGameInMatchup = 0;
 
         // Initialize worker pool
-        const workerCount = Math.min(maxWorkers, navigator.hardwareConcurrency || 4);
+        const workerCount = Math.min(maxWorkers, navigator.hardwareConcurrency);
         console.log(`Initializing ${workerCount} workers`);
         this.workers = Array(workerCount).fill(null).map(() => {
             const worker = new Worker(new URL('./simulation-worker.js', import.meta.url), { type: 'module' });
