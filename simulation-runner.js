@@ -26,7 +26,7 @@ class SimulationRunner {
         console.log(`Starting simulation with ${matchups.length} matchups, ${gamesPerMatchup} games each`);
         console.log('AI Configuration:', aiConfig);
 
-        // Create full set of matchups
+        // Each matchup configuration will be played equally
         const fullMatchups = matchups;
         console.log('Full matchups:', fullMatchups);
 
@@ -129,7 +129,7 @@ class SimulationRunner {
                 matchup,
                 gameIndex: currentTotal,
                 shouldSaveHistory,
-                aiConfig: this.config.aiConfig // Pass AI configuration to worker
+                aiConfig: this.config.aiConfig
             });
             this.activeGames++;
         }

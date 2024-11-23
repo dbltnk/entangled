@@ -91,11 +91,12 @@ class SimulationScreen {
     }
 
     attachEventListeners() {
-        // Previous event listeners...
+        // Tab navigation
         this.container.querySelectorAll('.tab-button').forEach(button => {
             button.addEventListener('click', () => this.switchTab(button.dataset.tab));
         });
 
+        // AI selection
         this.container.querySelectorAll('.ai-option input').forEach(checkbox => {
             checkbox.addEventListener('change', () => {
                 if (checkbox.checked) {
@@ -131,13 +132,11 @@ class SimulationScreen {
         });
     }
 
-    // Update to startSimulation method in simulation-screen.js
     async startSimulation() {
         const selectedAIs = Array.from(this.selectedAIs);
         const randomize = this.container.querySelector('#randomize').checked;
         const randomThreshold = parseFloat(this.container.querySelector('#randomThreshold').value);
 
-        // Create AI configuration for all selected AIs
         const aiConfig = {};
         selectedAIs.forEach(ai => {
             aiConfig[ai] = {
@@ -146,12 +145,11 @@ class SimulationScreen {
             };
         });
 
+        // Create matchups for all combinations including reversed color assignments
         const matchups = [];
-
-        // Create matchups for all combinations including self-play
         for (let i = 0; i < selectedAIs.length; i++) {
-            for (let j = 0; j <= i; j++) {  // Changed from j < selectedAIs.length to j <= i
-                // Include matchup even when i === j (self-play)
+            for (let j = 0; j < selectedAIs.length; j++) {
+                // Include both color configurations for each pair
                 matchups.push({
                     player1: selectedAIs[i],
                     player2: selectedAIs[j]
@@ -169,11 +167,9 @@ class SimulationScreen {
             aiConfig
         };
 
-        // Rest of the method remains the same...
         this.runner = new SimulationRunner(config);
         this.results = [];
 
-        // Update UI for simulation start
         const startButton = this.container.querySelector('#startSimulation');
         const pauseButton = this.container.querySelector('#pauseSimulation');
         const progressSection = this.container.querySelector('.progress-section');
@@ -182,7 +178,6 @@ class SimulationScreen {
         pauseButton.disabled = false;
         progressSection.style.display = 'block';
 
-        // Reset progress
         const progressBar = this.container.querySelector('.progress-fill');
         const progressText = this.container.querySelector('.progress-text');
         progressBar.style.width = '0%';
@@ -223,7 +218,6 @@ class SimulationScreen {
         }
     }
 
-    // Update to simulation-screen.js - updateResults method
     updateResults() {
         const analyzer = new SimulationAnalyzer(this.results);
         const stats = analyzer.getMatchupStats();
@@ -234,16 +228,16 @@ class SimulationScreen {
         <table class="results-table">
             <thead>
                 <tr>
-                    <th>⚫ Player</th>
-                    <th>⚪ Player</th>
+                    <th>Strategy as ⚫</th>
+                    <th>Strategy as ⚪</th>
                     <th>Games</th>
-                    <th>⚫ Wins</th>
-                    <th>⚪ Wins</th>
+                    <th>⚫ Win%</th>
+                    <th>⚪ Win%</th>
                     <th>Draws</th>
                     <th>⚫ Score</th>
                     <th>⚪ Score</th>
-                    <th>Advantage</th>
-                    <th>Δ Score</th>
+                    <th>Win Adv.</th>
+                    <th>Score Adv.</th>
                 </tr>
             </thead>
             <tbody>
@@ -265,12 +259,11 @@ class SimulationScreen {
         </table>
     `;
 
-        // Update game selector with sample games but keep the original format for clarity
         const gameSelector = this.container.querySelector('#gameSelector');
         gameSelector.innerHTML = stats.flatMap(stat =>
             stat.histories.map((_, index) => `
             <option value="${stat.strategy1}-${stat.strategy2}-${index}">
-                ⚫ ${AI_PLAYERS[stat.strategy1].name} vs ⚪ ${AI_PLAYERS[stat.strategy2].name} - Game ${index + 1}
+            ⚫ ${AI_PLAYERS[stat.strategy1].name} vs ⚪ ${AI_PLAYERS[stat.strategy2].name} - Game ${index + 1}
             </option>
         `)
         ).join('');
@@ -289,7 +282,7 @@ class SimulationScreen {
 
     updateStartButton() {
         const startButton = this.container.querySelector('#startSimulation');
-        startButton.disabled = this.selectedAIs.size < 1;  // Changed from 2 to 1
+        startButton.disabled = this.selectedAIs.size < 1;
     }
 
     exportResults() {
@@ -312,7 +305,7 @@ class SimulationScreen {
         const [player1, player2, gameIndex] = gameId.split('-');
         const analyzer = new SimulationAnalyzer(this.results);
         const stats = analyzer.getMatchupStats();
-        const matchup = stats.find(s => s.player1 === player1 && s.player2 === player2);
+        const matchup = stats.find(s => s.strategy1 === player1 && s.strategy2 === player2);
 
         if (matchup && matchup.histories[gameIndex]) {
             const matchupInfo = {
