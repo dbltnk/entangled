@@ -1,4 +1,6 @@
 // game-replay.js
+import BOARD_LAYOUTS from './boards.js';
+
 class GameReplayScreen {
     constructor(containerElement) {
         this.container = containerElement;
@@ -86,7 +88,6 @@ class GameReplayScreen {
     }
 
     getSymbolGrid() {
-        // Reuse the board layouts from the main game
         return [BOARD_LAYOUTS.board1, BOARD_LAYOUTS.board2];
     }
 
