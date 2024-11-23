@@ -224,6 +224,9 @@ class SimulationScreen {
         const analyzer = new SimulationAnalyzer(this.results);
         const stats = analyzer.getMatchupStats();
 
+        // Calculate averages for the last 7 columns
+        const averages = this.calculateAverages(stats);
+
         const grid = this.container.querySelector('.results-grid');
 
         grid.innerHTML = `
@@ -236,9 +239,9 @@ class SimulationScreen {
                     <th>⚫ Win%</th>
                     <th>⚪ Win%</th>
                     <th>Draws</th>
+                    <th>Win Adv.</th>
                     <th>⚫ Score</th>
                     <th>⚪ Score</th>
-                    <th>Win Adv.</th>
                     <th>Score Adv.</th>
                 </tr>
             </thead>
@@ -251,12 +254,22 @@ class SimulationScreen {
                         <td>${stat.blackWinRate}%</td>
                         <td>${stat.whiteWinRate}%</td>
                         <td>${stat.drawRate}%</td>
+                        <td class="${parseFloat(stat.winAdvantage) > 0 ? 'positive' : 'negative'}">${stat.winAdvantage}%</td>
                         <td>${stat.avgScoreBlack}</td>
                         <td>${stat.avgScoreWhite}</td>
-                        <td class="${parseFloat(stat.winAdvantage) > 0 ? 'positive' : 'negative'}">${stat.winAdvantage}%</td>
                         <td class="${parseFloat(stat.scoreAdvantage) > 0 ? 'positive' : 'negative'}">±${Math.abs(stat.scoreAdvantage)}</td>
                     </tr>
                 `).join('')}
+                <tr class="averages-row">
+                    <td colspan="3">Averages</td>
+                    <td>${averages.blackWinRate.toFixed(1)}%</td>
+                    <td>${averages.whiteWinRate.toFixed(1)}%</td>
+                    <td>${averages.drawRate.toFixed(1)}%</td>
+                    <td class="${averages.winAdvantage > 0 ? 'positive' : 'negative'}">${averages.winAdvantage.toFixed(1)}%</td>
+                    <td>${averages.avgScoreBlack.toFixed(1)}</td>
+                    <td>${averages.avgScoreWhite.toFixed(1)}</td>
+                    <td class="${averages.scoreAdvantage > 0 ? 'positive' : 'negative'}">±${Math.abs(averages.scoreAdvantage).toFixed(1)}</td>
+                </tr>
             </tbody>
         </table>
     `;
@@ -271,6 +284,37 @@ class SimulationScreen {
         ).join('');
 
         this.container.querySelector('#exportResults').disabled = false;
+    }
+
+    calculateAverages(stats) {
+        const sum = stats.reduce((acc, stat) => ({
+            blackWinRate: acc.blackWinRate + parseFloat(stat.blackWinRate),
+            whiteWinRate: acc.whiteWinRate + parseFloat(stat.whiteWinRate),
+            drawRate: acc.drawRate + parseFloat(stat.drawRate),
+            avgScoreBlack: acc.avgScoreBlack + parseFloat(stat.avgScoreBlack),
+            avgScoreWhite: acc.avgScoreWhite + parseFloat(stat.avgScoreWhite),
+            winAdvantage: acc.winAdvantage + parseFloat(stat.winAdvantage),
+            scoreAdvantage: acc.scoreAdvantage + parseFloat(stat.scoreAdvantage)
+        }), {
+            blackWinRate: 0,
+            whiteWinRate: 0,
+            drawRate: 0,
+            avgScoreBlack: 0,
+            avgScoreWhite: 0,
+            winAdvantage: 0,
+            scoreAdvantage: 0
+        });
+
+        const count = stats.length;
+        return {
+            blackWinRate: sum.blackWinRate / count,
+            whiteWinRate: sum.whiteWinRate / count,
+            drawRate: sum.drawRate / count,
+            avgScoreBlack: sum.avgScoreBlack / count,
+            avgScoreWhite: sum.avgScoreWhite / count,
+            winAdvantage: sum.winAdvantage / count,
+            scoreAdvantage: sum.scoreAdvantage / count
+        };
     }
 
     switchTab(tabId) {

@@ -448,3 +448,18 @@
 .results-table td.score-advantage.negative::after {
     background-color: #c27;
 }
+
+.results-table tr.averages-row {
+    font-weight: 500;
+    background-color: #f8f9fa;
+    border-top: 2px solid #dee2e6;
+}
+
+.results-table tr.averages-row td {
+    padding: 12px;
+}
+
+.results-table tr.averages-row td:first-child {
+    text-align: right;
+    font-style: italic;
+}
