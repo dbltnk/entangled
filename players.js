@@ -560,7 +560,7 @@ export const AI_PLAYERS = {
         defaultConfig: {
             randomize: false,
             randomThreshold: 0.1,
-            lookahead: 2
+            lookahead: 10
         }
     },
     enhancedBalanced: {
@@ -571,7 +571,7 @@ export const AI_PLAYERS = {
         defaultConfig: {
             randomize: false,
             randomThreshold: 0.1,
-            lookahead: 2
+            lookahead: 10
         }
     },
     enhancedDefensive: {
@@ -582,7 +582,7 @@ export const AI_PLAYERS = {
         defaultConfig: {
             randomize: false,
             randomThreshold: 0.1,
-            lookahead: 2
+            lookahead: 10
         }
     },
     minimax: {
@@ -593,7 +593,7 @@ export const AI_PLAYERS = {
         defaultConfig: {
             randomize: false,
             randomThreshold: 0.1,
-            lookahead: 3
+            lookahead: 4
         }
     },
     mcts: {
@@ -604,7 +604,7 @@ export const AI_PLAYERS = {
         defaultConfig: {
             randomize: false,
             randomThreshold: 0.1,
-            simulationCount: 100
+            simulationCount: 300
         }
     }
 };
