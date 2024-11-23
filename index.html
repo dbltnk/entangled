@@ -66,29 +66,6 @@
             margin-bottom: 1rem;
         }
 
-        .rules-toggle {
-            position: fixed;
-            left: 2rem;
-            top: 50%;
-            transform: translateY(-50%);
-            z-index: 20;
-            width: 32px;
-            height: 32px;
-            border: none;
-            background: white;
-            border-radius: 50%;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: left 0.3s ease;
-            font-size: 1.2rem;
-        }
-
-        body.rules-hidden .rules-toggle {
-            left: 1rem;
-        }
 
         /* Game container */
         .game-container {
@@ -310,7 +287,6 @@
 </head>
 
 <body>
-    <button class="rules-toggle" id="rules-toggle" title="Toggle Rules">≡</button>
 
     <div class="panel rules" id="rules-panel">
         <h1>Entangled</h1>
@@ -613,26 +589,6 @@
             }
         }
 
-        function setupRulesToggle() {
-            const rulesToggle = document.getElementById('rules-toggle');
-            const rulesPanel = document.getElementById('rules-panel');
-            const body = document.body;
-
-            const rulesHidden = localStorage.getItem('rulesHidden') === 'true';
-            if (rulesHidden) {
-                rulesPanel.classList.add('hidden');
-                body.classList.add('rules-hidden');
-                rulesToggle.textContent = '≡';
-            }
-
-            rulesToggle.addEventListener('click', () => {
-                rulesPanel.classList.toggle('hidden');
-                body.classList.toggle('rules-hidden');
-                const isHidden = rulesPanel.classList.contains('hidden');
-                rulesToggle.textContent = '≡';
-                localStorage.setItem('rulesHidden', isHidden);
-            });
-        }
 
         function initializeGame() {
             game = new EntangledGame();
@@ -646,7 +602,6 @@
 
         function init() {
             initializeBoards();
-            setupRulesToggle();
             populatePlayerDropdowns();
 
             // Set up start game button
