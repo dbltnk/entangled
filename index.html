@@ -365,245 +365,15 @@
         </div>
     </div>
 
-    <script>
-        // Game constants
-        const BOARD_SIZE = 5;
-        const STONES_PER_PLAYER = 25;
-        const TURNS_PER_PLAYER = 12;
-        const PLAYERS = {
-            BLACK: 'BLACK',
-            WHITE: 'WHITE'
-        };
+    <script type="module">
+        import BOARD_LAYOUTS from './boards.js';
+        import { EntangledGame, PLAYERS } from './gameplay.js';
+        import { createPlayer } from './players.js';
 
-        // Board layouts
-        const board1 = [
-            ['A', 'B', 'C', 'D', 'E'],
-            ['F', 'G', 'H', 'I', 'J'],
-            ['K', 'L', 'M', 'N', 'O'],
-            ['P', 'Q', 'R', 'S', 'T'],
-            ['U', 'V', 'W', 'X', 'Y']
-        ];
-
-        const board2 = [
-            ['X', 'C', 'F', 'N', 'Q'],
-            ['K', 'S', 'V', 'E', 'H'],
-            ['B', 'J', 'M', 'P', 'W'],
-            ['R', 'U', 'D', 'G', 'O'],
-            ['I', 'L', 'T', 'W', 'A']
-        ];
-
-        // Game state
         let game = null;
         let aiPlayer = null;
         let humanColor = PLAYERS.BLACK;
         let isAgainstAI = true;
-
-        class EntangledGame {
-            constructor(board1Layout, board2Layout) {
-                this.board1Layout = board1Layout;
-                this.board2Layout = board2Layout;
-                this.board1 = Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(null));
-                this.board2 = Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(null));
-                this.symbolToPosition = new Map();
-                this.moveHistory = [];
-                this.currentPlayer = PLAYERS.BLACK;
-                this.playerTurns = {
-                    [PLAYERS.BLACK]: 0,
-                    [PLAYERS.WHITE]: 0
-                };
-                this.remainingStones = {
-                    [PLAYERS.BLACK]: STONES_PER_PLAYER,
-                    [PLAYERS.WHITE]: STONES_PER_PLAYER
-                };
-                this.gameOver = false;
-
-                this.initializeSymbolMaps();
-
-                // Initialize center positions
-                const center = Math.floor(BOARD_SIZE / 2);
-                this.board1[center][center] = PLAYERS.BLACK;
-                this.board2[center][center] = PLAYERS.WHITE;
-                this.remainingStones[PLAYERS.BLACK]--;
-                this.remainingStones[PLAYERS.WHITE]--;
-            }
-
-            initializeSymbolMaps() {
-                for (let row = 0; row < BOARD_SIZE; row++) {
-                    for (let col = 0; col < BOARD_SIZE; col++) {
-                        const symbol = this.board1Layout[row][col];
-                        this.symbolToPosition.set(symbol, {
-                            board1: { row, col },
-                            board2: this.findSymbolPosition(symbol, this.board2Layout)
-                        });
-                    }
-                }
-            }
-
-            findSymbolPosition(symbol, board) {
-                for (let row = 0; row < BOARD_SIZE; row++) {
-                    for (let col = 0; col < BOARD_SIZE; col++) {
-                        if (board[row][col] === symbol) {
-                            return { row, col };
-                        }
-                    }
-                }
-                return null;
-            }
-
-            isValidMove(symbol) {
-                if (!this.symbolToPosition.has(symbol)) return false;
-                if (this.remainingStones[this.currentPlayer] < 2) return false;
-                if (this.playerTurns[this.currentPlayer] >= TURNS_PER_PLAYER) return false;
-
-                const { board1, board2 } = this.symbolToPosition.get(symbol);
-                return this.board1[board1.row][board1.col] === null &&
-                    this.board2[board2.row][board2.col] === null;
-            }
-
-            makeMove(symbol) {
-                if (!this.isValidMove(symbol)) {
-                    return false;
-                }
-
-                const { board1, board2 } = this.symbolToPosition.get(symbol);
-
-                // Store move in history
-                this.moveHistory.push({
-                    symbol,
-                    player: this.currentPlayer,
-                    board1State: this.getBoard1(),
-                    board2State: this.getBoard2(),
-                    currentPlayer: this.currentPlayer,
-                    remainingStones: { ...this.remainingStones },
-                    playerTurns: { ...this.playerTurns }
-                });
-
-                // Make the move
-                this.board1[board1.row][board1.col] = this.currentPlayer;
-                this.board2[board2.row][board2.col] = this.currentPlayer;
-
-                this.remainingStones[this.currentPlayer] -= 2;
-                this.playerTurns[this.currentPlayer]++;
-
-                if (this.currentPlayer === PLAYERS.WHITE &&
-                    this.playerTurns[PLAYERS.WHITE] >= TURNS_PER_PLAYER) {
-                    this.gameOver = true;
-                } else {
-                    this.currentPlayer =
-                        this.currentPlayer === PLAYERS.BLACK ? PLAYERS.WHITE : PLAYERS.BLACK;
-                }
-
-                return true;
-            }
-
-            undoLastMove() {
-                if (this.moveHistory.length === 0) return false;
-
-                const lastMove = this.moveHistory.pop();
-
-                // Restore the previous state
-                for (let i = 0; i < BOARD_SIZE; i++) {
-                    for (let j = 0; j < BOARD_SIZE; j++) {
-                        this.board1[i][j] = lastMove.board1State[i][j];
-                        this.board2[i][j] = lastMove.board2State[i][j];
-                    }
-                }
-
-                this.currentPlayer = lastMove.currentPlayer;
-                this.remainingStones = { ...lastMove.remainingStones };
-                this.playerTurns = { ...lastMove.playerTurns };
-                this.gameOver = false;
-
-                return true;
-            }
-
-            findLargestCluster(board, player) {
-                const visited = Array(BOARD_SIZE).fill(false)
-                    .map(() => Array(BOARD_SIZE).fill(false));
-                let largestClusterSize = 0;
-
-                for (let row = 0; row < BOARD_SIZE; row++) {
-                    for (let col = 0; col < BOARD_SIZE; col++) {
-                        if (board[row][col] === player && !visited[row][col]) {
-                            largestClusterSize = Math.max(
-                                largestClusterSize,
-                                this.exploreCluster(board, row, col, player, visited)
-                            );
-                        }
-                    }
-                }
-
-                return largestClusterSize;
-            }
-
-            exploreCluster(board, row, col, player, visited) {
-                if (row < 0 || row >= BOARD_SIZE || col < 0 || col >= BOARD_SIZE ||
-                    visited[row][col] || board[row][col] !== player) {
-                    return 0;
-                }
-
-                visited[row][col] = true;
-                let size = 1;
-
-                // Check orthogonally adjacent cells
-                const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
-                for (const [dRow, dCol] of directions) {
-                    size += this.exploreCluster(board, row + dRow, col + dCol, player, visited);
-                }
-
-                return size;
-            }
-
-            getBoard1() { return this.board1.map(row => [...row]); }
-            getBoard2() { return this.board2.map(row => [...row]); }
-            getCurrentPlayer() { return this.currentPlayer; }
-            getCurrentTurn() { return this.playerTurns[this.currentPlayer] + 1; }
-            getRemainingStones(player) { return this.remainingStones[player]; }
-            isGameOver() { return this.gameOver; }
-
-            getValidMoves() {
-                return Array.from(this.symbolToPosition.keys())
-                    .filter(symbol => this.isValidMove(symbol));
-            }
-
-            getScore(player) {
-                return this.findLargestCluster(this.board1, player) +
-                    this.findLargestCluster(this.board2, player);
-            }
-
-            getWinner() {
-                if (!this.gameOver) return null;
-                const blackScore = this.getScore(PLAYERS.BLACK);
-                const whiteScore = this.getScore(PLAYERS.WHITE);
-                if (blackScore > whiteScore) return PLAYERS.BLACK;
-                if (whiteScore > blackScore) return PLAYERS.WHITE;
-                return 'TIE';
-            }
-
-            getGameState() {
-                return {
-                    board1: this.getBoard1(),
-                    board2: this.getBoard2(),
-                    currentPlayer: this.currentPlayer,
-                    currentTurn: this.getCurrentTurn(),
-                    gameOver: this.gameOver,
-                    remainingStones: { ...this.remainingStones },
-                    playerTurns: { ...this.playerTurns }
-                };
-            }
-        }
-
-        class EntangledPlayer {
-            constructor(game, playerColor) {
-                this.game = game;
-                this.playerColor = playerColor;
-            }
-
-            chooseMove() {
-                const validMoves = this.game.getValidMoves();
-                return validMoves[Math.floor(Math.random() * validMoves.length)];
-            }
-        }
 
         // UI Functions
         function createCell(symbol, boardNum, row, col) {
@@ -633,10 +403,10 @@
             board1Element.innerHTML = '';
             board2Element.innerHTML = '';
 
-            for (let i = 0; i < BOARD_SIZE; i++) {
-                for (let j = 0; j < BOARD_SIZE; j++) {
-                    const cell1 = createCell(board1[i][j], 1, i, j);
-                    const cell2 = createCell(board2[i][j], 2, i, j);
+            for (let i = 0; i < 5; i++) {
+                for (let j = 0; j < 5; j++) {
+                    const cell1 = createCell(BOARD_LAYOUTS.board1[i][j], 1, i, j);
+                    const cell2 = createCell(BOARD_LAYOUTS.board2[i][j], 2, i, j);
 
                     board1Element.appendChild(cell1);
                     board2Element.appendChild(cell2);
@@ -704,15 +474,14 @@
                 `${blackClusters.join(',')} - ${whiteClusters.join(',')}`;
 
             // Update boards
-            for (let i = 0; i < BOARD_SIZE; i++) {
-                for (let j = 0; j < BOARD_SIZE; j++) {
+            for (let i = 0; i < 5; i++) {
+                for (let j = 0; j < 5; j++) {
                     updateCell(1, i, j, state.board1[i][j]);
                     updateCell(2, i, j, state.board2[i][j]);
                 }
             }
 
             updateUndoButton();
-
             if (state.gameOver) {
                 const winner = game.getWinner();
                 showWinner(winner);
@@ -851,11 +620,12 @@
         }
 
         function initializeGame() {
-            game = new EntangledGame(board1, board2);
+            game = new EntangledGame();
 
             if (isAgainstAI) {
                 const aiColor = humanColor === PLAYERS.BLACK ? PLAYERS.WHITE : PLAYERS.BLACK;
-                aiPlayer = new EntangledPlayer(game, aiColor);
+                const strategy = document.getElementById('ai-level').value;
+                aiPlayer = createPlayer(strategy, game, aiColor);
             } else {
                 aiPlayer = null;
             }

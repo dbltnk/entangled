@@ -1,22 +1,18 @@
-// Player strategy implementations for Entangled game
+import { EntangledGame } from './gameplay.js';
+
 class EntangledPlayer {
     constructor(gameEngine, playerColor) {
         this.gameEngine = gameEngine;
         this.playerColor = playerColor;
     }
 
-    // To be implemented by specific strategies
     chooseMove() {
         throw new Error('Strategy not implemented');
     }
 
-    // Utility method to evaluate potential moves
     evaluateMove(move) {
-        // Create a new game state to simulate the move
-        const simGame = new EntangledGame(
-            this.gameEngine.board1Layout,
-            this.gameEngine.board2Layout
-        );
+        // Create a new game engine to simulate the move
+        const simGame = new EntangledGame();
 
         // Copy current game state
         const state = this.gameEngine.getGameState();
@@ -93,10 +89,7 @@ class DefensivePlayer extends EntangledPlayer {
 
             // Simulate opponent's best response
             const opponentColor = this.playerColor === 'BLACK' ? 'WHITE' : 'BLACK';
-            const simGame = new EntangledGame(
-                this.gameEngine.board1Layout,
-                this.gameEngine.board2Layout
-            );
+            const simGame = new EntangledGame();
 
             // Copy current game state and make our move
             const state = this.gameEngine.getGameState();
@@ -127,7 +120,6 @@ class DefensivePlayer extends EntangledPlayer {
     }
 }
 
-// Factory function to create players
 function createPlayer(strategy, gameEngine, playerColor) {
     const strategies = {
         'random': RandomPlayer,
@@ -144,13 +136,4 @@ function createPlayer(strategy, gameEngine, playerColor) {
     return new PlayerClass(gameEngine, playerColor);
 }
 
-// Export for use in other modules
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = {
-        createPlayer,
-        RandomPlayer,
-        GreedyHighPlayer,
-        GreedyLowPlayer,
-        DefensivePlayer
-    };
-}
+export { createPlayer, RandomPlayer, GreedyHighPlayer, GreedyLowPlayer, DefensivePlayer };

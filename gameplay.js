@@ -1,3 +1,5 @@
+import BOARD_LAYOUTS from './boards.js';
+
 // Constants for the game
 const BOARD_SIZE = 5;
 const STONES_PER_PLAYER = 25;
@@ -14,10 +16,10 @@ const DIRECTIONS = [
 ];
 
 class EntangledGame {
-    constructor(board1Layout, board2Layout) {
+    constructor() {
         // Store the symbol layouts
-        this.board1Layout = board1Layout;
-        this.board2Layout = board2Layout;
+        this.board1Layout = BOARD_LAYOUTS.board1;
+        this.board2Layout = BOARD_LAYOUTS.board2;
 
         // Create the game state
         this.board1 = Array(BOARD_SIZE).fill(null)
@@ -181,7 +183,6 @@ class EntangledGame {
         return 'TIE';
     }
 
-    // Utility methods for external systems
     getBoard1() {
         return this.board1.map(row => [...row]);
     }
@@ -225,12 +226,4 @@ class EntangledGame {
     }
 }
 
-// Export for use in other modules
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = {
-        EntangledGame,
-        PLAYERS,
-        STONES_PER_PLAYER,
-        TURNS_PER_PLAYER
-    };
-}
+export { EntangledGame, PLAYERS, STONES_PER_PLAYER, TURNS_PER_PLAYER };
