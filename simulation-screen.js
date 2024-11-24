@@ -258,8 +258,8 @@ class SimulationScreen {
         const gameSelector = this.container.querySelector('#gameSelector');
         gameSelector.innerHTML = stats.flatMap(stat =>
             stat.histories.map((_, index) => `
-            <option value="${stat.strategy1}-${stat.strategy2}-${index}">
-            ⚫ ${AI_PLAYERS[stat.strategy1].name} vs ⚪ ${AI_PLAYERS[stat.strategy2].name} - Game ${index + 1}
+            <option value="${stat.strategy1} vs ${stat.strategy2}-${index}">
+                ⚫ ${AI_PLAYERS[stat.strategy1].name} vs ⚪ ${AI_PLAYERS[stat.strategy2].name} - Game ${index + 1}
             </option>
         `)
         ).join('');
@@ -329,17 +329,30 @@ class SimulationScreen {
     }
 
     viewGame(gameId) {
-        const [player1, player2, gameIndex] = gameId.split('-');
+        // Get the last number as the index
+        const gameIndex = parseInt(gameId.split('-').pop());
+        // Get everything before the last hyphen as the strategy IDs
+        const strategiesStr = gameId.slice(0, gameId.lastIndexOf('-'));
+        const [strategy1, strategy2] = strategiesStr.split(' vs ');
+
+        console.log('Parsed game selection:', { strategy1, strategy2, gameIndex });
+
         const analyzer = new SimulationAnalyzer(this.results);
         const stats = analyzer.getMatchupStats();
-        const matchup = stats.find(s => s.strategy1 === player1 && s.strategy2 === player2);
+
+        const matchup = stats.find(s =>
+            s.strategy1 === strategy1 &&
+            s.strategy2 === strategy2
+        );
 
         if (matchup && matchup.histories[gameIndex]) {
             const matchupInfo = {
-                player1: AI_PLAYERS[player1].name,
-                player2: AI_PLAYERS[player2].name
+                player1: AI_PLAYERS[strategy1].name,
+                player2: AI_PLAYERS[strategy2].name
             };
             window.viewReplay(matchup.histories[gameIndex], matchupInfo);
+        } else {
+            console.warn('Matchup or history not found:', { strategy1, strategy2, gameIndex });
         }
     }
 }
