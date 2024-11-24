@@ -8,6 +8,8 @@ const workerContext = self;
 
 // Setup module imports properly for the worker
 workerContext.onmessage = async function (e) {
+    const { matchup, gameIndex, shouldSaveHistory, aiConfig, boardConfig } = e.data;
+
     try {
         // Import modules dynamically within the worker
         const gameplayModule = await import('./gameplay.js');
@@ -15,7 +17,6 @@ workerContext.onmessage = async function (e) {
         const EntangledGame = gameplayModule.EntangledGame;
         const createPlayer = playersModule.createPlayer;
 
-        const { matchup, gameIndex, shouldSaveHistory, aiConfig, boardConfig } = e.data;
         const { player1, player2 } = matchup;
 
         // Use specified board layouts or fall back to defaults
@@ -63,7 +64,7 @@ workerContext.onmessage = async function (e) {
                             boardConfig: boardConfig // Add board configuration to state
                         }
                     });
-                } a
+                }
 
                 game.makeMove(move);
             }
