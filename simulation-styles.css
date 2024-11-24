@@ -463,3 +463,20 @@
     text-align: right;
     font-style: italic;
 }
+
+.board-layouts-info {
+    margin-bottom: 20px;
+    padding: 10px;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+}
+
+.board-layouts-header {
+    color: #495057;
+    font-size: 0.95em;
+}
+
+.board-layouts-header strong {
+    color: #212529;
+}

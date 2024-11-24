@@ -85,6 +85,7 @@ class SimulationScreen {
 
                     <div class="tab-pane" id="results-pane">
                         <div class="results-section">
+                            <div id="board-layouts-info" class="board-layouts-info"></div>
                             <div class="results-controls">
                                 <button id="exportResults" class="secondary-button" disabled>Export Results</button>
                             </div>
@@ -233,6 +234,16 @@ class SimulationScreen {
 
         // Calculate averages for the last 7 columns
         const averages = this.calculateAverages(stats);
+
+        // Update board layouts info
+        const boardLayoutsInfo = this.container.querySelector('#board-layouts-info');
+        const board1Name = BOARD_LAYOUTS[this.results[0]?.boardConfig?.board1Layout || 'board1'].name;
+        const board2Name = BOARD_LAYOUTS[this.results[0]?.boardConfig?.board2Layout || 'board2'].name;
+        boardLayoutsInfo.innerHTML = `
+            <div class="board-layouts-header">
+                <strong>Board Layouts:</strong> Left Board - ${board1Name}, Right Board - ${board2Name}
+            </div>
+        `;
 
         const grid = this.container.querySelector('.results-grid');
 
