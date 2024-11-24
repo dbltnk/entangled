@@ -10,19 +10,29 @@ class EntangledPlayer {
         this.randomThreshold = config.randomThreshold || 0.1;
     }
 
-    // Fix the randomizeChoice method to handle empty or invalid moves
     randomizeChoice(moves, scores) {
         if (!moves || moves.length === 0) {
             return null;
         }
 
-        if (!this.randomize) {
-            return moves[0];
-        }
-
         // Ensure we have valid scores array matching moves
         if (!scores || scores.length !== moves.length) {
             return moves[0];
+        }
+
+        if (!this.randomize) {
+            // When not randomizing, find and return the move with the highest score
+            let bestScore = scores[0];
+            let bestMoveIndex = 0;
+
+            for (let i = 1; i < scores.length; i++) {
+                if (scores[i] > bestScore) {
+                    bestScore = scores[i];
+                    bestMoveIndex = i;
+                }
+            }
+
+            return moves[bestMoveIndex];
         }
 
         // Find best score
@@ -407,7 +417,7 @@ class EnhancedDefensivePlayer extends EntangledPlayer {
 class MinimaxPlayer extends EntangledPlayer {
     constructor(gameEngine, playerColor, config = {}) {
         super(gameEngine, playerColor, config);
-        this.lookahead = config.lookahead || 2;  // Add this line to properly initialize lookahead
+        this.lookahead = config.lookahead || 2;
     }
 
     chooseMove() {
@@ -430,14 +440,12 @@ class MinimaxPlayer extends EntangledPlayer {
     }
 
     minimax(game, depth, isMaximizing, alpha, beta) {
-        // Add early exit for performance
         if (depth === 0 || game.isGameOver()) {
             return this.evaluatePosition(game);
         }
 
         const validMoves = game.getValidMoves();
 
-        // Exit early if no valid moves
         if (!validMoves || validMoves.length === 0) {
             return this.evaluatePosition(game);
         }
@@ -446,7 +454,7 @@ class MinimaxPlayer extends EntangledPlayer {
             let maxScore = -Infinity;
             for (const move of validMoves) {
                 const simGame = this.simulateGame(game.getGameState());
-                simGame.currentPlayer = this.playerColor; // Add this to ensure correct player state
+                simGame.currentPlayer = this.playerColor;
                 simGame.makeMove(move);
                 const score = this.minimax(simGame, depth - 1, false, alpha, beta);
                 maxScore = Math.max(maxScore, score);
@@ -459,7 +467,7 @@ class MinimaxPlayer extends EntangledPlayer {
             for (const move of validMoves) {
                 const simGame = this.simulateGame(game.getGameState());
                 const opponentColor = this.playerColor === 'BLACK' ? 'WHITE' : 'BLACK';
-                simGame.currentPlayer = opponentColor; // Add this to ensure correct player state
+                simGame.currentPlayer = opponentColor;
                 simGame.makeMove(move);
                 const score = this.minimax(simGame, depth - 1, true, alpha, beta);
                 minScore = Math.min(minScore, score);
@@ -516,21 +524,26 @@ class MCTSPlayer extends EntangledPlayer {
 }
 
 export const AI_PLAYERS = {
-    deterministic: {
-        id: 'deterministic',
-        name: 'Deterministic',
-        description: 'Always uses the first available move',
-        implementation: DeterministicPlayer
+    human: {
+        id: 'human',
+        name: 'Human',
+        description: 'Human player',
     },
     random: {
         id: 'random',
-        name: 'Random',
+        name: 'Fully Random',
         description: 'Makes random valid moves',
         implementation: RandomPlayer
     },
-    aggressive: {
-        id: 'aggressive',
-        name: 'Aggressive',
+    deterministic: {
+        id: 'deterministic',
+        name: 'A-to-Z Deterministic',
+        description: 'Always uses the first available move',
+        implementation: DeterministicPlayer
+    },
+    'aggressive-no-rng': {
+        id: 'aggressive-no-rng',
+        name: 'Greedy (no-rng)',
         description: 'Maximizes current turn score',
         implementation: GreedyHighPlayer,
         defaultConfig: {
@@ -538,19 +551,39 @@ export const AI_PLAYERS = {
             randomThreshold: 0.1
         }
     },
-    balanced: {
-        id: 'balanced',
-        name: 'Balanced',
-        description: 'Balances cluster sizes across boards',
-        implementation: GreedyLowPlayer,
+    'aggressive-some-rng': {
+        id: 'aggressive-some-rng',
+        name: 'Greedy (some-rng)',
+        description: 'Maximizes current turn score with randomization',
+        implementation: GreedyHighPlayer,
         defaultConfig: {
-            randomize: false,
+            randomize: true,
             randomThreshold: 0.1
         }
     },
-    defensive: {
-        id: 'defensive',
-        name: 'Defensive',
+    //'balanced-no-rng': {
+    //    id: 'balanced-no-rng',
+    //    name: 'Greedy Low AI (no-rng)',
+    //    description: 'Balances cluster sizes across boards',
+    //    implementation: GreedyLowPlayer,
+    //    defaultConfig: {
+    //        randomize: false,
+    //        randomThreshold: 0.1
+    //    }
+    //},
+    //'balanced-some-rng': {
+    //    id: 'balanced-some-rng',
+    //    name: 'Greedy Low AI (some-rng)',
+    //    description: 'Balances cluster sizes across boards with randomization',
+    //    implementation: GreedyLowPlayer,
+    //    defaultConfig: {
+    //        randomize: true,
+    //        randomThreshold: 0.1
+    //    }
+    //},
+    'defensive-no-rng': {
+        id: 'defensive-no-rng',
+        name: 'Defensive (no-rng)',
         description: 'Considers opponent\'s potential responses',
         implementation: DefensivePlayer,
         defaultConfig: {
@@ -558,42 +591,85 @@ export const AI_PLAYERS = {
             randomThreshold: 0.1
         }
     },
-    enhancedAggressive: {
-        id: 'enhancedAggressive',
-        name: 'Enhanced Aggressive',
-        description: 'Advanced aggressive strategy with lookahead',
-        implementation: EnhancedGreedyPlayer,
+    'defensive-some-rng': {
+        id: 'defensive-some-rng',
+        name: 'Defensive (some-rng)',
+        description: 'Considers opponent\'s potential responses with randomization',
+        implementation: DefensivePlayer,
         defaultConfig: {
-            randomize: false,
-            randomThreshold: 0.1,
-            lookahead: 10
+            randomize: true,
+            randomThreshold: 0.1
         }
     },
-    enhancedBalanced: {
-        id: 'enhancedBalanced',
-        name: 'Enhanced Balanced',
-        description: 'Advanced balanced strategy with lookahead',
-        implementation: EnhancedBalancedPlayer,
-        defaultConfig: {
-            randomize: false,
-            randomThreshold: 0.1,
-            lookahead: 10
-        }
-    },
-    enhancedDefensive: {
-        id: 'enhancedDefensive',
-        name: 'Enhanced Defensive',
-        description: 'Advanced defensive strategy with lookahead',
-        implementation: EnhancedDefensivePlayer,
-        defaultConfig: {
-            randomize: false,
-            randomThreshold: 0.1,
-            lookahead: 10
-        }
-    },
-    minimax: {
-        id: 'minimax',
-        name: 'Minimax',
+    //'enhancedAggressive-no-rng': {
+    //    id: 'enhancedAggressive-no-rng',
+    //    name: 'Enhanced Greedy AI (no-rng)',
+    //    description: 'Advanced aggressive strategy with lookahead',
+    //    implementation: EnhancedGreedyPlayer,
+    //    defaultConfig: {
+    //        randomize: false,
+    //        randomThreshold: 0.1,
+    //        lookahead: 10
+    //    }
+    //},
+    //'enhancedAggressive-some-rng': {
+    //    id: 'enhancedAggressive-some-rng',
+    //    name: 'Enhanced Greedy AI (some-rng)',
+    //    description: 'Advanced aggressive strategy with lookahead and randomization',
+    //    implementation: EnhancedGreedyPlayer,
+    //    defaultConfig: {
+    //        randomize: true,
+    //        randomThreshold: 0.1,
+    //        lookahead: 10
+    //    }
+    //},
+    //'enhancedBalanced-no-rng': {
+    //    id: 'enhancedBalanced-no-rng',
+    //    name: 'Enhanced Balanced AI (no-rng)',
+    //    description: 'Advanced balanced strategy with lookahead',
+    //    implementation: EnhancedBalancedPlayer,
+    //    defaultConfig: {
+    //        randomize: false,
+    //        randomThreshold: 0.1,
+    //        lookahead: 10
+    //    }
+    //},
+    //'enhancedBalanced-some-rng': {
+    //    id: 'enhancedBalanced-some-rng',
+    //    name: 'Enhanced Balanced AI (some-rng)',
+    //    description: 'Advanced balanced strategy with lookahead and randomization',
+    //    implementation: EnhancedBalancedPlayer,
+    //    defaultConfig: {
+    //        randomize: true,
+    //        randomThreshold: 0.1,
+    //          lookahead: 10
+    //    }
+    //},
+    //'enhancedDefensive-no-rng': {
+    //    id: 'enhancedDefensive-no-rng',
+    //    name: 'Enhanced Defensive AI (no-rng)',
+    //    description: 'Advanced defensive strategy with lookahead',
+    //    implementation: EnhancedDefensivePlayer,
+    //    defaultConfig: {
+    //        randomize: false,
+    //        randomThreshold: 0.1,
+    //        lookahead: 10
+    //    }
+    //},
+    //'enhancedDefensive-some-rng': {
+    //    id: 'enhancedDefensive-some-rng',
+    //    name: 'Enhanced Defensive AI (some-rng)',
+    //    description: 'Advanced defensive strategy with lookahead and randomization',
+    //    implementation: EnhancedDefensivePlayer,
+    //    defaultConfig: {
+    //        randomize: true,
+    //        randomThreshold: 0.1,
+    //        lookahead: 10
+    //    }
+    //},
+    'minimax-no-rng': {
+        id: 'minimax-no-rng',
+        name: 'Minimax (no-rng)',
         description: 'Uses minimax algorithm with alpha-beta pruning',
         implementation: MinimaxPlayer,
         defaultConfig: {
@@ -602,13 +678,24 @@ export const AI_PLAYERS = {
             lookahead: 4
         }
     },
-    mcts: {
+    'minimax-some-rng': {
+        id: 'minimax-some-rng',
+        name: 'Minimax (some-rng)',
+        description: 'Uses minimax algorithm with alpha-beta pruning and randomization',
+        implementation: MinimaxPlayer,
+        defaultConfig: {
+            randomize: true,
+            randomThreshold: 0.1,
+            lookahead: 4
+        }
+    },
+    'mcts': {
         id: 'mcts',
-        name: 'Monte Carlo',
-        description: 'Uses Monte Carlo Tree Search simulation',
+        name: 'Monte Carlo Tree Search',
+        description: 'Uses Monte Carlo Tree Search simulation with randomization',
         implementation: MCTSPlayer,
         defaultConfig: {
-            randomize: false,
+            randomize: true,
             randomThreshold: 0.1,
             simulationCount: 300
         }
