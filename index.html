@@ -262,10 +262,10 @@
         }
 
         .player-select {
-            margin-bottom: 1rem;
+            margin-bottom: 0.25rem;
             display: flex;
             flex-direction: column;
-            gap: 0.5rem;
+            gap: 0.0rem;
         }
 
         .player-select label {
@@ -357,6 +357,24 @@
                     </select>
                 </div>
 
+                <div class="player-select">
+                    <label for="board1-select">Left Board:</label>
+                    <select id="board1-select">
+                        <option value="board1">Top left to bottom right</option>
+                        <option value="board2">Knight's Jump</option>
+                        <option value="board3">Ali 24/11/2024</option>
+                    </select>
+                </div>
+
+                <div class="player-select">
+                    <label for="board2-select">Right Board:</label>
+                    <select id="board2-select">
+                        <option value="board2" selected>Knight's Jump</option>
+                        <option value="board1">Top left to bottom right</option>
+                        <option value="board3">Ali 24/11/2024</option>
+                    </select>
+                </div>
+
                 <button id="start-game"><span>🔄</span> Start Game</button>
             </div>
         </div>
@@ -389,6 +407,26 @@
                 blackSelect.add(option.cloneNode(true));
                 whiteSelect.add(option.cloneNode(true));
             });
+        }
+
+        function populateBoardDropdowns() {
+            const board1Select = document.getElementById('board1-select');
+            const board2Select = document.getElementById('board2-select');
+
+            // Clear existing options
+            board1Select.innerHTML = '';
+            board2Select.innerHTML = '';
+
+            // Add options for each board layout
+            Object.entries(BOARD_LAYOUTS).forEach(([id, layout]) => {
+                const option = new Option(layout.name, id);
+                board1Select.add(option.cloneNode(true));
+                board2Select.add(option.cloneNode(true));
+            });
+
+            // Set defaults
+            board1Select.value = 'board1';
+            board2Select.value = 'board2';
         }
 
         function createCell(symbol, boardNum, row, col) {
@@ -437,14 +475,16 @@
         function initializeBoards() {
             const board1Element = document.getElementById('board1');
             const board2Element = document.getElementById('board2');
+            const board1Layout = BOARD_LAYOUTS[document.getElementById('board1-select').value].grid;
+            const board2Layout = BOARD_LAYOUTS[document.getElementById('board2-select').value].grid;
 
             board1Element.innerHTML = '';
             board2Element.innerHTML = '';
 
             for (let i = 0; i < 5; i++) {
                 for (let j = 0; j < 5; j++) {
-                    const cell1 = createCell(BOARD_LAYOUTS.board1[i][j], 1, i, j);
-                    const cell2 = createCell(BOARD_LAYOUTS.board2[i][j], 2, i, j);
+                    const cell1 = createCell(board1Layout[i][j], 1, i, j);
+                    const cell2 = createCell(board2Layout[i][j], 2, i, j);
 
                     board1Element.appendChild(cell1);
                     board2Element.appendChild(cell2);
@@ -590,20 +630,24 @@
             }
         }
 
-
         function initializeGame() {
-            game = new EntangledGame();
+            const board1Layout = BOARD_LAYOUTS[document.getElementById('board1-select').value].grid;
+            const board2Layout = BOARD_LAYOUTS[document.getElementById('board2-select').value].grid;
+            game = new EntangledGame(board1Layout, board2Layout);
+
             const existingWinner = document.querySelector('.winner');
             if (existingWinner) {
                 existingWinner.remove();
             }
+            initializeBoards();
             updateDisplay();
             makeAIMove(); // In case Black is AI
         }
 
         function init() {
-            initializeBoards();
             populatePlayerDropdowns();
+            populateBoardDropdowns();
+            initializeBoards();
 
             // Set up start game button
             document.getElementById('start-game').addEventListener('click', initializeGame);

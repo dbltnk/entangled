@@ -16,10 +16,10 @@ const DIRECTIONS = [
 ];
 
 class EntangledGame {
-    constructor() {
+    constructor(board1Layout = BOARD_LAYOUTS.board1.grid, board2Layout = BOARD_LAYOUTS.board2.grid) {
         // Store the symbol layouts
-        this.board1Layout = BOARD_LAYOUTS.board1;
-        this.board2Layout = BOARD_LAYOUTS.board2;
+        this.board1Layout = board1Layout;
+        this.board2Layout = board2Layout;
 
         // Create the game state
         this.board1 = Array(BOARD_SIZE).fill(null)

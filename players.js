@@ -84,7 +84,7 @@ class EntangledPlayer {
     }
 
     simulateGame(state) {
-        const simGame = new EntangledGame();
+        const simGame = new EntangledGame(this.gameEngine.board1Layout, this.gameEngine.board2Layout);
         for (let i = 0; i < 5; i++) {
             for (let j = 0; j < 5; j++) {
                 simGame.board1[i][j] = state.board1[i][j];
@@ -95,6 +95,7 @@ class EntangledPlayer {
         simGame.playerTurns = { ...state.playerTurns };
         simGame.remainingStones = { ...state.remainingStones };
         simGame.gameOver = state.gameOver;
+        simGame.symbolToPosition = new Map(this.gameEngine.symbolToPosition);
         return simGame;
     }
 
