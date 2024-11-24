@@ -31,6 +31,16 @@ const BOARD_LAYOUTS = {
             ['Y', 'F', 'Q', 'C', 'N']
         ]
     },
+    board4: {
+        name: "asymmetric",
+        grid: [
+            ['P', 'Y', 'N', 'C', 'G'],
+            ['D', 'H', 'Q', 'U', 'O'],
+            ['V', 'K', 'M', 'I', 'R'],
+            ['J', 'S', 'W', 'L', 'A'],
+            ['E', 'B', 'F', 'T', 'X']
+        ]
+    },
     random: {
         name: "Random Board",
         get grid() {
