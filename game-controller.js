@@ -1,14 +1,32 @@
+// game-controller.js
 import { EntangledGame, PLAYERS } from './gameplay.js';
 import { createPlayer } from './players.js';
+import BOARD_LAYOUTS from './boards.js';
 
 class GameController {
     constructor() {
-        this.game = new EntangledGame();
+        this.game = this.createNewGame();
         this.players = {
             [PLAYERS.BLACK]: null,
             [PLAYERS.WHITE]: null
         };
         this.setupControls();
+    }
+
+    createNewGame() {
+        // Get selected board layouts from dropdowns
+        const board1Select = document.getElementById('board1-select');
+        const board2Select = document.getElementById('board2-select');
+
+        const board1Layout = board1Select ?
+            BOARD_LAYOUTS[board1Select.value].grid :
+            BOARD_LAYOUTS.board1.grid;
+
+        const board2Layout = board2Select ?
+            BOARD_LAYOUTS[board2Select.value].grid :
+            BOARD_LAYOUTS.board2.grid;
+
+        return new EntangledGame(board1Layout, board2Layout);
     }
 
     setupControls() {
@@ -18,8 +36,8 @@ class GameController {
 
         if (startButton) {
             startButton.addEventListener('click', () => {
-                // Reset game
-                this.game = new EntangledGame();
+                // Reset game with current board selections
+                this.game = this.createNewGame();
 
                 // Set up players based on dropdowns
                 this.players[PLAYERS.BLACK] = blackSelect.value === 'human' ?

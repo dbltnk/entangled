@@ -2,6 +2,7 @@
 import { AI_PLAYERS } from './players.js';
 import { SimulationRunner } from './simulation-runner.js';
 import { SimulationAnalyzer } from './simulation-analyzer.js';
+import BOARD_LAYOUTS from './boards.js';
 
 class SimulationScreen {
     constructor(containerElement) {
@@ -16,6 +17,10 @@ class SimulationScreen {
 
     render() {
         console.log('Rendering simulation screen');
+        const boardOptions = Object.entries(BOARD_LAYOUTS).map(([key, layout]) =>
+            `<option value="${key}">${layout.name}</option>`
+        ).join('');
+
         this.container.innerHTML = `
             <div class="panel simulation-panel">
                 <div class="simulation-header">
@@ -49,6 +54,18 @@ class SimulationScreen {
                                 <div class="param-group">
                                     <label for="samplesToStore">Samples Per Matchup:</label>
                                     <input type="number" id="samplesToStore" value="5" min="0" max="100">
+                                </div>
+                                <div class="param-group">
+                                    <label for="board1Layout">Board 1 Layout:</label>
+                                    <select id="board1Layout">
+                                        ${boardOptions}
+                                    </select>
+                                </div>
+                                <div class="param-group">
+                                    <label for="board2Layout">Board 2 Layout:</label>
+                                    <select id="board2Layout">
+                                        ${boardOptions}
+                                    </select>
                                 </div>
                             </div>
 
@@ -118,6 +135,12 @@ class SimulationScreen {
                 this.viewGame(selectedGame);
             }
         });
+
+        // Set default board selections
+        const board1Select = this.container.querySelector('#board1Layout');
+        const board2Select = this.container.querySelector('#board2Layout');
+        board1Select.value = 'board1';  // Default to first board
+        board2Select.value = 'board2';  // Default to second board
     }
 
     async startSimulation() {
@@ -139,12 +162,18 @@ class SimulationScreen {
 
         const gamesPerMatchup = parseInt(this.container.querySelector('#gamesPerMatchup').value);
         const samplesToStore = parseInt(this.container.querySelector('#samplesToStore').value);
+        const board1Layout = this.container.querySelector('#board1Layout').value;
+        const board2Layout = this.container.querySelector('#board2Layout').value;
 
         const config = {
             matchups,
             gamesPerMatchup,
             samplesToStore,
-            aiConfig
+            aiConfig,
+            boardConfig: {
+                board1Layout,
+                board2Layout
+            }
         };
 
         this.runner = new SimulationRunner(config);
@@ -163,9 +192,6 @@ class SimulationScreen {
         progressBar.style.width = '0%';
         progressText.textContent = '0% Complete';
 
-        /*************  ✨ Codeium Command ⭐  *************/
-        /**
-/******  77286e7e-5685-4a2f-8e76-145d3ccb35f1  *******/
         this.runner.onProgress = (progress) => {
             progressBar.style.width = `${progress * 100}%`;
             progressText.textContent = `${Math.round(progress * 100)}% Complete`;

@@ -20,11 +20,16 @@ class SimulationRunner {
             matchups,
             gamesPerMatchup,
             maxWorkers = 16,
-            aiConfig = {}
+            aiConfig = {},
+            boardConfig = {
+                board1Layout: 'board1',
+                board2Layout: 'board2'
+            }
         } = this.config;
 
         console.log(`Starting simulation with ${matchups.length} matchups, ${gamesPerMatchup} games each`);
         console.log('AI Configuration:', aiConfig);
+        console.log('Board Configuration:', boardConfig);
 
         // Each matchup configuration will be played equally
         const fullMatchups = matchups;
@@ -129,7 +134,8 @@ class SimulationRunner {
                 matchup,
                 gameIndex: currentTotal,
                 shouldSaveHistory,
-                aiConfig: this.config.aiConfig
+                aiConfig: this.config.aiConfig,
+                boardConfig: this.config.boardConfig
             });
             this.activeGames++;
         }

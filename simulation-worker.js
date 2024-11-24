@@ -1,6 +1,7 @@
 // simulation-worker.js
 import { EntangledGame, PLAYERS } from './gameplay.js';
 import { createPlayer } from './players.js';
+import BOARD_LAYOUTS from './boards.js';
 
 // Create a self-contained worker context
 const workerContext = self;
@@ -14,10 +15,18 @@ workerContext.onmessage = async function (e) {
         const EntangledGame = gameplayModule.EntangledGame;
         const createPlayer = playersModule.createPlayer;
 
-        const { matchup, gameIndex, shouldSaveHistory, aiConfig } = e.data;
+        const { matchup, gameIndex, shouldSaveHistory, aiConfig, boardConfig } = e.data;
         const { player1, player2 } = matchup;
 
-        const game = new EntangledGame();
+        // Use specified board layouts or fall back to defaults
+        const board1Layout = boardConfig?.board1Layout ?
+            BOARD_LAYOUTS[boardConfig.board1Layout].grid :
+            BOARD_LAYOUTS.board1.grid;
+        const board2Layout = boardConfig?.board2Layout ?
+            BOARD_LAYOUTS[boardConfig.board2Layout].grid :
+            BOARD_LAYOUTS.board2.grid;
+
+        const game = new EntangledGame(board1Layout, board2Layout);
 
         // Create players with AI configuration
         const player1Config = aiConfig[player1] || {};
@@ -50,10 +59,11 @@ workerContext.onmessage = async function (e) {
                             board1: state.board1,
                             board2: state.board2,
                             currentPlayer: state.currentPlayer,
-                            largestClusters: state.largestClusters
+                            largestClusters: state.largestClusters,
+                            boardConfig: boardConfig // Add board configuration to state
                         }
                     });
-                }
+                } a
 
                 game.makeMove(move);
             }
@@ -84,7 +94,11 @@ workerContext.onmessage = async function (e) {
                 },
                 moves: finalState.playerTurns.BLACK + finalState.playerTurns.WHITE,
                 largestClusters: finalState.largestClusters,
-                history: gameHistory
+                history: gameHistory,
+                boardConfig: {
+                    board1Layout: boardConfig?.board1Layout,
+                    board2Layout: boardConfig?.board2Layout
+                }
             };
 
             workerContext.postMessage(result);

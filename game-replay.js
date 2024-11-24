@@ -11,6 +11,40 @@ class GameReplayScreen {
         this.attachEventListeners();
     }
 
+    initializeBoards() {
+        const board1 = this.container.querySelector('#replayBoard1');
+        const board2 = this.container.querySelector('#replayBoard2');
+
+        [board1, board2].forEach((board, boardIndex) => {
+            board.innerHTML = '';
+            let grid;
+
+            // Determine which board layout to use
+            if (this.currentGame && this.currentGame[0]?.state?.boardConfig) {
+                // Use the specified board layouts from the game state
+                const layoutKey = boardIndex === 0 ?
+                    this.currentGame[0].state.boardConfig.board1Layout :
+                    this.currentGame[0].state.boardConfig.board2Layout;
+                grid = BOARD_LAYOUTS[layoutKey]?.grid || BOARD_LAYOUTS[boardIndex === 0 ? 'board1' : 'board2'].grid;
+            } else {
+                // Fallback to default boards
+                grid = BOARD_LAYOUTS[boardIndex === 0 ? 'board1' : 'board2'].grid;
+            }
+
+            for (let row = 0; row < 5; row++) {
+                for (let col = 0; col < 5; col++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'board-cell';
+                    const symbol = document.createElement('span');
+                    symbol.className = 'symbol';
+                    symbol.textContent = grid[row][col];
+                    cell.appendChild(symbol);
+                    board.appendChild(cell);
+                }
+            }
+        });
+    }
+
     render() {
         this.container.innerHTML = `
             <div class="panel replay-panel">
@@ -74,28 +108,6 @@ class GameReplayScreen {
         `;
 
         this.initializeBoards();
-    }
-
-    initializeBoards() {
-        const board1 = this.container.querySelector('#replayBoard1');
-        const board2 = this.container.querySelector('#replayBoard2');
-
-        [board1, board2].forEach((board, boardIndex) => {
-            board.innerHTML = '';
-            const grid = boardIndex === 0 ? BOARD_LAYOUTS.board1 : BOARD_LAYOUTS.board2;
-
-            for (let row = 0; row < 5; row++) {
-                for (let col = 0; col < 5; col++) {
-                    const cell = document.createElement('div');
-                    cell.className = 'board-cell';
-                    const symbol = document.createElement('span');
-                    symbol.className = 'symbol';
-                    symbol.textContent = grid[row][col];
-                    cell.appendChild(symbol);
-                    board.appendChild(cell);
-                }
-            }
-        });
     }
 
     loadGame(gameHistory, matchupInfo) {
