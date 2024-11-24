@@ -34,16 +34,26 @@ const BOARD_LAYOUTS = {
     random: {
         name: "Random Board",
         get grid() {
-            const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXY'.split('');
+            const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXY'.split('').filter(letter => letter !== 'M');
             // Shuffle the letters array randomly
             for (let i = letters.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [letters[i], letters[j]] = [letters[j], letters[i]];
             }
-            // Create a 5x5 grid from the shuffled letters
+            // Create a 5x5 grid and place 'M' in the middle
             const grid = [];
+            let letterIndex = 0;
             for (let row = 0; row < 5; row++) {
-                grid.push(letters.slice(row * 5, row * 5 + 5));
+                const gridRow = [];
+                for (let col = 0; col < 5; col++) {
+                    if (row === 2 && col === 2) {
+                        gridRow.push('M'); // Place 'M' in the center cell
+                    } else {
+                        gridRow.push(letters[letterIndex]);
+                        letterIndex++;
+                    }
+                }
+                grid.push(gridRow);
             }
             return grid;
         }
