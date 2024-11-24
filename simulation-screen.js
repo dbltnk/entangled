@@ -31,7 +31,9 @@ class SimulationScreen {
                         <div class="config-section">
                             <h3>Select AI Strategies</h3>
                             <div class="ai-grid">
-                                ${Object.entries(AI_PLAYERS).map(([id, ai]) => `
+                            ${Object.entries(AI_PLAYERS)
+                .filter(([id]) => id !== 'human')
+                .map(([id, ai]) => `
                                     <div class="ai-option">
                                         <input type="checkbox" id="${id}" value="${id}">
                                         <label for="${id}">${ai.name}</label>
@@ -47,14 +49,6 @@ class SimulationScreen {
                                 <div class="param-group">
                                     <label for="sampleRatio">Sample Ratio:</label>
                                     <input type="number" id="sampleRatio" value="0.01" min="0" max="1" step="0.01">
-                                </div>
-                                <div class="param-group">
-                                    <label for="randomize">Enable Non-deterministic Play:</label>
-                                    <input type="checkbox" id="randomize">
-                                </div>
-                                <div class="param-group">
-                                    <label for="randomThreshold">Random Threshold:</label>
-                                    <input type="number" id="randomThreshold" value="0.1" min="0" max="1" step="0.01" disabled>
                                 </div>
                             </div>
 
@@ -112,14 +106,6 @@ class SimulationScreen {
         const startButton = this.container.querySelector('#startSimulation');
         const pauseButton = this.container.querySelector('#pauseSimulation');
         const exportButton = this.container.querySelector('#exportResults');
-        const randomizeCheckbox = this.container.querySelector('#randomize');
-        randomizeCheckbox.checked = true;
-        const randomThresholdInput = this.container.querySelector('#randomThreshold');
-        randomThresholdInput.disabled = false;
-
-        randomizeCheckbox.addEventListener('change', () => {
-            randomThresholdInput.disabled = !randomizeCheckbox.checked;
-        });
 
         startButton.addEventListener('click', () => this.startSimulation());
         pauseButton.addEventListener('click', () => this.togglePause());
@@ -136,16 +122,8 @@ class SimulationScreen {
 
     async startSimulation() {
         const selectedAIs = Array.from(this.selectedAIs);
-        const randomize = this.container.querySelector('#randomize').checked;
-        const randomThreshold = parseFloat(this.container.querySelector('#randomThreshold').value);
 
         const aiConfig = {};
-        selectedAIs.forEach(ai => {
-            aiConfig[ai] = {
-                randomize,
-                randomThreshold
-            };
-        });
 
         // Create matchups for all combinations including reversed color assignments
         const matchups = [];
