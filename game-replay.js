@@ -6,7 +6,7 @@ class GameReplayScreen {
         this.container = containerElement;
         this.currentGame = null;
         this.currentMoveIndex = -1;
-        this.autoPlayInterval = null;
+        this.matchupInfo = null;
         this.render();
         this.attachEventListeners();
     }
@@ -31,6 +31,20 @@ class GameReplayScreen {
 
                 <div class="replay-controls">
                     <div class="control-group">
+                        <h3>Players</h3>
+                        <div class="stats">
+                            <div class="player-info">
+                                <div class="player-color black"></div>
+                                <div class="player-strategy" id="black-strategy">Black: -</div>
+                            </div>
+                            <div class="player-info">
+                                <div class="player-color white"></div>
+                                <div class="player-strategy" id="white-strategy">White: -</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
                         <h3>📊 Score</h3>
                         <div class="stats">
                             <div class="stats-row" id="score-display">
@@ -39,18 +53,18 @@ class GameReplayScreen {
                             <div class="stats-row" id="current-player-display">
                                 Current Player: Black
                             </div>
+                            <div class="winner-display" id="winner-display" style="display: none;"></div>
                         </div>
                     </div>
 
                     <div class="control-group">
-                        <h3>🎮 Playback Controls</h3>
+                        <h3>🎮 Navigation</h3>
                         <div id="move-counter" class="stats-row">
                             Move: 0/0
                         </div>
                         <div class="control-buttons">
                             <button id="firstMove" class="control-button" title="First Move">⏮</button>
                             <button id="prevMove" class="control-button" title="Previous Move">◀</button>
-                            <button id="playPause" class="control-button" title="Play/Pause">▶</button>
                             <button id="nextMove" class="control-button" title="Next Move">▶</button>
                             <button id="lastMove" class="control-button" title="Last Move">⏭</button>
                         </div>
@@ -85,9 +99,13 @@ class GameReplayScreen {
     }
 
     loadGame(gameHistory, matchupInfo) {
-        this.stopAutoPlay();
         this.currentGame = gameHistory;
         this.currentMoveIndex = -1;
+        this.matchupInfo = matchupInfo;
+
+        // Update player info
+        this.container.querySelector('#black-strategy').textContent = `Black: ${matchupInfo.player1}`;
+        this.container.querySelector('#white-strategy').textContent = `White: ${matchupInfo.player2}`;
 
         // Reset move counter
         this.updateMoveCounter();
@@ -101,7 +119,6 @@ class GameReplayScreen {
 
     attachEventListeners() {
         this.container.querySelector('#backToResults').addEventListener('click', () => {
-            this.stopAutoPlay();
             this.container.dispatchEvent(new CustomEvent('backToResults'));
         });
 
@@ -113,8 +130,6 @@ class GameReplayScreen {
             this.goToMove(this.currentMoveIndex - 1));
         this.container.querySelector('#nextMove').addEventListener('click', () =>
             this.goToMove(this.currentMoveIndex + 1));
-        this.container.querySelector('#playPause').addEventListener('click', () =>
-            this.toggleAutoPlay());
     }
 
     goToMove(moveIndex) {
@@ -135,8 +150,29 @@ class GameReplayScreen {
         // Update current player
         this.updateCurrentPlayer(gameState.currentPlayer);
 
-        // Update scores
+        // Update scores and winner
         this.updateScores(gameState.largestClusters);
+
+        // Update winner display on last move
+        if (moveIndex === this.currentGame.length - 1) {
+            const blackScore = parseInt(gameState.largestClusters.black.board1.length) +
+                parseInt(gameState.largestClusters.black.board2.length);
+            const whiteScore = parseInt(gameState.largestClusters.white.board1.length) +
+                parseInt(gameState.largestClusters.white.board2.length);
+
+            const winnerDisplay = this.container.querySelector('#winner-display');
+            winnerDisplay.style.display = 'block';
+
+            if (blackScore > whiteScore) {
+                winnerDisplay.textContent = '🏆 Black Wins!';
+            } else if (whiteScore > blackScore) {
+                winnerDisplay.textContent = '🏆 White Wins!';
+            } else {
+                winnerDisplay.textContent = '🤝 Game is a Draw!';
+            }
+        } else {
+            this.container.querySelector('#winner-display').style.display = 'none';
+        }
 
         // Update navigation buttons
         this.updateNavigationButtons();
@@ -147,10 +183,13 @@ class GameReplayScreen {
         const cells = board.getElementsByClassName('board-cell');
         const isBoard1 = boardSelector === '#replayBoard1';
 
-        // Get cluster cells for current player
-        const currentPlayer = this.currentGame[this.currentMoveIndex].state.currentPlayer;
-        const playerClusters = clusters[currentPlayer.toLowerCase()];
-        const boardClusters = isBoard1 ? playerClusters.board1 : playerClusters.board2;
+        // Get cluster cells for both players
+        const blackClusters = clusters.black;
+        const whiteClusters = clusters.white;
+        const boardClusters = {
+            BLACK: isBoard1 ? blackClusters.board1 : blackClusters.board2,
+            WHITE: isBoard1 ? whiteClusters.board1 : whiteClusters.board2
+        };
 
         for (let row = 0; row < 5; row++) {
             for (let col = 0; col < 5; col++) {
@@ -161,15 +200,14 @@ class GameReplayScreen {
                 cell.classList.remove('black-stone', 'white-stone', 'in-largest-cluster');
 
                 // Add stone class if present
-                if (state === 'BLACK') {
-                    cell.classList.add('black-stone');
-                } else if (state === 'WHITE') {
-                    cell.classList.add('white-stone');
-                }
+                if (state === 'BLACK' || state === 'WHITE') {
+                    cell.classList.add(state.toLowerCase() + '-stone');
 
-                // Add largest cluster highlight if cell is part of it
-                if (boardClusters.some(pos => pos.row === row && pos.col === col)) {
-                    cell.classList.add('in-largest-cluster');
+                    // Check if this cell is part of the largest cluster for its color
+                    const playerClusters = boardClusters[state];
+                    if (playerClusters.some(pos => pos.row === row && pos.col === col)) {
+                        cell.classList.add('in-largest-cluster');
+                    }
                 }
             }
         }
@@ -195,7 +233,7 @@ class GameReplayScreen {
         const blackTotal = clusters.black.board1.length + clusters.black.board2.length;
         const whiteTotal = clusters.white.board1.length + clusters.white.board2.length;
         this.container.querySelector('#score-display').textContent =
-            `Black: ${blackTotal} - White: ${whiteTotal}`;
+            `Black: ${blackTotal} - White:${whiteTotal}`;
     }
 
     updateNavigationButtons() {
@@ -208,38 +246,6 @@ class GameReplayScreen {
         prevButton.disabled = this.currentMoveIndex <= 0;
         nextButton.disabled = this.currentMoveIndex >= this.currentGame.length - 1;
         lastButton.disabled = this.currentMoveIndex >= this.currentGame.length - 1;
-    }
-
-    toggleAutoPlay() {
-        const playPauseButton = this.container.querySelector('#playPause');
-
-        if (this.autoPlayInterval) {
-            this.stopAutoPlay();
-        } else {
-            this.startAutoPlay();
-        }
-
-        playPauseButton.textContent = this.autoPlayInterval ? '⏸' : '▶';
-    }
-
-    startAutoPlay() {
-        if (this.autoPlayInterval) return;
-
-        this.autoPlayInterval = setInterval(() => {
-            if (this.currentMoveIndex >= this.currentGame.length - 1) {
-                this.stopAutoPlay();
-                return;
-            }
-            this.goToMove(this.currentMoveIndex + 1);
-        }, 1000);
-    }
-
-    stopAutoPlay() {
-        if (this.autoPlayInterval) {
-            clearInterval(this.autoPlayInterval);
-            this.autoPlayInterval = null;
-            this.container.querySelector('#playPause').textContent = '▶';
-        }
     }
 }
 

@@ -9,6 +9,15 @@
 
 .replay-header {
     margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.replay-title {
+    font-size: 1.2em;
+    color: #333;
+    font-weight: 500;
 }
 
 .replay-container {
@@ -24,7 +33,6 @@
     margin-bottom: 20px;
 }
 
-/* Match the game board styles from index.html */
 .board {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
@@ -73,7 +81,6 @@
     color: #666;
 }
 
-/* Highlight largest cluster */
 .board-cell.in-largest-cluster::after {
     content: '';
     position: absolute;
@@ -81,7 +88,7 @@
     right: 2px;
     bottom: 2px;
     left: 2px;
-    border: 2px solid #4a90e2;
+    border: 2px solid #4CAF50;
     border-radius: 4px;
     z-index: 0;
 }
@@ -119,6 +126,15 @@
     font-size: 1.1em;
     color: #333;
     font-family: system-ui, -apple-system, sans-serif;
+}
+
+.winner-display {
+    font-weight: 600;
+    color: #4CAF50;
+    padding: 10px;
+    text-align: center;
+    border-radius: 4px;
+    margin-top: 10px;
 }
 
 .control-buttons {
@@ -174,24 +190,35 @@
     background: #f0f7ff;
 }
 
-.current-player {
+.player-info {
     display: flex;
     align-items: center;
     gap: 10px;
+    padding: 8px;
+    border-radius: 4px;
+    background: #f8f9fa;
+    margin-bottom: 8px;
 }
 
-.player-indicator {
-    width: 20px;
-    height: 20px;
+.player-color {
+    width: 16px;
+    height: 16px;
     border-radius: 50%;
+    flex-shrink: 0;
 }
 
-.player-indicator.black {
+.player-color.black {
     background: #333;
 }
 
-.player-indicator.white {
+.player-color.white {
     background: white;
     border: 2px solid #333;
     box-sizing: border-box;
+}
+
+.player-strategy {
+    flex: 1;
+    font-size: 0.9em;
+    color: #666;
 }
