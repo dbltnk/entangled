@@ -119,7 +119,7 @@ class SimulationRunner {
         console.log(`Scheduling matchup ${matchupIndex + 1}/${fullMatchups.length}: ${matchup.player1} vs ${matchup.player2} (game ${gameInMatchup + 1}/${gamesPerMatchup})`);
 
         // Determine if this game should save history based on sample ratio
-        const shouldSaveHistory = Math.random() < this.config.sampleRatio;
+        const shouldSaveHistory = gameInMatchup < this.config.samplesToStore;
 
         // Find available worker
         const worker = this.workers.find(w => w && !w.busy);

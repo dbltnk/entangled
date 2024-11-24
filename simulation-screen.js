@@ -47,8 +47,8 @@ class SimulationScreen {
                                     <input type="number" id="gamesPerMatchup" value="1000" min="100" max="10000">
                                 </div>
                                 <div class="param-group">
-                                    <label for="sampleRatio">Sample Ratio:</label>
-                                    <input type="number" id="sampleRatio" value="0.01" min="0" max="1" step="0.01">
+                                    <label for="samplesToStore">Samples Per Matchup:</label>
+                                    <input type="number" id="samplesToStore" value="5" min="0" max="100">
                                 </div>
                             </div>
 
@@ -138,12 +138,12 @@ class SimulationScreen {
         }
 
         const gamesPerMatchup = parseInt(this.container.querySelector('#gamesPerMatchup').value);
-        const sampleRatio = parseFloat(this.container.querySelector('#sampleRatio').value);
+        const samplesToStore = parseInt(this.container.querySelector('#samplesToStore').value);
 
         const config = {
             matchups,
             gamesPerMatchup,
-            sampleRatio,
+            samplesToStore,
             aiConfig
         };
 
@@ -163,6 +163,9 @@ class SimulationScreen {
         progressBar.style.width = '0%';
         progressText.textContent = '0% Complete';
 
+        /*************  ✨ Codeium Command ⭐  *************/
+        /**
+/******  77286e7e-5685-4a2f-8e76-145d3ccb35f1  *******/
         this.runner.onProgress = (progress) => {
             progressBar.style.width = `${progress * 100}%`;
             progressText.textContent = `${Math.round(progress * 100)}% Complete`;
