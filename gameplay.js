@@ -105,12 +105,14 @@ class EntangledGame {
         this.remainingStones[this.currentPlayer] -= 2;
         this.playerTurns[this.currentPlayer]++;
 
-        // Check if game is over (when White completes their turns)
+        // First check if this move completes White's turns
         if (this.currentPlayer === PLAYERS.WHITE &&
-            this.playerTurns[PLAYERS.WHITE] >= TURNS_PER_PLAYER) {
+            this.playerTurns[PLAYERS.WHITE] === TURNS_PER_PLAYER) {
             this.gameOver = true;
-        } else {
-            // Switch players
+        }
+
+        if (!this.gameOver) {
+            // Switch players if game isn't over
             this.currentPlayer =
                 this.currentPlayer === PLAYERS.BLACK ? PLAYERS.WHITE : PLAYERS.BLACK;
         }
