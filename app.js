@@ -45,7 +45,7 @@ function populateBoardDropdowns() {
     // Set defaults
     board1Select.value = 'board1';
     board2Select.value = 'board2';
-}
+} // Ensure function is properly closed
 
 function populateStartingPositionDropdowns() {
     const blackStartingPositionSelect = document.getElementById('black-starting-position');
