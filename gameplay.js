@@ -16,7 +16,11 @@ const DIRECTIONS = [
 ];
 
 class EntangledGame {
-    constructor(board1Layout = BOARD_LAYOUTS.board1.grid, board2Layout = BOARD_LAYOUTS.board2.grid) {
+    constructor(
+        board1Layout = BOARD_LAYOUTS.board1.grid,
+        board2Layout = BOARD_LAYOUTS.board2.grid,
+        startingPositions = {}
+    ) {
         // Store the symbol layouts
         this.board1Layout = board1Layout;
         this.board2Layout = board2Layout;
@@ -43,13 +47,31 @@ class EntangledGame {
         };
         this.gameOver = false;
 
-        // Initialize with starting positions
-        const center = Math.floor(BOARD_SIZE / 2);
-        this.board1[center][center] = PLAYERS.BLACK;
-        this.board2[center][center] = PLAYERS.WHITE;
+        // Place starting stones based on selected positions
+        this.placeStartingStone(PLAYERS.BLACK, startingPositions[PLAYERS.BLACK] || { symbol: 'M', board: 1 });
+        this.placeStartingStone(PLAYERS.WHITE, startingPositions[PLAYERS.WHITE] || { symbol: 'M', board: 2 });
         // Deduct initial stones
         this.remainingStones[PLAYERS.BLACK]--;
         this.remainingStones[PLAYERS.WHITE]--;
+    }
+
+    placeStartingStone(player, { symbol, board }) {
+        const boardState = board === 1 ? this.board1 : this.board2;
+
+        // Get the position of the symbol on the specified board
+        const positions = this.symbolToPosition.get(symbol);
+
+        if (!positions || !positions[`board${board}`]) {
+            throw new Error(`Invalid starting position: Symbol ${symbol} not found on board ${board}`);
+        }
+
+        const { row, col } = positions[`board${board}`];
+
+        if (boardState[row][col] !== null) {
+            throw new Error(`Starting position ${symbol}${board} is already occupied`);
+        }
+
+        boardState[row][col] = player;
     }
 
     initializeSymbolMaps() {

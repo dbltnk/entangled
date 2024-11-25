@@ -261,6 +261,19 @@ select {
     gap: 0.0rem;
 }
 
+.player-options {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.player-type {
+    flex: 2;
+}
+
+.starting-position {
+    flex: 1;
+}
+
 .player-select label {
     font-weight: 600;
 }

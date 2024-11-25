@@ -47,6 +47,68 @@ function populateBoardDropdowns() {
     board2Select.value = 'board2';
 }
 
+function populateStartingPositionDropdowns() {
+    const blackStartingPositionSelect = document.getElementById('black-starting-position');
+    const whiteStartingPositionSelect = document.getElementById('white-starting-position');
+
+    // Clear existing options
+    blackStartingPositionSelect.innerHTML = '';
+    whiteStartingPositionSelect.innerHTML = '';
+
+    // Get selected board layouts
+    const board1Select = document.getElementById('board1-select');
+    const board2Select = document.getElementById('board2-select');
+
+    const board1Layout = BOARD_LAYOUTS[board1Select.value].grid;
+    const board2Layout = BOARD_LAYOUTS[board2Select.value].grid;
+
+    // Collect unique symbols from both boards
+    const symbolsSet = new Set();
+
+    for (let row = 0; row < 5; row++) {
+        for (let col = 0; col < 5; col++) {
+            symbolsSet.add(board1Layout[row][col]);
+            symbolsSet.add(board2Layout[row][col]);
+        }
+    }
+
+    const symbols = Array.from(symbolsSet).sort();
+
+    // Generate options in the format 'Symbol1' and 'Symbol2' for each board
+    symbols.forEach(symbol => {
+        const option1 = new Option(`${symbol}1`, `${symbol}1`);
+        const option2 = new Option(`${symbol}2`, `${symbol}2`);
+
+        blackStartingPositionSelect.add(option1.cloneNode(true));
+        blackStartingPositionSelect.add(option2.cloneNode(true));
+
+        whiteStartingPositionSelect.add(option1.cloneNode(true));
+        whiteStartingPositionSelect.add(option2.cloneNode(true));
+    });
+
+    // Set defaults
+    blackStartingPositionSelect.value = 'M1';
+    whiteStartingPositionSelect.value = 'M2';
+}
+    const board1Select = document.getElementById('board1-select');
+    const board2Select = document.getElementById('board2-select');
+
+    // Clear existing options
+    board1Select.innerHTML = '';
+    board2Select.innerHTML = '';
+
+    // Add options for each board layout
+    Object.entries(BOARD_LAYOUTS).forEach(([id, layout]) => {
+        const option = new Option(layout.name, id);
+        board1Select.add(option.cloneNode(true));
+        board2Select.add(option.cloneNode(true));
+    });
+
+    // Set defaults
+    board1Select.value = 'board1';
+    board2Select.value = 'board2';
+}
+
 function createCell(symbol, boardNum, row, col) {
     const cell = document.createElement('div');
     cell.className = 'cell';
@@ -251,13 +313,38 @@ function makeAIMove() {
 function initializeGame() {
     const board1Layout = BOARD_LAYOUTS[document.getElementById('board1-select').value].grid;
     const board2Layout = BOARD_LAYOUTS[document.getElementById('board2-select').value].grid;
-    game = new EntangledGame(board1Layout, board2Layout);
+    // Get selected starting positions
+    const blackStartingPositionSelect = document.getElementById('black-starting-position');
+    const whiteStartingPositionSelect = document.getElementById('white-starting-position');
+
+    const blackStartingPositionValue = blackStartingPositionSelect.value; // e.g., 'M1'
+    const whiteStartingPositionValue = whiteStartingPositionSelect.value; // e.g., 'M2'
+
+    // Parse the starting position values
+    const startingPositions = {
+        [PLAYERS.BLACK]: {
+            symbol: blackStartingPositionValue.slice(0, -1), // 'M'
+            board: parseInt(blackStartingPositionValue.slice(-1)) // 1
+        },
+        [PLAYERS.WHITE]: {
+            symbol: whiteStartingPositionValue.slice(0, -1),
+            board: parseInt(whiteStartingPositionValue.slice(-1))
+        }
+    };
+
+    // Create the game instance with starting positions
+    game = new EntangledGame(board1Layout, board2Layout, startingPositions);
 
     const existingWinner = document.querySelector('.winner');
     if (existingWinner) {
         existingWinner.remove();
     }
+    populateStartingPositionDropdowns();
     initializeBoards();
+
+    // Add event listeners to update starting positions when board selections change
+    document.getElementById('board1-select').addEventListener('change', populateStartingPositionDropdowns);
+    document.getElementById('board2-select').addEventListener('change', populateStartingPositionDropdowns);
     updateDisplay();
     makeAIMove(); // In case Black is AI
 }
