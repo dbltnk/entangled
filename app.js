@@ -4,6 +4,10 @@ import { createPlayer, AI_PLAYERS } from './players.js';
 import { GameController } from './game-controller.js';
 
 let game = null;
+let currentRandomBoards = {
+    board1: null,
+    board2: null
+};
 
 function populatePlayerDropdowns() {
     const blackSelect = document.getElementById('black-player');
@@ -47,6 +51,17 @@ function populateBoardDropdowns() {
     board2Select.value = 'board2';
 }
 
+function getSelectedBoardLayout(boardSelect) {
+    const selectedValue = boardSelect.value;
+    if (selectedValue === 'random') {
+        // Generate and store a new random board if one doesn't exist
+        if (!currentRandomBoards[boardSelect.id]) {
+            currentRandomBoards[boardSelect.id] = BOARD_LAYOUTS.random.grid;
+        }
+        return currentRandomBoards[boardSelect.id];
+    }
+    return BOARD_LAYOUTS[selectedValue].grid;
+}
 
 function populateStartingPositionDropdowns() {
     const blackStartingPositionSelect = document.getElementById('black-starting-position');
@@ -60,8 +75,8 @@ function populateStartingPositionDropdowns() {
     const board1Select = document.getElementById('board1-select');
     const board2Select = document.getElementById('board2-select');
 
-    const board1Layout = BOARD_LAYOUTS[board1Select.value].grid;
-    const board2Layout = BOARD_LAYOUTS[board2Select.value].grid;
+    const board1Layout = getSelectedBoardLayout(board1Select);
+    const board2Layout = getSelectedBoardLayout(board2Select);
 
     // Collect unique symbols from both boards
     const symbolsSet = new Set();
@@ -138,8 +153,11 @@ function updateCellHighlights(boardNum, row, col, largestClusters) {
 function initializeBoards() {
     const board1Element = document.getElementById('board1');
     const board2Element = document.getElementById('board2');
-    const board1Layout = BOARD_LAYOUTS[document.getElementById('board1-select').value].grid;
-    const board2Layout = BOARD_LAYOUTS[document.getElementById('board2-select').value].grid;
+    const board1Select = document.getElementById('board1-select');
+    const board2Select = document.getElementById('board2-select');
+
+    const board1Layout = getSelectedBoardLayout(board1Select);
+    const board2Layout = getSelectedBoardLayout(board2Select);
 
     board1Element.innerHTML = '';
     board2Element.innerHTML = '';
@@ -294,8 +312,19 @@ function makeAIMove() {
 }
 
 function initializeGame() {
-    const board1Layout = BOARD_LAYOUTS[document.getElementById('board1-select').value].grid;
-    const board2Layout = BOARD_LAYOUTS[document.getElementById('board2-select').value].grid;
+    const board1Select = document.getElementById('board1-select');
+    const board2Select = document.getElementById('board2-select');
+
+    // Reset random boards when starting a new game
+    currentRandomBoards = {
+        board1: null,
+        board2: null
+    };
+
+    // Get board layouts (this will generate new random boards if needed)
+    const board1Layout = getSelectedBoardLayout(board1Select);
+    const board2Layout = getSelectedBoardLayout(board2Select);
+
     // Get selected starting positions
     const blackStartingPositionSelect = document.getElementById('black-starting-position');
     const whiteStartingPositionSelect = document.getElementById('white-starting-position');
@@ -338,11 +367,21 @@ function init() {
 
     // Add event listeners to update starting positions when board selections change
     document.getElementById('board1-select').addEventListener('change', () => {
+        // Reset the random board for this selection
+        const board1Select = document.getElementById('board1-select');
+        if (board1Select.value === 'random') {
+            currentRandomBoards.board1 = null;
+        }
         populateStartingPositionDropdowns();
         initializeBoards();
     });
 
     document.getElementById('board2-select').addEventListener('change', () => {
+        // Reset the random board for this selection
+        const board2Select = document.getElementById('board2-select');
+        if (board2Select.value === 'random') {
+            currentRandomBoards.board2 = null;
+        }
         populateStartingPositionDropdowns();
         initializeBoards();
     });
