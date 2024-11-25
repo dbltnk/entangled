@@ -45,7 +45,7 @@ function populateBoardDropdowns() {
     // Set defaults
     board1Select.value = 'board1';
     board2Select.value = 'board2';
-} // Ensure function is properly closed
+}
 
 function populateStartingPositionDropdowns() {
     const blackStartingPositionSelect = document.getElementById('black-starting-position');
@@ -89,9 +89,6 @@ function populateStartingPositionDropdowns() {
     // Set defaults
     blackStartingPositionSelect.value = 'M1';
     whiteStartingPositionSelect.value = 'M2';
-}
-    const board1Select = document.getElementById('board1-select');
-    const board2Select = document.getElementById('board2-select');
 
     // Clear existing options
     board1Select.innerHTML = '';
