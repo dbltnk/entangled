@@ -47,6 +47,7 @@ function populateBoardDropdowns() {
     board2Select.value = 'board2';
 }
 
+
 function populateStartingPositionDropdowns() {
     const blackStartingPositionSelect = document.getElementById('black-starting-position');
     const whiteStartingPositionSelect = document.getElementById('white-starting-position');
@@ -89,21 +90,6 @@ function populateStartingPositionDropdowns() {
     // Set defaults
     blackStartingPositionSelect.value = 'M1';
     whiteStartingPositionSelect.value = 'M2';
-
-    // Clear existing options
-    board1Select.innerHTML = '';
-    board2Select.innerHTML = '';
-
-    // Add options for each board layout
-    Object.entries(BOARD_LAYOUTS).forEach(([id, layout]) => {
-        const option = new Option(layout.name, id);
-        board1Select.add(option.cloneNode(true));
-        board2Select.add(option.cloneNode(true));
-    });
-
-    // Set defaults
-    board1Select.value = 'board1';
-    board2Select.value = 'board2';
 }
 
 function createCell(symbol, boardNum, row, col) {
@@ -314,8 +300,8 @@ function initializeGame() {
     const blackStartingPositionSelect = document.getElementById('black-starting-position');
     const whiteStartingPositionSelect = document.getElementById('white-starting-position');
 
-    const blackStartingPositionValue = blackStartingPositionSelect.value; // e.g., 'M1'
-    const whiteStartingPositionValue = whiteStartingPositionSelect.value; // e.g., 'M2'
+    const blackStartingPositionValue = blackStartingPositionSelect.value;
+    const whiteStartingPositionValue = whiteStartingPositionSelect.value;
 
     // Parse the starting position values
     const startingPositions = {
@@ -336,9 +322,19 @@ function initializeGame() {
     if (existingWinner) {
         existingWinner.remove();
     }
-    populateStartingPositionDropdowns();
-    populateStartingPositionDropdowns(); // Ensure dropdowns are populated
+
     initializeBoards();
+    updateDisplay();
+    makeAIMove();
+}
+
+function init() {
+    populatePlayerDropdowns();
+    populateBoardDropdowns();
+    initializeBoards();
+
+    // Set up start game button
+    document.getElementById('start-game').addEventListener('click', initializeGame);
 
     // Add event listeners to update starting positions when board selections change
     document.getElementById('board1-select').addEventListener('change', () => {
@@ -351,30 +347,11 @@ function initializeGame() {
         initializeBoards();
     });
 
-    // Add event listeners to update starting positions when board selections change
-    document.getElementById('board1-select').addEventListener('change', populateStartingPositionDropdowns);
-    document.getElementById('board2-select').addEventListener('change', populateStartingPositionDropdowns);
-    updateDisplay();
-    makeAIMove(); // In case Black is AI
-}
-
-function init() {
-    populatePlayerDropdowns();
-    populateBoardDropdowns();
-    initializeBoards();
-
-    // Set up start game button
-    document.getElementById('start-game').addEventListener('click', initializeGame);
+    // Initial population of starting position dropdowns
+    populateStartingPositionDropdowns();
 
     // Initialize the first game
     initializeGame();
 }
 
 window.addEventListener('load', init);
-
-// Initialize controller after DOM is ready
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => new GameController());
-} else {
-    new GameController();
-}
