@@ -493,8 +493,13 @@ class MCTSPlayer extends EntangledPlayer {
 
             for (let i = 0; i < this.simulationCount; i++) {
                 const simGame = this.simulateGame(this.gameEngine.getGameState());
-                simGame.makeMove(move);
-                totalScore += this.playRandomGame(simGame);
+                try {
+                    simGame.makeMove(move);
+                    totalScore += this.playRandomGame(simGame);
+                } catch (error) {
+                    console.error('Simulation error:', error);
+                    totalScore -= 1000; // Penalize invalid moves
+                }
             }
 
             return {
@@ -516,8 +521,20 @@ class MCTSPlayer extends EntangledPlayer {
 
         while (!simGame.isGameOver()) {
             const moves = simGame.getValidMoves();
-            const randomMove = moves[Math.floor(Math.random() * moves.length)];
-            simGame.makeMove(randomMove);
+            if (!moves || moves.length === 0) {
+                break; // End simulation if no valid moves
+            }
+
+            try {
+                const randomMove = moves[Math.floor(Math.random() * moves.length)];
+                if (!simGame.isValidMove(randomMove)) {
+                    break; // End simulation if selected move is invalid
+                }
+                simGame.makeMove(randomMove);
+            } catch (error) {
+                console.error('Random play error:', error);
+                break; // End simulation on error
+            }
         }
 
         return this.evaluatePosition(simGame);
