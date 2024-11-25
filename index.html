@@ -63,14 +63,24 @@
             <div class="control-group">
                 <h3><span>🎮</span> Game Setup</h3>
                 <div class="player-select">
+                    <label for="board1-select">Left Board:</label>
+                    <!-- select options will be populated dynamically -->
+                    <select id="board1-select">
+                    </select>
+                </div>
+
+                <div class="player-select">
+                    <label for="board2-select">Right Board:</label>
+                    <!-- select options will be populated dynamically -->
+                    <select id="board2-select">
+                    </select>
+                </div>
+
+                <div class="player-select">
                     <label for="black-player">⚫ Black:</label>
                     <div class="player-options">
                         <select id="black-player" class="player-type">
-                            <option value="human">Human</option>
-                            <option value="random">Random AI</option>
-                            <option value="greedy-high">Greedy High AI</option>
-                            <option value="greedy-low">Greedy Low AI</option>
-                            <option value="defensive">Defensive AI</option>
+                            <!-- player type options will be populated dynamically -->
                         </select>
                         <select id="black-starting-position" class="starting-position">
                             <!-- starting position options will be populated dynamically -->
@@ -92,24 +102,6 @@
                             <!-- starting position options will be populated dynamically -->
                         </select>
                     </div>
-                </div>
-
-                <div class="player-select">
-                    <label for="board1-select">Left Board:</label>
-                    <select id="board1-select">
-                        <option value="board1">Top left to bottom right</option>
-                        <option value="board2">Knight's Jump</option>
-                        <option value="board3">Ali 24/11/2024</option>
-                    </select>
-                </div>
-
-                <div class="player-select">
-                    <label for="board2-select">Right Board:</label>
-                    <select id="board2-select">
-                        <option value="board2" selected>Knight's Jump</option>
-                        <option value="board1">Top left to bottom right</option>
-                        <option value="board3">Ali 24/11/2024</option>
-                    </select>
                 </div>
 
                 <button id="start-game"><span>🔄</span> Start Game</button>
