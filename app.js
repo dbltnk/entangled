@@ -337,7 +337,19 @@ function initializeGame() {
         existingWinner.remove();
     }
     populateStartingPositionDropdowns();
+    populateStartingPositionDropdowns(); // Ensure dropdowns are populated
     initializeBoards();
+
+    // Add event listeners to update starting positions when board selections change
+    document.getElementById('board1-select').addEventListener('change', () => {
+        populateStartingPositionDropdowns();
+        initializeBoards();
+    });
+
+    document.getElementById('board2-select').addEventListener('change', () => {
+        populateStartingPositionDropdowns();
+        initializeBoards();
+    });
 
     // Add event listeners to update starting positions when board selections change
     document.getElementById('board1-select').addEventListener('change', populateStartingPositionDropdowns);
@@ -354,7 +366,7 @@ function init() {
     // Set up start game button
     document.getElementById('start-game').addEventListener('click', initializeGame);
 
-    // Initialize first game
+    // Initialize the first game
     initializeGame();
 }
 
