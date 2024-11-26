@@ -63,6 +63,36 @@ function getSelectedBoardLayout(boardSelect) {
     return BOARD_LAYOUTS[selectedValue].grid;
 }
 
+// Map to store unique colors for letters
+const uniqueColors = {};
+
+// Function to generate evenly spaced colors with good contrast
+function generateColorForLetter(index, total) {
+    const hue = (index / total) * 360; // Evenly spaced hues
+    const saturation = 70; // High saturation for vivid colors
+    const lightness = 50; // Moderate lightness for good contrast on white
+    return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+}
+
+// Function to assign an evenly spaced color with good contrast to a letter element
+function assignRandomUniqueColor(letterElement) {
+    const letter = letterElement.textContent.toUpperCase();
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+    if (!uniqueColors[letter]) {
+        const index = alphabet.indexOf(letter);
+        if (index !== -1) {
+            uniqueColors[letter] = generateColorForLetter(index, 25); // 25 letters
+        } else {
+            // Fallback for non-alphabet characters
+            uniqueColors[letter] = '#000000'; // Black
+        }
+    }
+
+    // Apply the color to the letter element
+    letterElement.style.color = uniqueColors[letter];
+}
+
 function createCell(symbol, boardNum, row, col) {
     const cell = document.createElement('div');
     cell.className = 'cell';
@@ -74,6 +104,7 @@ function createCell(symbol, boardNum, row, col) {
     const letter = document.createElement('div');
     letter.className = 'cell-letter';
     letter.textContent = symbol;
+    assignRandomUniqueColor(letter);
     cell.appendChild(letter);
 
     cell.addEventListener('mouseenter', () => highlightCorrespondingCells(symbol));
