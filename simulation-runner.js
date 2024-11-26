@@ -135,7 +135,7 @@ class SimulationRunner {
                 gameIndex: currentTotal,
                 shouldSaveHistory,
                 aiConfig: this.config.aiConfig,
-                boardConfig: this.config.boardConfig
+                boardConfig: matchup.boardConfig || this.config.boardConfig
             });
             this.activeGames++;
         }

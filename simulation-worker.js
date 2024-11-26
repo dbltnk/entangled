@@ -110,11 +110,7 @@ workerContext.onmessage = async function (e) {
                 moves: finalState.playerTurns.BLACK + finalState.playerTurns.WHITE,
                 largestClusters: finalState.largestClusters,
                 history: gameHistory,
-                boardConfig: {
-                    board1Layout: boardConfig?.board1Layout,
-                    board2Layout: boardConfig?.board2Layout,
-                    startingConfig: boardConfig?.startingConfig
-                }
+                boardConfig: boardConfig
             };
 
             workerContext.postMessage(result);

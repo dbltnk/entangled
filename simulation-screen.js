@@ -130,16 +130,23 @@ class SimulationScreen {
 
     formatBoardCombination(combo) {
         try {
-            const [boards, setup] = combo.split(' ');
-            const [board1, board2] = boards.split('+');
+            try {
+                const [boards, setup] = combo.split(' ');
+                const [board1, board2] = boards.split('+');
 
-            // Check if the board layouts exist
-            const board1Layout = BOARD_LAYOUTS[board1];
-            const board2Layout = BOARD_LAYOUTS[board2];
+                // Check if the board layouts exist
+                const board1Layout = BOARD_LAYOUTS[board1];
+                const board2Layout = BOARD_LAYOUTS[board2];
 
-            if (!board1Layout || !board2Layout) {
-                console.error('Invalid board layouts:', { board1, board2, available: Object.keys(BOARD_LAYOUTS) });
-                return combo; // Fallback to raw combo string
+                if (!board1Layout || !board2Layout) {
+                    console.warn('Invalid board layouts:', { board1, board2, available: Object.keys(BOARD_LAYOUTS) });
+                    return `Unknown boards (${board1} + ${board2})${setup ? ' (' + setup + ')' : ''}`;
+                }
+
+                return `${board1Layout.name} + ${board2Layout.name}${setup ? ' (' + setup + ')' : ''}`;
+            } catch (error) {
+                console.warn('Error formatting board combination:', { combo, error });
+                return `Invalid format: ${combo}`;
             }
 
             return `${board1Layout.name} + ${board2Layout.name}${setup ? ' (' + setup + ')' : ''}`;
