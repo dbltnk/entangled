@@ -62,38 +62,37 @@
             </div>
 
             <div class="control-group">
-                <h3><span>🎮</span> Game Setup</h3>
                 <div class="player-select">
-                    <label for="board1-select">Left Board:</label>
+                    <label for="board1-select">Board 1:</label>
                     <!-- select options will be populated dynamically -->
                     <select id="board1-select">
                     </select>
                 </div>
 
                 <div class="player-select">
-                    <label for="board2-select">Right Board:</label>
+                    <label for="board2-select">Board 2:</label>
                     <!-- select options will be populated dynamically -->
                     <select id="board2-select">
                     </select>
                 </div>
 
+                <div class="setup-input">
+                    <label for="starting-config">Stones:</label>
+                    <input type="text" id="starting-config" placeholder="e.g., BE2,WK1" value="BM1,WM2" />
+                </div>
+
                 <div class="player-select">
-                    <label for="black-player">⚫ Black:</label>
+                    <label for="black-player">⚫</label>
                     <select id="black-player" class="player-type">
                         <!-- player type options will be populated dynamically -->
                     </select>
                 </div>
 
                 <div class="player-select">
-                    <label for="white-player">⚪ White:</label>
+                    <label for="white-player">⚪</label>
                     <select id="white-player" class="player-type">
                         <!-- player type options will be populated dynamically -->
                     </select>
-                </div>
-
-                <div class="setup-input">
-                    <label for="starting-config">Starting Configuration:</label>
-                    <input type="text" id="starting-config" placeholder="e.g., BE2,WK1" value="BM1,WM2" />
                 </div>
 
                 <button id="start-game"><span>🔄</span> Start Game</button>

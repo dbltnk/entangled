@@ -542,11 +542,6 @@ class MCTSPlayer extends EntangledPlayer {
 }
 
 export const AI_PLAYERS = {
-    human: {
-        id: 'human',
-        name: 'Human',
-        description: 'Human player',
-    },
     random: {
         id: 'random',
         name: 'Fully Random',

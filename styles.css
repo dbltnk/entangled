@@ -255,13 +255,12 @@ select {
 .player-select {
     margin-bottom: 0.25rem;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     gap: 0.5rem;
 }
 
 .player-options {
     display: flex;
-    gap: 0.5rem;
 }
 
 .player-type {
@@ -269,14 +268,15 @@ select {
 }
 
 .setup-input {
-    margin: 1rem 0;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     gap: 0.5rem;
 }
 
 .setup-input label {
     font-weight: 600;
+    display: flex;
+    align-items: center;
 }
 
 .setup-input input {
@@ -286,6 +286,7 @@ select {
     border-radius: 4px;
     font-size: 0.9rem;
     font-family: monospace;
+    margin-bottom: 0.25rem;
 }
 
 .setup-input input::placeholder {
@@ -300,6 +301,9 @@ select {
 
 .player-select label {
     font-weight: 600;
+    display: flex;
+    align-items: center;
+    text-wrap: nowrap;
 }
 
 .player-select select {
