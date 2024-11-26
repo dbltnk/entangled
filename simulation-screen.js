@@ -14,7 +14,7 @@ class SimulationScreen {
         this.attachEventListeners();
 
         // Add default combination
-        this.selectedCombinations.add('board1+board2 WU1,WU2');
+        //this.selectedCombinations.add('board1+board2 WU1,WU2');
         this.updateCombinationsList();
     }
 
@@ -23,10 +23,16 @@ class SimulationScreen {
             `<option value="${key}">${layout.name}</option>`
         ).join('');
 
-        const aiOptions = Object.entries(AI_PLAYERS)
+        const aiOptionsFirst = Object.entries(AI_PLAYERS)
             .filter(([id]) => id !== 'human')
             .map(([id, ai]) => `
                 <option value="${id}" ${id === 'mcts' ? 'selected' : ''}>${ai.name}</option>
+            `).join('');
+
+        const aiOptionsSecond = Object.entries(AI_PLAYERS)
+            .filter(([id]) => id !== 'human')
+            .map(([id, ai]) => `
+                <option value="${id}">${ai.name}</option>
             `).join('');
 
         this.container.innerHTML = `
@@ -40,13 +46,12 @@ class SimulationScreen {
                         <h3>Compare AIs</h3>
                         <div class="ai-selectors">
                             <select id="firstAI" class="ai-select">
-                                <option value="">Select first AI</option>
-                                ${aiOptions}
+                                ${aiOptionsFirst}
                             </select>
                             <span>vs</span>
                             <select id="secondAI" class="ai-select">
                                 <option value="" selected>None (self-play only)</option>
-                                ${aiOptions}
+                                ${aiOptionsSecond}
                             </select>
                         </div>
                     </div>
