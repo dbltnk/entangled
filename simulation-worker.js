@@ -89,6 +89,7 @@ workerContext.onmessage = async function (e) {
                         board2: finalState.board2,
                         currentPlayer: finalState.currentPlayer,
                         largestClusters: finalState.largestClusters,
+                        winner: game.getWinner(),
                         boardConfig: {
                             board1Layout: boardConfig?.board1Layout,
                             board2Layout: boardConfig?.board2Layout,

@@ -203,9 +203,14 @@ class SimulationScreen {
                             <td>
                                 <select class="replay-select" data-matchup="${result.matchupId}">
                                     <option value="">Select replay...</option>
-                                    ${result.histories.map((_, index) => `
-                                        <option value="${index}">Game ${index + 1}</option>
-                                    `).join('')}
+                                    ${result.histories.map((history, index) => {
+                                        const lastState = history[history.length - 1];
+                                        const winner = lastState.state.winner;
+                                        const outcome = winner === 'TIE' ? 'Draw' : 
+                                                      winner === 'BLACK' ? 'Black Won' : 
+                                                      'White Won';
+                                        return `<option value="${index}">Game ${index + 1} (${outcome})</option>`;
+                                    }).join('')}
                                 </select>
                             </td>
                         </tr>
