@@ -77,6 +77,16 @@
     border: 1px solid #ddd;
     border-radius: 4px;
     font-size: 14px;
+    font-family: monospace;
+}
+
+.param-group input[type="text"]#startingConfig {
+    width: 100%;
+    text-transform: uppercase;
+}
+
+.param-group input[type="text"]#startingConfig::placeholder {
+    text-transform: none;
 }
 
 .param-group input[type="checkbox"] {
@@ -86,6 +96,13 @@
 .param-group input:disabled {
     background-color: #f5f5f5;
     cursor: not-allowed;
+}
+
+.param-group select {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
 }
 
 .simulation-controls {
@@ -138,7 +155,6 @@
     margin: 2px 0;
 }
 
-/* Updated Results Table Styles */
 .results-table {
     width: 100%;
     border-collapse: collapse;
@@ -196,7 +212,6 @@
     background: #f0f7ff;
 }
 
-/* Column width specifications */
 .results-table th:nth-child(1),
 .results-table th:nth-child(2) {
     width: 15%;
@@ -259,7 +274,24 @@
     cursor: not-allowed;
 }
 
-/* Responsive adjustments */
+.board-layouts-info {
+    background: #f8f9fa;
+    padding: 12px;
+    border-radius: 4px;
+    margin-bottom: 20px;
+    line-height: 1.5;
+}
+
+.board-layouts-header {
+    color: #495057;
+    font-size: 0.95em;
+}
+
+.board-layouts-header strong {
+    color: #212529;
+    margin-right: 4px;
+}
+
 @media (max-width: 768px) {
     .simulation-params {
         flex-direction: column;
@@ -301,7 +333,6 @@
     }
 }
 
-/* Additional table scroll behavior for mobile */
 @media (max-width: 1024px) {
     .results-grid {
         overflow-x: auto;
@@ -475,8 +506,32 @@
 .board-layouts-header {
     color: #495057;
     font-size: 0.95em;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.board-layouts-header .layout-info,
+.board-layouts-header .starting-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
 }
 
 .board-layouts-header strong {
     color: #212529;
+    min-width: 120px;
+}
+
+.board-layouts-header code {
+    font-family: monospace;
+    background: #e9ecef;
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: #212529;
+}
+
+.board-layouts-header span {
+    margin-right: 12px;
 }

@@ -1,4 +1,3 @@
-// simulation-screen.js
 import { AI_PLAYERS } from './players.js';
 import { SimulationRunner } from './simulation-runner.js';
 import { SimulationAnalyzer } from './simulation-analyzer.js';
@@ -66,6 +65,14 @@ class SimulationScreen {
                                     <select id="board2Layout">
                                         ${boardOptions}
                                     </select>
+                                </div>
+                                <div class="param-group">
+                                    <label for="startingConfig">Starting Configuration:</label>
+                                    <input type="text" 
+                                           id="startingConfig" 
+                                           value="BM1,WM2" 
+                                           placeholder="e.g., BE2,WK1"
+                                           title="Format: B|W followed by letter A-Y followed by 1|2, separated by commas">
                                 </div>
                             </div>
 
@@ -166,6 +173,13 @@ class SimulationScreen {
         const board1Layout = this.container.querySelector('#board1Layout').value;
         const board2Layout = this.container.querySelector('#board2Layout').value;
 
+        // Get and sanitize starting configuration
+        const rawConfig = this.container.querySelector('#startingConfig').value;
+        const startingConfig = rawConfig
+            .toUpperCase()
+            .replace(/\s+/g, '')
+            .replace(/[,.;\s]+$/, '');
+
         const config = {
             matchups,
             gamesPerMatchup,
@@ -173,7 +187,8 @@ class SimulationScreen {
             aiConfig,
             boardConfig: {
                 board1Layout,
-                board2Layout
+                board2Layout,
+                startingConfig
             }
         };
 
@@ -239,9 +254,19 @@ class SimulationScreen {
         const boardLayoutsInfo = this.container.querySelector('#board-layouts-info');
         const board1Name = BOARD_LAYOUTS[this.results[0]?.boardConfig?.board1Layout || 'board1'].name;
         const board2Name = BOARD_LAYOUTS[this.results[0]?.boardConfig?.board2Layout || 'board2'].name;
+        const startingConfig = this.results[0]?.boardConfig?.startingConfig || '(default)';
+
         boardLayoutsInfo.innerHTML = `
             <div class="board-layouts-header">
-                <strong>Board Layouts:</strong> Left Board - ${board1Name}, Right Board - ${board2Name}
+                <div class="layout-info">
+                    <strong>Board Layouts:</strong> 
+                    <span>Left Board - ${board1Name}</span>
+                    <span>Right Board - ${board2Name}</span>
+                </div>
+                <div class="starting-info">
+                    <strong>Starting Position:</strong>
+                    <code>${startingConfig}</code>
+                </div>
             </div>
         `;
 

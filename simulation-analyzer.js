@@ -9,7 +9,7 @@ class SimulationAnalyzer {
         const strategyPairs = new Map();
 
         for (const result of this.results) {
-            const { matchup, winner, finalScore } = result;
+            const { matchup, winner, finalScore, boardConfig } = result;
             // Don't sort strategies - preserve color assignment
             const pairKey = `${matchup.player1}:${matchup.player2}`;
 
@@ -23,7 +23,8 @@ class SimulationAnalyzer {
                     draws: 0,
                     blackTotalScore: 0,
                     whiteTotalScore: 0,
-                    histories: []
+                    histories: [],
+                    boardConfig: boardConfig // Store board configuration including starting setup
                 });
             }
 
@@ -59,6 +60,7 @@ class SimulationAnalyzer {
             winAdvantage: ((stats.blackWins - stats.whiteWins) / stats.games * 100).toFixed(1),
             scoreAdvantage: ((stats.blackTotalScore - stats.whiteTotalScore) / stats.games).toFixed(1),
             histories: stats.histories,
+            boardConfig: stats.boardConfig, // Include in stats output
             // Add color-specific performance metrics
             asBlackStats: {
                 strategy: stats.strategy1,
@@ -79,6 +81,10 @@ class SimulationAnalyzer {
 
         return {
             timestamp,
+            configuration: {
+                boardLayout: this.results[0]?.boardConfig,
+                startingConfig: this.results[0]?.boardConfig?.startingConfig
+            },
             summary: stats.map(stat => ({
                 matchup: `${stat.strategy1} vs ${stat.strategy2}`,
                 games: stat.games,

@@ -27,7 +27,12 @@ workerContext.onmessage = async function (e) {
             BOARD_LAYOUTS[boardConfig.board2Layout].grid :
             BOARD_LAYOUTS.board2.grid;
 
-        const game = new EntangledGame(board1Layout, board2Layout);
+        // Create game with starting configuration
+        const game = new EntangledGame(
+            board1Layout,
+            board2Layout,
+            boardConfig?.startingConfig
+        );
 
         // Create players with AI configuration
         const player1Config = aiConfig[player1] || {};
@@ -61,7 +66,11 @@ workerContext.onmessage = async function (e) {
                             board2: state.board2,
                             currentPlayer: state.currentPlayer,
                             largestClusters: state.largestClusters,
-                            boardConfig: boardConfig // Add board configuration to state
+                            boardConfig: {
+                                board1Layout: boardConfig?.board1Layout,
+                                board2Layout: boardConfig?.board2Layout,
+                                startingConfig: boardConfig?.startingConfig
+                            }
                         }
                     });
                 }
@@ -79,7 +88,12 @@ workerContext.onmessage = async function (e) {
                         board1: finalState.board1,
                         board2: finalState.board2,
                         currentPlayer: finalState.currentPlayer,
-                        largestClusters: finalState.largestClusters
+                        largestClusters: finalState.largestClusters,
+                        boardConfig: {
+                            board1Layout: boardConfig?.board1Layout,
+                            board2Layout: boardConfig?.board2Layout,
+                            startingConfig: boardConfig?.startingConfig
+                        }
                     }
                 });
             }
@@ -98,7 +112,8 @@ workerContext.onmessage = async function (e) {
                 history: gameHistory,
                 boardConfig: {
                     board1Layout: boardConfig?.board1Layout,
-                    board2Layout: boardConfig?.board2Layout
+                    board2Layout: boardConfig?.board2Layout,
+                    startingConfig: boardConfig?.startingConfig
                 }
             };
 
