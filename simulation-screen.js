@@ -9,187 +9,359 @@ class SimulationScreen {
         this.container = containerElement;
         this.runner = null;
         this.results = [];
-        this.selectedAIs = new Set();
+        this.selectedCombinations = new Set();
         this.render();
         this.attachEventListeners();
+
+        // Add default combination
+        this.selectedCombinations.add('board1+board2 WU1,WU2');
+        this.updateCombinationsList();
     }
 
     render() {
-        console.log('Rendering simulation screen');
         const boardOptions = Object.entries(BOARD_LAYOUTS).map(([key, layout]) =>
             `<option value="${key}">${layout.name}</option>`
         ).join('');
+
+        const aiOptions = Object.entries(AI_PLAYERS)
+            .filter(([id]) => id !== 'human')
+            .map(([id, ai]) => `
+                <option value="${id}" ${id === 'mcts' ? 'selected' : ''}>${ai.name}</option>
+            `).join('');
 
         this.container.innerHTML = `
             <div class="panel simulation-panel">
                 <div class="simulation-header">
                     <h2>AI Strategy Analysis</h2>
-                    <div class="tab-navigation">
-                        <button class="tab-button active" data-tab="config">Configuration</button>
-                        <button class="tab-button" data-tab="results">Results</button>
+                </div>
+
+                <div class="config-section">
+                    <div class="ai-selection">
+                        <h3>Compare AIs</h3>
+                        <div class="ai-selectors">
+                            <select id="firstAI" class="ai-select">
+                                <option value="">Select first AI</option>
+                                ${aiOptions}
+                            </select>
+                            <span>vs</span>
+                            <select id="secondAI" class="ai-select">
+                                <option value="">None (self-play only)</option>
+                                ${aiOptions}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="board-combinations">
+                        <h3>Board Combinations</h3>
+                        <div class="board-setup">
+                            <div class="board-columns">
+                                <div class="board-column">
+                                    <label>Left Board</label>
+                                    <select id="leftBoard" class="board-select">
+                                        ${boardOptions}
+                                    </select>
+                                </div>
+                                <div class="board-column">
+                                    <label>Right Board</label>
+                                    <select id="rightBoard" class="board-select">
+                                        ${boardOptions}
+                                    </select>
+                                </div>
+                                <div class="board-column">
+                                    <label>Starting Setup</label>
+                                    <input type="text" id="startingSetup" 
+                                           value="WU1,WU2"
+                                           placeholder="e.g., WU1,WK2"
+                                           title="Required format: B|W followed by letter A-Y followed by 1|2, separated by commas">
+                                </div>
+                                <button id="addCombination" class="primary-button">Add Combination</button>
+                            </div>
+                        </div>
+
+                        <div class="selected-combinations">
+                            <h4>Selected Combinations</h4>
+                            <div id="combinationsList"></div>
+                        </div>
+
+                        <div class="simulation-params">
+                            <div class="param-group">
+                                <label for="gamesPerMatchup">Games per Combination:</label>
+                                <input type="number" id="gamesPerMatchup" value="100" min="10" max="10000">
+                            </div>
+                            <div class="param-group">
+                                <label for="samplesToStore">Samples to Save:</label>
+                                <input type="number" id="samplesToStore" value="5" min="0" max="100">
+                            </div>
+                        </div>
+
+                        <div class="simulation-controls">
+                            <button id="startSimulation" class="primary-button">Start Analysis</button>
+                            <button id="pauseSimulation" class="secondary-button" disabled>Pause</button>
+                            <button id="exportResults" class="secondary-button" disabled>Export Results</button>
+                        </div>
+
+                        <div class="progress-section" style="display: none;">
+                            <div class="progress-bar">
+                                <div class="progress-fill"></div>
+                            </div>
+                            <div class="progress-text">0% Complete</div>
+                        </div>
                     </div>
                 </div>
 
-                <div class="tab-content">
-                    <div class="tab-pane active" id="config-pane">
-                        <div class="config-section">
-                            <h3>Select AI Strategies</h3>
-                            <div class="ai-grid">
-                            ${Object.entries(AI_PLAYERS)
-                .filter(([id]) => id !== 'human')
-                .map(([id, ai]) => `
-                                    <div class="ai-option">
-                                        <input type="checkbox" id="${id}" value="${id}">
-                                        <label for="${id}">${ai.name}</label>
-                                    </div>
-                                `).join('')}
-                            </div>
-
-                            <div class="simulation-params">
-                                <div class="param-group">
-                                    <label for="gamesPerMatchup">Games per Matchup:</label>
-                                    <input type="number" id="gamesPerMatchup" value="1000" min="100" max="10000">
-                                </div>
-                                <div class="param-group">
-                                    <label for="samplesToStore">Samples Per Matchup:</label>
-                                    <input type="number" id="samplesToStore" value="5" min="0" max="100">
-                                </div>
-                                <div class="param-group">
-                                    <label for="board1Layout">Board 1 Layout:</label>
-                                    <select id="board1Layout">
-                                        ${boardOptions}
-                                    </select>
-                                </div>
-                                <div class="param-group">
-                                    <label for="board2Layout">Board 2 Layout:</label>
-                                    <select id="board2Layout">
-                                        ${boardOptions}
-                                    </select>
-                                </div>
-                                <div class="param-group">
-                                    <label for="startingConfig">Starting Configuration:</label>
-                                    <input type="text" 
-                                           id="startingConfig" 
-                                           value="BM1,WM2" 
-                                           placeholder="e.g., BE2,WK1"
-                                           title="Format: B|W followed by letter A-Y followed by 1|2, separated by commas">
-                                </div>
-                            </div>
-
-                            <div class="simulation-controls">
-                                <button id="startSimulation" class="primary-button">Start Simulation</button>
-                                <button id="pauseSimulation" class="secondary-button" disabled>Pause</button>
-                            </div>
-
-                            <div class="progress-section" style="display: none;">
-                                <div class="progress-bar">
-                                    <div class="progress-fill"></div>
-                                </div>
-                                <div class="progress-text">0% Complete</div>
-                            </div>
-                        </div>
+                <div id="resultsContainer" class="results-section">
+                    <div class="results-controls">
+                        <select id="resultSort" class="sort-select">
+                            <option value="blackWinRate">Sort by Black Win Rate</option>
+                            <option value="winAdvantage">Sort by Win Advantage</option>
+                            <option value="scoreAdvantage">Sort by Score Advantage</option>
+                        </select>
                     </div>
-
-                    <div class="tab-pane" id="results-pane">
-                        <div class="results-section">
-                            <div id="board-layouts-info" class="board-layouts-info"></div>
-                            <div class="results-controls">
-                                <button id="exportResults" class="secondary-button" disabled>Export Results</button>
-                            </div>
-                            <div class="results-grid"></div>
-                            <div class="sample-games-section">
-                                <h3>Sample Games</h3>
-                                <select id="gameSelector"></select>
-                                <button id="viewGame" class="secondary-button">View Game</button>
-                            </div>
-                        </div>
-                    </div>
+                    <div id="resultsGrid"></div>
                 </div>
             </div>
         `;
+
+        // Set default board selections
+        const rightBoard = this.container.querySelector('#rightBoard');
+        rightBoard.value = 'board2';  // Knight's Jump
+        this.updateResults();
     }
 
-    attachEventListeners() {
-        // Tab navigation
-        this.container.querySelectorAll('.tab-button').forEach(button => {
-            button.addEventListener('click', () => this.switchTab(button.dataset.tab));
-        });
+    formatBoardCombination(combo) {
+        try {
+            const [boards, setup] = combo.split(' ');
+            const [board1, board2] = boards.split('+');
 
-        // AI selection
-        this.container.querySelectorAll('.ai-option input').forEach(checkbox => {
-            checkbox.addEventListener('change', () => {
-                if (checkbox.checked) {
-                    this.selectedAIs.add(checkbox.value);
-                } else {
-                    this.selectedAIs.delete(checkbox.value);
+            // Check if the board layouts exist
+            const board1Layout = BOARD_LAYOUTS[board1];
+            const board2Layout = BOARD_LAYOUTS[board2];
+
+            if (!board1Layout || !board2Layout) {
+                console.error('Invalid board layouts:', { board1, board2, available: Object.keys(BOARD_LAYOUTS) });
+                return combo; // Fallback to raw combo string
+            }
+
+            return `${board1Layout.name} + ${board2Layout.name}${setup ? ' (' + setup + ')' : ''}`;
+        } catch (error) {
+            console.error('Error formatting board combination:', { combo, error });
+            return combo; // Fallback to raw combo string
+        }
+    }
+
+    createResultTable(combinationResults, boardCombo, gamesPlayed) {
+        const table = document.createElement('div');
+        table.className = 'result-combination';
+
+        const [boards, setup] = boardCombo.split(' ');
+        const [board1, board2] = boards.split('+');
+        const displayName = this.formatBoardCombination(boardCombo);
+
+        table.innerHTML = `
+            <h3>${displayName} - ${gamesPlayed} games completed</h3>
+            <table class="results-table">
+                <thead>
+                    <tr>
+                        <th>Matchup</th>
+                        <th>Black Wins</th>
+                        <th>White Wins</th>
+                        <th>Draws</th>
+                        <th>Black Score</th>
+                        <th>White Score</th>
+                        <th>Win Adv.</th>
+                        <th>Score Adv.</th>
+                        <th>Replays</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${combinationResults.map(result => `
+                        <tr>
+                            <td>${result.matchupName}</td>
+                            <td>${result.blackWinRate.toFixed(1)}%</td>
+                            <td>${result.whiteWinRate.toFixed(1)}%</td>
+                            <td>${result.drawRate.toFixed(1)}%</td>
+                            <td>${result.avgScoreBlack.toFixed(1)}</td>
+                            <td>${result.avgScoreWhite.toFixed(1)}</td>
+                            <td class="${parseFloat(result.winAdvantage) > 0 ? 'positive' : 'negative'}">
+                                ${result.winAdvantage > 0 ? '+' : ''}${result.winAdvantage.toFixed(1)}%
+                            </td>
+                            <td class="${parseFloat(result.scoreAdvantage) > 0 ? 'positive' : 'negative'}">
+                                ${result.scoreAdvantage > 0 ? '+' : ''}${result.scoreAdvantage.toFixed(1)}
+                            </td>
+                            <td>
+                                <select class="replay-select" data-matchup="${result.matchupId}">
+                                    <option value="">Select replay...</option>
+                                    ${result.histories.map((_, index) => `
+                                        <option value="${index}">Game ${index + 1}</option>
+                                    `).join('')}
+                                </select>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+
+        // Add replay selection handlers
+        table.querySelectorAll('.replay-select').forEach(select => {
+            select.addEventListener('change', (e) => {
+                if (e.target.value === '') return;
+                const matchupId = e.target.dataset.matchup;
+                const gameIndex = parseInt(e.target.value);
+                const matchup = combinationResults.find(r => r.matchupId === matchupId);
+                if (matchup && matchup.histories[gameIndex]) {
+                    window.viewReplay(matchup.histories[gameIndex], {
+                        player1: matchup.player1Name,
+                        player2: matchup.player2Name
+                    });
                 }
-                console.log('Selected AIs updated:', Array.from(this.selectedAIs));
-                this.updateStartButton();
             });
         });
 
+        return table;
+    }
+
+    updateResults() {
+        const analyzer = new SimulationAnalyzer(this.results);
+        const resultsByCombo = analyzer.getResultsByBoardCombination();
+        const container = this.container.querySelector('#resultsGrid');
+        container.innerHTML = '';
+
+        // Sort based on selected criterion
+        const sortSelect = this.container.querySelector('#resultSort');
+        const sortCriterion = sortSelect.value;
+
+        Object.entries(resultsByCombo).forEach(([combo, results]) => {
+            const gamesPlayed = results[0]?.games || 0;
+            container.appendChild(this.createResultTable(results, combo, gamesPlayed));
+        });
+
+        this.container.querySelector('#exportResults').disabled = this.results.length === 0;
+    }
+
+    attachEventListeners() {
+        // Add combination button
+        this.container.querySelector('#addCombination').addEventListener('click', () => {
+            const leftBoard = this.container.querySelector('#leftBoard').value;
+            const rightBoard = this.container.querySelector('#rightBoard').value;
+            const setup = this.container.querySelector('#startingSetup').value
+                .toUpperCase()
+                .replace(/\s+/g, '')
+                .replace(/[,.;\s]+$/, '');
+
+            if (!setup) {
+                alert('Starting setup is required');
+                return;
+            }
+
+            const combination = `${leftBoard}+${rightBoard} ${setup}`;
+            this.selectedCombinations.add(combination);
+            this.updateCombinationsList();
+        });
+
+        // Start button
         const startButton = this.container.querySelector('#startSimulation');
         const pauseButton = this.container.querySelector('#pauseSimulation');
-        const exportButton = this.container.querySelector('#exportResults');
 
         startButton.addEventListener('click', () => this.startSimulation());
         pauseButton.addEventListener('click', () => this.togglePause());
-        exportButton.addEventListener('click', () => this.exportResults());
 
-        this.container.querySelector('#viewGame').addEventListener('click', () => {
-            const gameSelector = this.container.querySelector('#gameSelector');
-            const selectedGame = gameSelector.value;
-            if (selectedGame) {
-                this.viewGame(selectedGame);
+        // Sort select
+        this.container.querySelector('#resultSort').addEventListener('change', () => {
+            if (this.results.length > 0) {
+                this.updateResults();
             }
         });
 
-        // Set default board selections
-        const board1Select = this.container.querySelector('#board1Layout');
-        const board2Select = this.container.querySelector('#board2Layout');
-        board1Select.value = 'board1';  // Default to first board
-        board2Select.value = 'board2';  // Default to second board
+        // Export button
+        this.container.querySelector('#exportResults').addEventListener('click', () => this.exportResults());
+    }
+
+    updateCombinationsList() {
+        const list = this.container.querySelector('#combinationsList');
+        list.innerHTML = Array.from(this.selectedCombinations).map(combo => `
+            <div class="combination-item">
+                <span>${this.formatBoardCombination(combo)}</span>
+                <button class="remove-combination" data-combo="${combo}">×</button>
+            </div>
+        `).join('');
+
+        // Add remove handlers
+        list.querySelectorAll('.remove-combination').forEach(button => {
+            button.addEventListener('click', () => {
+                this.selectedCombinations.delete(button.dataset.combo);
+                this.updateCombinationsList();
+            });
+        });
+
+        // Update start button state
+        this.container.querySelector('#startSimulation').disabled =
+            this.selectedCombinations.size === 0 ||
+            !this.container.querySelector('#firstAI').value;
     }
 
     async startSimulation() {
-        const selectedAIs = Array.from(this.selectedAIs);
-
-        const aiConfig = {};
-
-        // Create matchups for all combinations including reversed color assignments
-        const matchups = [];
-        for (let i = 0; i < selectedAIs.length; i++) {
-            for (let j = 0; j < selectedAIs.length; j++) {
-                // Include both color configurations for each pair
-                matchups.push({
-                    player1: selectedAIs[i],
-                    player2: selectedAIs[j]
-                });
-            }
-        }
-
+        const firstAI = this.container.querySelector('#firstAI').value;
+        const secondAI = this.container.querySelector('#secondAI').value;
         const gamesPerMatchup = parseInt(this.container.querySelector('#gamesPerMatchup').value);
         const samplesToStore = parseInt(this.container.querySelector('#samplesToStore').value);
-        const board1Layout = this.container.querySelector('#board1Layout').value;
-        const board2Layout = this.container.querySelector('#board2Layout').value;
 
-        // Get and sanitize starting configuration
-        const rawConfig = this.container.querySelector('#startingConfig').value;
-        const startingConfig = rawConfig
-            .toUpperCase()
-            .replace(/\s+/g, '')
-            .replace(/[,.;\s]+$/, '');
+        // Create all necessary matchups
+        const matchups = [];
+        this.selectedCombinations.forEach(combo => {
+            const [boards, setup] = combo.split(' ');
+            const [board1, board2] = boards.split('+');
+
+            // Always do self-play for first AI
+            matchups.push({
+                player1: firstAI,
+                player2: firstAI,
+                boardConfig: {
+                    board1Layout: board1,
+                    board2Layout: board2,
+                    startingConfig: setup || ''
+                }
+            });
+
+            // If second AI selected, do both cross-play configurations
+            if (secondAI) {
+                matchups.push(
+                    {
+                        player1: firstAI,
+                        player2: secondAI,
+                        boardConfig: {
+                            board1Layout: board1,
+                            board2Layout: board2,
+                            startingConfig: setup || ''
+                        }
+                    },
+                    {
+                        player1: secondAI,
+                        player2: firstAI,
+                        boardConfig: {
+                            board1Layout: board1,
+                            board2Layout: board2,
+                            startingConfig: setup || ''
+                        }
+                    },
+                    {
+                        player1: secondAI,
+                        player2: secondAI,
+                        boardConfig: {
+                            board1Layout: board1,
+                            board2Layout: board2,
+                            startingConfig: setup || ''
+                        }
+                    }
+                );
+            }
+        });
 
         const config = {
             matchups,
             gamesPerMatchup,
             samplesToStore,
-            aiConfig,
-            boardConfig: {
-                board1Layout,
-                board2Layout,
-                startingConfig
-            }
+            aiConfig: {}
         };
 
         this.runner = new SimulationRunner(config);
@@ -243,137 +415,6 @@ class SimulationScreen {
         }
     }
 
-    updateResults() {
-        const analyzer = new SimulationAnalyzer(this.results);
-        const stats = analyzer.getMatchupStats();
-
-        // Calculate averages for the last 7 columns
-        const averages = this.calculateAverages(stats);
-
-        // Update board layouts info
-        const boardLayoutsInfo = this.container.querySelector('#board-layouts-info');
-        const board1Name = BOARD_LAYOUTS[this.results[0]?.boardConfig?.board1Layout || 'board1'].name;
-        const board2Name = BOARD_LAYOUTS[this.results[0]?.boardConfig?.board2Layout || 'board2'].name;
-        const startingConfig = this.results[0]?.boardConfig?.startingConfig || '(default)';
-
-        boardLayoutsInfo.innerHTML = `
-            <div class="board-layouts-header">
-                <div class="layout-info">
-                    <strong>Board Layouts:</strong> 
-                    <span>Left Board - ${board1Name}</span>
-                    <span>Right Board - ${board2Name}</span>
-                </div>
-                <div class="starting-info">
-                    <strong>Starting Position:</strong>
-                    <code>${startingConfig}</code>
-                </div>
-            </div>
-        `;
-
-        const grid = this.container.querySelector('.results-grid');
-
-        grid.innerHTML = `
-        <table class="results-table">
-            <thead>
-                <tr>
-                    <th>Strategy as ⚫</th>
-                    <th>Strategy as ⚪</th>
-                    <th>Games</th>
-                    <th>⚫ Win%</th>
-                    <th>⚪ Win%</th>
-                    <th>Draws</th>
-                    <th>Win Adv.</th>
-                    <th>⚫ Score</th>
-                    <th>⚪ Score</th>
-                    <th>Score Adv.</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${stats.map(stat => `
-                    <tr>
-                        <td class="black-player">${AI_PLAYERS[stat.strategy1].name}</td>
-                        <td class="white-player">${AI_PLAYERS[stat.strategy2].name}</td>
-                        <td>${stat.games}</td>
-                        <td>${stat.blackWinRate}%</td>
-                        <td>${stat.whiteWinRate}%</td>
-                        <td>${stat.drawRate}%</td>
-                        <td class="${parseFloat(stat.winAdvantage) > 0 ? 'positive' : 'negative'}">${stat.winAdvantage}%</td>
-                        <td>${stat.avgScoreBlack}</td>
-                        <td>${stat.avgScoreWhite}</td>
-                        <td class="${parseFloat(stat.scoreAdvantage) > 0 ? 'positive' : 'negative'}">±${Math.abs(stat.scoreAdvantage)}</td>
-                    </tr>
-                `).join('')}
-                <tr class="averages-row">
-                    <td colspan="3">Averages</td>
-                    <td>${averages.blackWinRate.toFixed(1)}%</td>
-                    <td>${averages.whiteWinRate.toFixed(1)}%</td>
-                    <td>${averages.drawRate.toFixed(1)}%</td>
-                    <td class="${averages.winAdvantage > 0 ? 'positive' : 'negative'}">${averages.winAdvantage.toFixed(1)}%</td>
-                    <td>${averages.avgScoreBlack.toFixed(1)}</td>
-                    <td>${averages.avgScoreWhite.toFixed(1)}</td>
-                    <td class="${averages.scoreAdvantage > 0 ? 'positive' : 'negative'}">±${Math.abs(averages.scoreAdvantage).toFixed(1)}</td>
-                </tr>
-            </tbody>
-        </table>
-    `;
-
-        const gameSelector = this.container.querySelector('#gameSelector');
-        gameSelector.innerHTML = stats.flatMap(stat =>
-            stat.histories.map((_, index) => `
-            <option value="${stat.strategy1} vs ${stat.strategy2}-${index}">
-                ⚫ ${AI_PLAYERS[stat.strategy1].name} vs ⚪ ${AI_PLAYERS[stat.strategy2].name} - Game ${index + 1}
-            </option>
-        `)
-        ).join('');
-
-        this.container.querySelector('#exportResults').disabled = false;
-    }
-
-    calculateAverages(stats) {
-        const sum = stats.reduce((acc, stat) => ({
-            blackWinRate: acc.blackWinRate + parseFloat(stat.blackWinRate),
-            whiteWinRate: acc.whiteWinRate + parseFloat(stat.whiteWinRate),
-            drawRate: acc.drawRate + parseFloat(stat.drawRate),
-            avgScoreBlack: acc.avgScoreBlack + parseFloat(stat.avgScoreBlack),
-            avgScoreWhite: acc.avgScoreWhite + parseFloat(stat.avgScoreWhite),
-            winAdvantage: acc.winAdvantage + parseFloat(stat.winAdvantage),
-            scoreAdvantage: acc.scoreAdvantage + parseFloat(stat.scoreAdvantage)
-        }), {
-            blackWinRate: 0,
-            whiteWinRate: 0,
-            drawRate: 0,
-            avgScoreBlack: 0,
-            avgScoreWhite: 0,
-            winAdvantage: 0,
-            scoreAdvantage: 0
-        });
-
-        const count = stats.length;
-        return {
-            blackWinRate: sum.blackWinRate / count,
-            whiteWinRate: sum.whiteWinRate / count,
-            drawRate: sum.drawRate / count,
-            avgScoreBlack: sum.avgScoreBlack / count,
-            avgScoreWhite: sum.avgScoreWhite / count,
-            winAdvantage: sum.winAdvantage / count,
-            scoreAdvantage: sum.scoreAdvantage / count
-        };
-    }
-
-    switchTab(tabId) {
-        this.container.querySelectorAll('.tab-button').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.tab === tabId);
-        });
-        this.container.querySelectorAll('.tab-pane').forEach(pane => {
-            pane.classList.toggle('active', pane.id === `${tabId}-pane`);
-        });
-    }
-
-    updateStartButton() {
-        const startButton = this.container.querySelector('#startSimulation');
-        startButton.disabled = this.selectedAIs.size < 1;
-    }
-
     exportResults() {
         const analyzer = new SimulationAnalyzer(this.results);
         const exportData = analyzer.exportResults();
@@ -383,39 +424,11 @@ class SimulationScreen {
 
         const a = document.createElement('a');
         a.href = url;
-        a.download = `simulation-results-${new Date().toISOString()}.json`;
+        a.download = `simulation-results-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-    }
-
-    viewGame(gameId) {
-        // Get the last number as the index
-        const gameIndex = parseInt(gameId.split('-').pop());
-        // Get everything before the last hyphen as the strategy IDs
-        const strategiesStr = gameId.slice(0, gameId.lastIndexOf('-'));
-        const [strategy1, strategy2] = strategiesStr.split(' vs ');
-
-        console.log('Parsed game selection:', { strategy1, strategy2, gameIndex });
-
-        const analyzer = new SimulationAnalyzer(this.results);
-        const stats = analyzer.getMatchupStats();
-
-        const matchup = stats.find(s =>
-            s.strategy1 === strategy1 &&
-            s.strategy2 === strategy2
-        );
-
-        if (matchup && matchup.histories[gameIndex]) {
-            const matchupInfo = {
-                player1: AI_PLAYERS[strategy1].name,
-                player2: AI_PLAYERS[strategy2].name
-            };
-            window.viewReplay(matchup.histories[gameIndex], matchupInfo);
-        } else {
-            console.warn('Matchup or history not found:', { strategy1, strategy2, gameIndex });
-        }
     }
 }
 
