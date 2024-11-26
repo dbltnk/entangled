@@ -139,6 +139,7 @@ body.rules-hidden .game-container {
 }
 
 .cell.has-stone .cell-letter {
+    display: none;
     color: #ddd;
     font-weight: 300;
 }
