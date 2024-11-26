@@ -45,7 +45,7 @@ class SimulationScreen {
                             </select>
                             <span>vs</span>
                             <select id="secondAI" class="ai-select">
-                                <option value="">None (self-play only)</option>
+                                <option value="" selected>None (self-play only)</option>
                                 ${aiOptions}
                             </select>
                         </div>
@@ -70,8 +70,8 @@ class SimulationScreen {
                                 <div class="board-column">
                                     <label>Starting Setup</label>
                                     <input type="text" id="startingSetup" 
-                                           value="WU1,WU2"
-                                           placeholder="e.g., WU1,WK2"
+                                           value="WM1,BM2"
+                                           placeholder="e.g., WM1,BM2"
                                            title="Required format: B|W followed by letter A-Y followed by 1|2, separated by commas">
                                 </div>
                                 <button id="addCombination" class="primary-button">Add Combination</button>
