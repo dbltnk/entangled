@@ -36,9 +36,19 @@ const BOARD_LAYOUTS = {
         grid: [
             ['P', 'Y', 'N', 'C', 'G'],
             ['D', 'H', 'Q', 'U', 'O'],
-            ['V', 'K', 'M', 'I', 'R'],
+            ['V', 'K', 'E', 'I', 'R'],
             ['J', 'S', 'W', 'L', 'A'],
-            ['E', 'B', 'F', 'T', 'X']
+            ['M', 'B', 'F', 'T', 'X']
+        ]
+    },
+    board5: {
+        name: "white initial stones",
+        grid: [
+            ['Q', 'D', 'H', 'O', 'U'],
+            ['J', 'K', 'V', 'S', 'C'],
+            ['X', 'R', 'E', 'F', 'L'],
+            ['A', 'G', 'N', 'W', 'T'],
+            ['M', 'Y', 'P', 'B', 'I']
         ]
     },
     random: {
