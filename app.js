@@ -63,50 +63,6 @@ function getSelectedBoardLayout(boardSelect) {
     return BOARD_LAYOUTS[selectedValue].grid;
 }
 
-function populateStartingPositionDropdowns() {
-    const blackStartingPositionSelect = document.getElementById('black-starting-position');
-    const whiteStartingPositionSelect = document.getElementById('white-starting-position');
-
-    // Clear existing options
-    blackStartingPositionSelect.innerHTML = '';
-    whiteStartingPositionSelect.innerHTML = '';
-
-    // Get selected board layouts
-    const board1Select = document.getElementById('board1-select');
-    const board2Select = document.getElementById('board2-select');
-
-    const board1Layout = getSelectedBoardLayout(board1Select);
-    const board2Layout = getSelectedBoardLayout(board2Select);
-
-    // Collect unique symbols from both boards
-    const symbolsSet = new Set();
-
-    for (let row = 0; row < 5; row++) {
-        for (let col = 0; col < 5; col++) {
-            symbolsSet.add(board1Layout[row][col]);
-            symbolsSet.add(board2Layout[row][col]);
-        }
-    }
-
-    const symbols = Array.from(symbolsSet).sort();
-
-    // Generate options in the format 'Symbol1' and 'Symbol2' for each board
-    symbols.forEach(symbol => {
-        const option1 = new Option(`${symbol}1`, `${symbol}1`);
-        const option2 = new Option(`${symbol}2`, `${symbol}2`);
-
-        blackStartingPositionSelect.add(option1.cloneNode(true));
-        blackStartingPositionSelect.add(option2.cloneNode(true));
-
-        whiteStartingPositionSelect.add(option1.cloneNode(true));
-        whiteStartingPositionSelect.add(option2.cloneNode(true));
-    });
-
-    // Set defaults
-    blackStartingPositionSelect.value = 'M1';
-    whiteStartingPositionSelect.value = 'M2';
-}
-
 function createCell(symbol, boardNum, row, col) {
     const cell = document.createElement('div');
     cell.className = 'cell';
@@ -314,6 +270,13 @@ function makeAIMove() {
 function initializeGame() {
     const board1Select = document.getElementById('board1-select');
     const board2Select = document.getElementById('board2-select');
+    const rawConfig = document.getElementById('starting-config').value;
+
+    // Sanitize the starting configuration
+    const startingConfig = rawConfig
+        .toUpperCase() // Convert to uppercase
+        .replace(/\s+/g, '') // Remove all whitespace
+        .replace(/[,.;\s]+$/, ''); // Remove trailing separators
 
     // Reset random boards when starting a new game
     currentRandomBoards = {
@@ -325,27 +288,8 @@ function initializeGame() {
     const board1Layout = getSelectedBoardLayout(board1Select);
     const board2Layout = getSelectedBoardLayout(board2Select);
 
-    // Get selected starting positions
-    const blackStartingPositionSelect = document.getElementById('black-starting-position');
-    const whiteStartingPositionSelect = document.getElementById('white-starting-position');
-
-    const blackStartingPositionValue = blackStartingPositionSelect.value;
-    const whiteStartingPositionValue = whiteStartingPositionSelect.value;
-
-    // Parse the starting position values
-    const startingPositions = {
-        [PLAYERS.BLACK]: {
-            symbol: blackStartingPositionValue.slice(0, -1), // 'M'
-            board: parseInt(blackStartingPositionValue.slice(-1)) // 1
-        },
-        [PLAYERS.WHITE]: {
-            symbol: whiteStartingPositionValue.slice(0, -1),
-            board: parseInt(whiteStartingPositionValue.slice(-1))
-        }
-    };
-
-    // Create the game instance with starting positions
-    game = new EntangledGame(board1Layout, board2Layout, startingPositions);
+    // Create the game instance with starting configuration
+    game = new EntangledGame(board1Layout, board2Layout, startingConfig);
 
     const existingWinner = document.querySelector('.winner');
     if (existingWinner) {
@@ -365,14 +309,13 @@ function init() {
     // Set up start game button
     document.getElementById('start-game').addEventListener('click', initializeGame);
 
-    // Add event listeners to update starting positions when board selections change
+    // Add event listeners to update boards when selections change
     document.getElementById('board1-select').addEventListener('change', () => {
         // Reset the random board for this selection
         const board1Select = document.getElementById('board1-select');
         if (board1Select.value === 'random') {
             currentRandomBoards.board1 = null;
         }
-        populateStartingPositionDropdowns();
         initializeBoards();
     });
 
@@ -382,12 +325,8 @@ function init() {
         if (board2Select.value === 'random') {
             currentRandomBoards.board2 = null;
         }
-        populateStartingPositionDropdowns();
         initializeBoards();
     });
-
-    // Initial population of starting position dropdowns
-    populateStartingPositionDropdowns();
 
     // Initialize the first game
     initializeGame();

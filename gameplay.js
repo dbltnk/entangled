@@ -19,7 +19,7 @@ class EntangledGame {
     constructor(
         board1Layout = BOARD_LAYOUTS.board1.grid,
         board2Layout = BOARD_LAYOUTS.board2.grid,
-        startingPositions = {}
+        startingConfig = ''
     ) {
         // Store the symbol layouts
         this.board1Layout = board1Layout;
@@ -47,31 +47,38 @@ class EntangledGame {
         };
         this.gameOver = false;
 
-        // Place starting stones based on selected positions
-        this.placeStartingStone(PLAYERS.BLACK, startingPositions[PLAYERS.BLACK] || { symbol: 'M', board: 1 });
-        this.placeStartingStone(PLAYERS.WHITE, startingPositions[PLAYERS.WHITE] || { symbol: 'M', board: 2 });
-        // Deduct initial stones
-        this.remainingStones[PLAYERS.BLACK]--;
-        this.remainingStones[PLAYERS.WHITE]--;
+        // Parse and place starting stones
+        if (startingConfig) {
+            this.placeStartingStones(startingConfig);
+        }
     }
 
-    placeStartingStone(player, { symbol, board }) {
-        const boardState = board === 1 ? this.board1 : this.board2;
+    placeStartingStones(config) {
+        // Split the config string by commas
+        const placements = config.split(',').map(p => p.trim());
 
-        // Get the position of the symbol on the specified board
-        const positions = this.symbolToPosition.get(symbol);
+        // Process each placement
+        for (const placement of placements) {
+            if (placement.length < 3) continue;
 
-        if (!positions || !positions[`board${board}`]) {
-            throw new Error(`Invalid starting position: Symbol ${symbol} not found on board ${board}`);
+            const player = placement[0] === 'B' ? PLAYERS.BLACK : PLAYERS.WHITE;
+            const symbol = placement[1];
+            const board = parseInt(placement[2]);
+
+            if (board !== 1 && board !== 2) continue;
+
+            const boardState = board === 1 ? this.board1 : this.board2;
+            const positions = this.symbolToPosition.get(symbol);
+
+            if (!positions || !positions[`board${board}`]) continue;
+
+            const { row, col } = positions[`board${board}`];
+
+            if (boardState[row][col] !== null) continue;
+
+            boardState[row][col] = player;
+            this.remainingStones[player]--;
         }
-
-        const { row, col } = positions[`board${board}`];
-
-        if (boardState[row][col] !== null) {
-            throw new Error(`Starting position ${symbol}${board} is already occupied`);
-        }
-
-        boardState[row][col] = player;
     }
 
     initializeSymbolMaps() {
@@ -100,8 +107,6 @@ class EntangledGame {
 
     isValidMove(symbol) {
         if (!this.symbolToPosition.has(symbol)) return false;
-        if (this.remainingStones[this.currentPlayer] < 2) return false;
-        if (this.playerTurns[this.currentPlayer] >= TURNS_PER_PLAYER) return false;
 
         const { board1, board2 } = this.symbolToPosition.get(symbol);
         return this.board1[board1.row][board1.col] === null &&
@@ -127,9 +132,19 @@ class EntangledGame {
         this.remainingStones[this.currentPlayer] -= 2;
         this.playerTurns[this.currentPlayer]++;
 
-        // First check if this move completes White's turns
-        if (this.currentPlayer === PLAYERS.WHITE &&
-            this.playerTurns[PLAYERS.WHITE] === TURNS_PER_PLAYER) {
+        // Check if all cells are filled
+        let isBoardFull = true;
+        for (let i = 0; i < BOARD_SIZE; i++) {
+            for (let j = 0; j < BOARD_SIZE; j++) {
+                if (this.board1[i][j] === null || this.board2[i][j] === null) {
+                    isBoardFull = false;
+                    break;
+                }
+            }
+            if (!isBoardFull) break;
+        }
+
+        if (isBoardFull) {
             this.gameOver = true;
         }
 

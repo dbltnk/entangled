@@ -59,14 +59,12 @@ body.rules-hidden {
     margin-bottom: 1rem;
 }
 
-
 /* Game container */
 .game-container {
     flex: 1;
     display: flex;
     gap: 2rem;
     margin-left: 350px;
-    /* Adjusted to match the width of the rules panel */
     transition: margin-left 0.3s ease;
 }
 
@@ -258,7 +256,7 @@ select {
     margin-bottom: 0.25rem;
     display: flex;
     flex-direction: column;
-    gap: 0.0rem;
+    gap: 0.5rem;
 }
 
 .player-options {
@@ -267,11 +265,37 @@ select {
 }
 
 .player-type {
-    flex: 2;
+    width: 100%;
 }
 
-.starting-position {
-    flex: 1;
+.setup-input {
+    margin: 1rem 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.setup-input label {
+    font-weight: 600;
+}
+
+.setup-input input {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #333;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    font-family: monospace;
+}
+
+.setup-input input::placeholder {
+    color: #999;
+}
+
+.setup-input input:focus {
+    outline: none;
+    border-color: #666;
+    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
 }
 
 .player-select label {
@@ -289,4 +313,9 @@ select {
 #start-game {
     width: 100%;
     margin-top: 0.5rem;
+    justify-content: center;
+}
+
+#start-game span {
+    font-size: 1.1rem;
 }

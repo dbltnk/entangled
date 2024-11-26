@@ -24,8 +24,9 @@
             the other board.</p>
 
         <h2>🚀 Starting</h2>
-        <p><strong>⚫ Black</strong> starts with a stone on the center of board 1, <strong>⚪ White</strong> with a stone
-            at the center of board 2.</p>
+        <p>Enter the starting configuration in the format <strong>BE2,WK1</strong> (Black on E board 2, White on K board
+            1).
+            Multiple stones can be placed using comma-separated entries.</p>
 
         <h2>🎮 Playing</h2>
         <p>On your turn, place a stone on any <strong>empty</strong> space. A matching stone will be placed on the
@@ -78,30 +79,21 @@
 
                 <div class="player-select">
                     <label for="black-player">⚫ Black:</label>
-                    <div class="player-options">
-                        <select id="black-player" class="player-type">
-                            <!-- player type options will be populated dynamically -->
-                        </select>
-                        <select id="black-starting-position" class="starting-position">
-                            <!-- starting position options will be populated dynamically -->
-                        </select>
-                    </div>
+                    <select id="black-player" class="player-type">
+                        <!-- player type options will be populated dynamically -->
+                    </select>
                 </div>
 
                 <div class="player-select">
                     <label for="white-player">⚪ White:</label>
-                    <div class="player-options">
-                        <select id="white-player" class="player-type">
-                            <option value="human">Human</option>
-                            <option value="random">Random AI</option>
-                            <option value="greedy-high">Greedy High AI</option>
-                            <option value="greedy-low">Greedy Low AI</option>
-                            <option value="defensive">Defensive AI</option>
-                        </select>
-                        <select id="white-starting-position" class="starting-position">
-                            <!-- starting position options will be populated dynamically -->
-                        </select>
-                    </div>
+                    <select id="white-player" class="player-type">
+                        <!-- player type options will be populated dynamically -->
+                    </select>
+                </div>
+
+                <div class="setup-input">
+                    <label for="starting-config">Starting Configuration:</label>
+                    <input type="text" id="starting-config" placeholder="e.g., BE2,WK1" value="BM1,WM2" />
                 </div>
 
                 <button id="start-game"><span>🔄</span> Start Game</button>
