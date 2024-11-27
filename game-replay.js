@@ -1,6 +1,36 @@
 // game-replay.js
 import BOARD_LAYOUTS from './boards.js';
 
+// Map to store unique colors for letters
+const uniqueColors = {};
+
+// Function to generate evenly spaced colors with good contrast
+function generateColorForLetter(index, total) {
+    const hue = (index / total) * 360; // Evenly spaced hues
+    const saturation = 70; // High saturation for vivid colors
+    const lightness = 50; // Moderate lightness for good contrast on white
+    return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+}
+
+// Function to assign an evenly spaced color with good contrast to a letter element
+function assignRandomUniqueColor(letterElement) {
+    const letter = letterElement.textContent.toUpperCase();
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+    if (!uniqueColors[letter]) {
+        const index = alphabet.indexOf(letter);
+        if (index !== -1) {
+            uniqueColors[letter] = generateColorForLetter(index, 25); // 25 letters
+        } else {
+            // Fallback for non-alphabet characters
+            uniqueColors[letter] = '#000000'; // Black
+        }
+    }
+
+    // Apply the color to the letter element
+    letterElement.style.color = uniqueColors[letter];
+}
+
 class GameReplayScreen {
     constructor(containerElement) {
         this.container = containerElement;
@@ -9,6 +39,23 @@ class GameReplayScreen {
         this.matchupInfo = null;
         this.render();
         this.attachEventListeners();
+    }
+
+    createCell(symbol, boardNum, row, col) {
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        cell.dataset.symbol = symbol;
+        cell.dataset.board = boardNum;
+        cell.dataset.row = row;
+        cell.dataset.col = col;
+
+        const letter = document.createElement('div');
+        letter.className = 'cell-letter';
+        letter.textContent = symbol;
+        assignRandomUniqueColor(letter);
+        cell.appendChild(letter);
+
+        return cell;
     }
 
     initializeBoards() {
@@ -33,12 +80,7 @@ class GameReplayScreen {
 
             for (let row = 0; row < 5; row++) {
                 for (let col = 0; col < 5; col++) {
-                    const cell = document.createElement('div');
-                    cell.className = 'board-cell';
-                    const symbol = document.createElement('span');
-                    symbol.className = 'symbol';
-                    symbol.textContent = grid[row][col];
-                    cell.appendChild(symbol);
+                    const cell = this.createCell(grid[row][col], boardIndex + 1, row, col);
                     board.appendChild(cell);
                 }
             }
@@ -48,24 +90,51 @@ class GameReplayScreen {
     render() {
         this.container.innerHTML = `
             <div class="panel replay-panel">
-                <div class="replay-container">
-                    <div class="replay-header">
+                <div class="navigation panel">
+                    <div class="navigation-header">
                         <button id="backToResults" class="back-button">← Back to Results</button>
                     </div>
-
-                    <div class="boards-container">
-                        <div class="board-wrapper">
-                            <div id="replayBoard1" class="board"></div>
-                        </div>
-                        <div class="board-wrapper">
-                            <div id="replayBoard2" class="board"></div>
+                    <div class="control-group">
+                        <h3><span>🎮</span> Navigation</h3>
+                        <div class="nav-content">
+                            <div id="move-counter" class="move-counter">
+                                Move: 0/0
+                            </div>
+                            <div class="control-buttons">
+                                <button id="firstMove" class="control-button" title="First Move">⏮</button>
+                                <button id="prevMove" class="control-button" title="Previous Move">◀</button>
+                                <button id="nextMove" class="control-button" title="Next Move">▶</button>
+                                <button id="lastMove" class="control-button" title="Last Move">⏭</button>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="replay-controls">
+                <div class="boards panel">
+                    <div class="board-container">
+                        <div id="replayBoard1" class="board"></div>
+                    </div>
+                    <div class="board-container">
+                        <div id="replayBoard2" class="board"></div>
+                    </div>
+                </div>
+
+                <div class="game-info panel">
                     <div class="control-group">
-                        <h3>Players</h3>
+                        <h3><span>📊</span> Score</h3>
+                        <div class="stats">
+                            <div class="stone-count" id="score-display">
+                                Black: 0 - White: 0
+                            </div>
+                            <div class="stats-row" id="current-player-display">
+                                Current Player: Black
+                            </div>
+                            <div class="winner-display" id="winner-display" style="display: none;"></div>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <h3><span>👥</span> Players</h3>
                         <div class="stats">
                             <div class="player-info">
                                 <div class="player-color black"></div>
@@ -79,28 +148,14 @@ class GameReplayScreen {
                     </div>
 
                     <div class="control-group">
-                        <h3>📊 Score</h3>
+                        <h3><span>🎲</span> Game Setup</h3>
                         <div class="stats">
-                            <div class="stats-row" id="score-display">
-                                Black: 0 - White: 0
+                            <div class="setup-info" id="board-setup">
+                                Layout: Board 1 vs Board 2
                             </div>
-                            <div class="stats-row" id="current-player-display">
-                                Current Player: Black
+                            <div class="setup-info" id="starting-setup">
+                                Start: WM1,BM2
                             </div>
-                            <div class="winner-display" id="winner-display" style="display: none;"></div>
-                        </div>
-                    </div>
-
-                    <div class="control-group">
-                        <h3>🎮 Navigation</h3>
-                        <div id="move-counter" class="stats-row">
-                            Move: 0/0
-                        </div>
-                        <div class="control-buttons">
-                            <button id="firstMove" class="control-button" title="First Move">⏮</button>
-                            <button id="prevMove" class="control-button" title="Previous Move">◀</button>
-                            <button id="nextMove" class="control-button" title="Next Move">▶</button>
-                            <button id="lastMove" class="control-button" title="Last Move">⏭</button>
                         </div>
                     </div>
                 </div>
@@ -118,6 +173,15 @@ class GameReplayScreen {
         // Update player info
         this.container.querySelector('#black-strategy').textContent = `Black: ${matchupInfo.player1}`;
         this.container.querySelector('#white-strategy').textContent = `White: ${matchupInfo.player2}`;
+
+        // Update setup info
+        const boardConfig = this.currentGame[0].state.boardConfig;
+        const board1Name = BOARD_LAYOUTS[boardConfig.board1Layout].name;
+        const board2Name = BOARD_LAYOUTS[boardConfig.board2Layout].name;
+        this.container.querySelector('#board-setup').textContent =
+            `Layout: ${board1Name} vs ${board2Name}`;
+        this.container.querySelector('#starting-setup').textContent =
+            `Start: ${boardConfig.startingConfig || 'None'}`;
 
         // Reset move counter
         this.updateMoveCounter();
@@ -145,6 +209,49 @@ class GameReplayScreen {
             this.goToMove(this.currentMoveIndex + 1));
     }
 
+    updateCell(boardNum, row, col, player) {
+        const cell = document.querySelector(
+            `.cell[data-board="${boardNum}"][data-row="${row}"][data-col="${col}"]`
+        );
+
+        const existingStone = cell.querySelector('.stone');
+        if (existingStone) {
+            cell.removeChild(existingStone);
+        }
+
+        if (player) {
+            const stone = document.createElement('div');
+            stone.className = `stone ${player.toLowerCase()}`;
+            cell.appendChild(stone);
+            cell.classList.add('has-stone');
+        } else {
+            cell.classList.remove('has-stone');
+        }
+    }
+
+    updateCellHighlights(boardNum, row, col, largestClusters) {
+        const cell = document.querySelector(
+            `.cell[data-board="${boardNum}"][data-row="${row}"][data-col="${col}"]`
+        );
+
+        // Remove existing highlights
+        cell.classList.remove('cell-highlight-black', 'cell-highlight-white');
+
+        // Check if cell is in black's largest cluster
+        const isInBlackCluster = largestClusters.black[`board${boardNum}`]
+            .some(pos => pos.row === row && pos.col === col);
+        if (isInBlackCluster) {
+            cell.classList.add('cell-highlight-black');
+        }
+
+        // Check if cell is in white's largest cluster
+        const isInWhiteCluster = largestClusters.white[`board${boardNum}`]
+            .some(pos => pos.row === row && pos.col === col);
+        if (isInWhiteCluster) {
+            cell.classList.add('cell-highlight-white');
+        }
+    }
+
     goToMove(moveIndex) {
         if (!this.currentGame || moveIndex < 0 || moveIndex >= this.currentGame.length) {
             return;
@@ -154,8 +261,14 @@ class GameReplayScreen {
         const gameState = this.currentGame[moveIndex].state;
 
         // Update boards
-        this.updateBoard('#replayBoard1', gameState.board1, gameState.largestClusters);
-        this.updateBoard('#replayBoard2', gameState.board2, gameState.largestClusters);
+        for (let i = 0; i < 5; i++) {
+            for (let j = 0; j < 5; j++) {
+                this.updateCell(1, i, j, gameState.board1[i][j]);
+                this.updateCell(2, i, j, gameState.board2[i][j]);
+                this.updateCellHighlights(1, i, j, gameState.largestClusters);
+                this.updateCellHighlights(2, i, j, gameState.largestClusters);
+            }
+        }
 
         // Update move counter
         this.updateMoveCounter();
@@ -163,15 +276,15 @@ class GameReplayScreen {
         // Update current player
         this.updateCurrentPlayer(gameState.currentPlayer);
 
-        // Update scores and winner
+        // Update scores
         this.updateScores(gameState.largestClusters);
 
         // Update winner display on last move
         if (moveIndex === this.currentGame.length - 1) {
-            const blackScore = parseInt(gameState.largestClusters.black.board1.length) +
-                parseInt(gameState.largestClusters.black.board2.length);
-            const whiteScore = parseInt(gameState.largestClusters.white.board1.length) +
-                parseInt(gameState.largestClusters.white.board2.length);
+            const blackScore = gameState.largestClusters.black.board1.length +
+                gameState.largestClusters.black.board2.length;
+            const whiteScore = gameState.largestClusters.white.board1.length +
+                gameState.largestClusters.white.board2.length;
 
             const winnerDisplay = this.container.querySelector('#winner-display');
             winnerDisplay.style.display = 'block';
@@ -189,41 +302,6 @@ class GameReplayScreen {
 
         // Update navigation buttons
         this.updateNavigationButtons();
-    }
-
-    updateBoard(boardSelector, boardState, clusters) {
-        const board = this.container.querySelector(boardSelector);
-        const cells = board.getElementsByClassName('board-cell');
-        const isBoard1 = boardSelector === '#replayBoard1';
-
-        // Get cluster cells for both players
-        const blackClusters = clusters.black;
-        const whiteClusters = clusters.white;
-        const boardClusters = {
-            BLACK: isBoard1 ? blackClusters.board1 : blackClusters.board2,
-            WHITE: isBoard1 ? whiteClusters.board1 : whiteClusters.board2
-        };
-
-        for (let row = 0; row < 5; row++) {
-            for (let col = 0; col < 5; col++) {
-                const cell = cells[row * 5 + col];
-                const state = boardState[row][col];
-
-                // Reset classes
-                cell.classList.remove('black-stone', 'white-stone', 'in-largest-cluster');
-
-                // Add stone class if present
-                if (state === 'BLACK' || state === 'WHITE') {
-                    cell.classList.add(state.toLowerCase() + '-stone');
-
-                    // Check if this cell is part of the largest cluster for its color
-                    const playerClusters = boardClusters[state];
-                    if (playerClusters.some(pos => pos.row === row && pos.col === col)) {
-                        cell.classList.add('in-largest-cluster');
-                    }
-                }
-            }
-        }
     }
 
     updateMoveCounter() {
@@ -245,8 +323,14 @@ class GameReplayScreen {
 
         const blackTotal = clusters.black.board1.length + clusters.black.board2.length;
         const whiteTotal = clusters.white.board1.length + clusters.white.board2.length;
-        this.container.querySelector('#score-display').textContent =
-            `Black: ${blackTotal} - White:${whiteTotal}`;
+        const blackBoard1 = clusters.black.board1.length;
+        const blackBoard2 = clusters.black.board2.length;
+        const whiteBoard1 = clusters.white.board1.length;
+        const whiteBoard2 = clusters.white.board2.length;
+
+        this.container.querySelector('#score-display').innerHTML =
+            `<strong>⚫ ${blackTotal}</strong> (${blackBoard1} + ${blackBoard2}) vs ` +
+            `<strong>⚪ ${whiteTotal}</strong> (${whiteBoard1} + ${whiteBoard2})`;
     }
 
     updateNavigationButtons() {
