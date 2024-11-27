@@ -398,7 +398,7 @@ class SimulationScreen {
         const progressBar = this.container.querySelector('.progress-fill');
         const progressText = this.container.querySelector('.progress-text');
         progressBar.style.width = '0%';
-        progressBar.style.animation = 'pulse 2s infinite';
+        progressBar.style.animation = 'pulse 1s ease-in-out infinite';
         progressText.textContent = 'Simulating...';
 
         this.runner.onProgress = (progress) => {
