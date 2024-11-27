@@ -398,11 +398,17 @@ class SimulationScreen {
         const progressBar = this.container.querySelector('.progress-fill');
         const progressText = this.container.querySelector('.progress-text');
         progressBar.style.width = '0%';
-        progressText.textContent = '0% Complete';
+        progressBar.style.animation = 'pulse 2s infinite';
+        progressText.textContent = 'Simulating...';
 
         this.runner.onProgress = (progress) => {
             progressBar.style.width = `${progress * 100}%`;
-            progressText.textContent = `${Math.round(progress * 100)}% Complete`;
+            if (progress > 0) {
+                progressText.textContent = `${Math.round(progress * 100)}% Complete`;
+            }
+            if (progress >= 1) {
+                progressBar.style.animation = 'none';
+            }
         };
 
         this.runner.onResult = (result) => {
