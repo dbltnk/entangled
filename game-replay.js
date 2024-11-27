@@ -131,10 +131,11 @@ class GameReplayScreen {
 
     attachEventListeners() {
         this.container.querySelector('#backToResults').addEventListener('click', () => {
-            this.container.dispatchEvent(new CustomEvent('backToResults'));
+            const simulationResults = this.container.simulationResults;
+            this.container.dispatchEvent(new CustomEvent('backToResults', {
+                detail: { results: simulationResults }
+            }));
         });
-
-        // Navigation controls
         this.container.querySelector('#firstMove').addEventListener('click', () => this.goToMove(0));
         this.container.querySelector('#lastMove').addEventListener('click', () =>
             this.goToMove(this.currentGame.length - 1));

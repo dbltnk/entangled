@@ -9,6 +9,7 @@ class SimulationScreen {
         this.container = containerElement;
         this.runner = null;
         this.results = [];
+        this.container.simulationResults = this.results;
         this.selectedCombinations = new Set();
         this.render();
         this.attachEventListeners();
@@ -204,13 +205,13 @@ class SimulationScreen {
                                 <select class="replay-select" data-matchup="${result.matchupId}">
                                     <option value="">Select replay...</option>
                                     ${result.histories.map((history, index) => {
-                                        const lastState = history[history.length - 1];
-                                        const winner = lastState.state.winner;
-                                        const outcome = winner === 'TIE' ? 'Draw' : 
-                                                      winner === 'BLACK' ? 'Black Won' : 
-                                                      'White Won';
-                                        return `<option value="${index}">Game ${index + 1} (${outcome})</option>`;
-                                    }).join('')}
+            const lastState = history[history.length - 1];
+            const winner = lastState.state.winner;
+            const outcome = winner === 'TIE' ? 'Draw' :
+                winner === 'BLACK' ? 'Black Won' :
+                    'White Won';
+            return `<option value="${index}">Game ${index + 1} (${outcome})</option>`;
+        }).join('')}
                                 </select>
                             </td>
                         </tr>
@@ -219,7 +220,6 @@ class SimulationScreen {
             </table>
         `;
 
-        // Add replay selection handlers
         table.querySelectorAll('.replay-select').forEach(select => {
             select.addEventListener('change', (e) => {
                 if (e.target.value === '') return;
@@ -227,9 +227,12 @@ class SimulationScreen {
                 const gameIndex = parseInt(e.target.value);
                 const matchup = combinationResults.find(r => r.matchupId === matchupId);
                 if (matchup && matchup.histories[gameIndex]) {
+                    // Store results before viewing replay
+                    this.container.simulationResults = this.results;
                     window.viewReplay(matchup.histories[gameIndex], {
                         player1: matchup.player1Name,
-                        player2: matchup.player2Name
+                        player2: matchup.player2Name,
+                        simulationResults: this.results  // Add this
                     });
                 }
             });
