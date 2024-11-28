@@ -29,7 +29,6 @@ body.rules-hidden {
     overflow-y: auto;
 }
 
-/* Rules Panel */
 .rules {
     position: fixed;
     left: 2rem;
@@ -59,7 +58,6 @@ body.rules-hidden {
     margin-bottom: 1rem;
 }
 
-/* Game container */
 .game-container {
     flex: 1;
     display: flex;
@@ -72,7 +70,6 @@ body.rules-hidden .game-container {
     margin-left: 0;
 }
 
-/* Boards */
 .boards {
     flex: 1;
     display: flex;
@@ -141,8 +138,6 @@ body.rules-hidden .game-container {
 
 .cell.has-stone .cell-letter {
     display: none;
-    color: #ddd;
-    font-weight: 300;
 }
 
 .stone {
@@ -165,7 +160,6 @@ body.rules-hidden .game-container {
 .group-size {
     position: absolute;
     z-index: 3;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     font-weight: 700;
     font-size: 1.2rem;
     pointer-events: none;
@@ -184,7 +178,6 @@ body.rules-hidden .game-container {
         1px 1px 0 #000;
 }
 
-/* Controls Panel */
 .controls {
     width: 300px;
     flex-shrink: 0;
@@ -327,7 +320,7 @@ select {
     font-weight: 600;
     display: flex;
     align-items: center;
-    text-wrap: nowrap;
+    white-space: nowrap;
 }
 
 .player-select select {
