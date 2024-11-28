@@ -110,6 +110,59 @@
     color: #bd2130;
 }
 
+/* Board Preview */
+.board-preview {
+    display: grid;
+    gap: 2px;
+    background: #ddd;
+    padding: 2px;
+    width: 100%;
+    max-width: 235px;
+    aspect-ratio: 1;
+    position: relative;
+}
+
+/* Grid size classes with proportional max-widths */
+.board-preview.board-4 {
+    grid-template-columns: repeat(4, 1fr);
+    max-width: 188px;
+    /* 20% smaller than 5x5 */
+}
+
+.board-preview.board-5 {
+    grid-template-columns: repeat(5, 1fr);
+    max-width: 235px;
+}
+
+.board-preview.board-6 {
+    grid-template-columns: repeat(6, 1fr);
+    max-width: 282px;
+    /* 20% larger than 5x5 */
+}
+
+.board-preview.board-7 {
+    grid-template-columns: repeat(7, 1fr);
+    max-width: 329px;
+    /* 40% larger than 5x5 */
+}
+
+/* Adjust font sizes for preview board sizes */
+.board-preview.board-4 .cell-letter {
+    font-size: 1.7rem;
+}
+
+.board-preview.board-5 .cell-letter {
+    font-size: 1.5rem;
+}
+
+.board-preview.board-6 .cell-letter {
+    font-size: 1.3rem;
+}
+
+.board-preview.board-7 .cell-letter {
+    font-size: 1.1rem;
+}
+
 /* Simulation Parameters */
 .simulation-params {
     display: flex;
@@ -274,6 +327,24 @@
     text-align: center;
     margin-top: 5px;
     color: #666;
+}
+
+/* Cell styling */
+.preview-cell {
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    aspect-ratio: 1;
+    transition: background-color 0.2s;
+}
+
+.preview-cell-letter {
+    position: absolute;
+    z-index: 9999;
+    transition: color 0.2s;
+    font-weight: 900;
 }
 
 /* Responsive Adjustments */

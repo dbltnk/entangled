@@ -1,13 +1,7 @@
 import BOARD_LAYOUTS from './boards.js';
 
 // Constants for the game
-const BOARD_SIZE = 5;
-const STONES_PER_PLAYER = 25;
-const TURNS_PER_PLAYER = 12;
-const PLAYERS = {
-    BLACK: 'BLACK',
-    WHITE: 'WHITE'
-};
+const DEFAULT_BOARD_SIZE = 5;
 const DIRECTIONS = [
     [-1, 0],  // up
     [1, 0],   // down
@@ -15,21 +9,31 @@ const DIRECTIONS = [
     [0, 1]    // right
 ];
 
+const PLAYERS = {
+    BLACK: 'BLACK',
+    WHITE: 'WHITE'
+};
+
 class EntangledGame {
     constructor(
         board1Layout = BOARD_LAYOUTS.board1.grid,
         board2Layout = BOARD_LAYOUTS.board2.grid,
         startingConfig = ''
     ) {
-        // Store the symbol layouts
+        // Store the symbol layouts and determine board size
         this.board1Layout = board1Layout;
         this.board2Layout = board2Layout;
+        this.boardSize = board1Layout.length;
+
+        // Calculate stones per player based on board size
+        this.stonesPerPlayer = Math.floor((this.boardSize * this.boardSize) / 2);
+        this.turnsPerPlayer = Math.floor(this.stonesPerPlayer / 2);
 
         // Create the game state
-        this.board1 = Array(BOARD_SIZE).fill(null)
-            .map(() => Array(BOARD_SIZE).fill(null));
-        this.board2 = Array(BOARD_SIZE).fill(null)
-            .map(() => Array(BOARD_SIZE).fill(null));
+        this.board1 = Array(this.boardSize).fill(null)
+            .map(() => Array(this.boardSize).fill(null));
+        this.board2 = Array(this.boardSize).fill(null)
+            .map(() => Array(this.boardSize).fill(null));
 
         // Create symbol position maps for quick lookups
         this.symbolToPosition = new Map();
@@ -42,8 +46,8 @@ class EntangledGame {
             [PLAYERS.WHITE]: 0
         };
         this.remainingStones = {
-            [PLAYERS.BLACK]: STONES_PER_PLAYER,
-            [PLAYERS.WHITE]: STONES_PER_PLAYER
+            [PLAYERS.BLACK]: this.stonesPerPlayer,
+            [PLAYERS.WHITE]: this.stonesPerPlayer
         };
         this.gameOver = false;
 
@@ -106,8 +110,8 @@ class EntangledGame {
 
     initializeSymbolMaps() {
         // Create mappings from symbols to their positions on both boards
-        for (let row = 0; row < BOARD_SIZE; row++) {
-            for (let col = 0; col < BOARD_SIZE; col++) {
+        for (let row = 0; row < this.boardSize; row++) {
+            for (let col = 0; col < this.boardSize; col++) {
                 const symbol = this.board1Layout[row][col];
                 this.symbolToPosition.set(symbol, {
                     board1: { row, col },
@@ -118,8 +122,8 @@ class EntangledGame {
     }
 
     findSymbolPosition(symbol, board) {
-        for (let row = 0; row < BOARD_SIZE; row++) {
-            for (let col = 0; col < BOARD_SIZE; col++) {
+        for (let row = 0; row < this.boardSize; row++) {
+            for (let col = 0; col < this.boardSize; col++) {
                 if (board[row][col] === symbol) {
                     return { row, col };
                 }
@@ -157,8 +161,8 @@ class EntangledGame {
 
         // Check if all cells are filled
         let isBoardFull = true;
-        for (let i = 0; i < BOARD_SIZE; i++) {
-            for (let j = 0; j < BOARD_SIZE; j++) {
+        for (let i = 0; i < this.boardSize; i++) {
+            for (let j = 0; j < this.boardSize; j++) {
                 if (this.board1[i][j] === null || this.board2[i][j] === null) {
                     isBoardFull = false;
                     break;
@@ -186,12 +190,12 @@ class EntangledGame {
     }
 
     findLargestCluster(board, player) {
-        const visited = Array(BOARD_SIZE).fill(false)
-            .map(() => Array(BOARD_SIZE).fill(false));
+        const visited = Array(this.boardSize).fill(false)
+            .map(() => Array(this.boardSize).fill(false));
         let largestClusterSize = 0;
 
-        for (let row = 0; row < BOARD_SIZE; row++) {
-            for (let col = 0; col < BOARD_SIZE; col++) {
+        for (let row = 0; row < this.boardSize; row++) {
+            for (let col = 0; col < this.boardSize; col++) {
                 if (board[row][col] === player && !visited[row][col]) {
                     largestClusterSize = Math.max(
                         largestClusterSize,
@@ -205,7 +209,7 @@ class EntangledGame {
     }
 
     exploreCluster(board, row, col, player, visited) {
-        if (row < 0 || row >= BOARD_SIZE || col < 0 || col >= BOARD_SIZE ||
+        if (row < 0 || row >= this.boardSize || col < 0 || col >= this.boardSize ||
             visited[row][col] || board[row][col] !== player) {
             return 0;
         }
@@ -227,12 +231,12 @@ class EntangledGame {
     }
 
     findLargestClusterCells(board, player) {
-        const visited = Array(BOARD_SIZE).fill(false)
-            .map(() => Array(BOARD_SIZE).fill(false));
+        const visited = Array(this.boardSize).fill(false)
+            .map(() => Array(this.boardSize).fill(false));
         let largestCluster = [];
 
-        for (let row = 0; row < BOARD_SIZE; row++) {
-            for (let col = 0; col < BOARD_SIZE; col++) {
+        for (let row = 0; row < this.boardSize; row++) {
+            for (let col = 0; col < this.boardSize; col++) {
                 if (board[row][col] === player && !visited[row][col]) {
                     const currentCluster = this.exploreClusterCells(board, row, col, player, visited);
                     if (currentCluster.length > largestCluster.length) {
@@ -246,7 +250,7 @@ class EntangledGame {
     }
 
     exploreClusterCells(board, row, col, player, visited) {
-        if (row < 0 || row >= BOARD_SIZE || col < 0 || col >= BOARD_SIZE ||
+        if (row < 0 || row >= this.boardSize || col < 0 || col >= this.boardSize ||
             visited[row][col] || board[row][col] !== player) {
             return [];
         }
@@ -342,4 +346,4 @@ class EntangledGame {
     }
 }
 
-export { EntangledGame, PLAYERS, STONES_PER_PLAYER, TURNS_PER_PLAYER };
+export { EntangledGame, PLAYERS };

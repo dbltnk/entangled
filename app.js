@@ -28,28 +28,47 @@ function populatePlayerDropdowns() {
     });
 }
 
-function populateBoardDropdowns() {
+function getBoardSize(boardId) {
+    const layout = BOARD_LAYOUTS[boardId];
+    return layout ? layout.grid.length : 5;
+}
+
+function populateBoardsBySize(size) {
     const board1Select = document.getElementById('board1-select');
     const board2Select = document.getElementById('board2-select');
 
     board1Select.innerHTML = '';
     board2Select.innerHTML = '';
 
+    // Filter layouts by size and add options
     Object.entries(BOARD_LAYOUTS).forEach(([id, layout]) => {
-        const option = new Option(layout.name, id);
-        board1Select.add(option.cloneNode(true));
-        board2Select.add(option.cloneNode(true));
+        if (layout.grid.length === size) {
+            const option = new Option(layout.name, id);
+            board1Select.add(option.cloneNode(true));
+            board2Select.add(option.cloneNode(true));
+        }
     });
 
-    board1Select.value = 'board1';
-    board2Select.value = 'board2';
+    // Set default selections for the current size
+    const defaultBoards = {
+        4: 'board4x4',
+        5: 'board1',
+        6: 'board6x6',
+        7: 'board7x7'
+    };
+
+    board1Select.value = defaultBoards[size];
+    board2Select.value = size === 5 ? 'board2' : defaultBoards[size];
 }
 
 function getSelectedBoardLayout(boardSelect) {
     const selectedValue = boardSelect.value;
-    if (selectedValue === 'random') {
+    const currentSize = parseInt(document.getElementById('board-size').value);
+
+    if (selectedValue.startsWith('random')) {
         if (!currentRandomBoards[boardSelect.id]) {
-            currentRandomBoards[boardSelect.id] = BOARD_LAYOUTS.random.grid;
+            // Create random board of the current size
+            currentRandomBoards[boardSelect.id] = BOARD_LAYOUTS[`random${currentSize}x${currentSize}`].grid;
         }
         return currentRandomBoards[boardSelect.id];
     }
@@ -67,12 +86,12 @@ function generateColorForLetter(index, total) {
 
 function assignRandomUniqueColor(letterElement) {
     const letter = letterElement.textContent.toUpperCase();
-    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&*+-=/?!~';
 
     if (!uniqueColors[letter]) {
         const index = alphabet.indexOf(letter);
         if (index !== -1) {
-            uniqueColors[letter] = generateColorForLetter(index, 25);
+            uniqueColors[letter] = generateColorForLetter(index, alphabet.length);
         } else {
             uniqueColors[letter] = '#000000';
         }
@@ -113,7 +132,8 @@ function calculateClusterPosition(cluster, boardElement) {
     const centralStone = game.findMostConnectedCell(cluster);
     if (!centralStone) return null;
 
-    const cell = boardElement.children[centralStone.row * 5 + centralStone.col];
+    const boardSize = game.boardSize;
+    const cell = boardElement.children[centralStone.row * boardSize + centralStone.col];
     const rect = cell.getBoundingClientRect();
     const boardRect = boardElement.getBoundingClientRect();
 
@@ -179,12 +199,17 @@ function initializeBoards() {
 
     const board1Layout = getSelectedBoardLayout(board1Select);
     const board2Layout = getSelectedBoardLayout(board2Select);
+    const currentSize = board1Layout.length;
 
     board1Element.innerHTML = '';
     board2Element.innerHTML = '';
 
-    for (let i = 0; i < 5; i++) {
-        for (let j = 0; j < 5; j++) {
+    // Add the appropriate board size class
+    board1Element.className = `board board-${currentSize}`;
+    board2Element.className = `board board-${currentSize}`;
+
+    for (let i = 0; i < currentSize; i++) {
+        for (let j = 0; j < currentSize; j++) {
             const cell1 = createCell(board1Layout[i][j], 1, i, j);
             const cell2 = createCell(board2Layout[i][j], 2, i, j);
 
@@ -248,8 +273,8 @@ function updateDisplay() {
     document.getElementById('current-player-display').textContent =
         `Current player: ${state.currentPlayer === PLAYERS.BLACK ? '⚫ Black' : '⚪ White'}`;
 
-    for (let i = 0; i < 5; i++) {
-        for (let j = 0; j < 5; j++) {
+    for (let i = 0; i < game.boardSize; i++) {
+        for (let j = 0; j < game.boardSize; j++) {
             updateCell(1, i, j, state.board1[i][j]);
             updateCell(2, i, j, state.board2[i][j]);
             updateCellHighlights(1, i, j, state.largestClusters);
@@ -356,8 +381,17 @@ function initializeGame() {
 
 function init() {
     populatePlayerDropdowns();
-    populateBoardDropdowns();
-    initializeBoards();
+
+    // Set up board size change handler
+    const boardSizeSelect = document.getElementById('board-size');
+    boardSizeSelect.addEventListener('change', (e) => {
+        const size = parseInt(e.target.value);
+        populateBoardsBySize(size);
+        initializeBoards();
+    });
+
+    // Initial population of board dropdowns with default size (5)
+    populateBoardsBySize(5);
 
     document.getElementById('start-game').addEventListener('click', initializeGame);
 

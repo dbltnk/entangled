@@ -69,7 +69,8 @@ workerContext.onmessage = async function (e) {
                             boardConfig: {
                                 board1Layout: boardConfig?.board1Layout,
                                 board2Layout: boardConfig?.board2Layout,
-                                startingConfig: boardConfig?.startingConfig
+                                startingConfig: boardConfig?.startingConfig,
+                                boardSize: game.boardSize
                             }
                         }
                     });
@@ -93,7 +94,8 @@ workerContext.onmessage = async function (e) {
                         boardConfig: {
                             board1Layout: boardConfig?.board1Layout,
                             board2Layout: boardConfig?.board2Layout,
-                            startingConfig: boardConfig?.startingConfig
+                            startingConfig: boardConfig?.startingConfig,
+                            boardSize: game.boardSize
                         }
                     }
                 });
@@ -111,7 +113,10 @@ workerContext.onmessage = async function (e) {
                 moves: finalState.playerTurns.BLACK + finalState.playerTurns.WHITE,
                 largestClusters: finalState.largestClusters,
                 history: gameHistory,
-                boardConfig: boardConfig
+                boardConfig: {
+                    ...boardConfig,
+                    boardSize: game.boardSize
+                }
             };
 
             workerContext.postMessage(result);

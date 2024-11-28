@@ -9,6 +9,13 @@ class GameRouter {
         this.handleBack = (event) => {
             this.navigate('simulation', { results: event.detail?.results });
         };
+
+        // Add board size change handler
+        this.handleBoardSizeChange = (event) => {
+            if (this.currentScreen && typeof this.currentScreen.onBoardSizeChange === 'function') {
+                this.currentScreen.onBoardSizeChange(event.detail.size);
+            }
+        };
     }
 
     addScreen(name, screenClass) {
@@ -18,8 +25,9 @@ class GameRouter {
     navigate(screenName, params = {}) {
         // Clean up current screen if exists
         if (this.currentScreen) {
-            // Remove old listener
+            // Remove old listeners
             this.container.removeEventListener('backToResults', this.handleBack);
+            this.container.removeEventListener('boardSizeChange', this.handleBoardSizeChange);
             this.container.innerHTML = '';
         }
 
@@ -41,8 +49,9 @@ class GameRouter {
             this.currentScreen.updateResults();
         }
 
-        // Add new listener
+        // Add new listeners
         this.container.addEventListener('backToResults', this.handleBack);
+        this.container.addEventListener('boardSizeChange', this.handleBoardSizeChange);
     }
 }
 

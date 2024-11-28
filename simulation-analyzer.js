@@ -44,7 +44,10 @@ class SimulationAnalyzer {
                     blackTotalScore: 0,
                     whiteTotalScore: 0,
                     histories: [],
-                    boardConfig: result.boardConfig
+                    boardConfig: {
+                        ...result.boardConfig,
+                        boardSize: result.boardConfig.boardSize
+                    }
                 };
                 combinations[boardKey].push(matchup);
             }
@@ -64,6 +67,10 @@ class SimulationAnalyzer {
             matchup.whiteTotalScore += result.finalScore.white;
 
             if (result.history) {
+                const historyWithSize = {
+                    ...result.history,
+                    boardSize: result.boardConfig.boardSize
+                };
                 matchup.histories.push(result.history);
             }
         }
@@ -78,6 +85,11 @@ class SimulationAnalyzer {
                 matchup.avgScoreWhite = matchup.whiteTotalScore / matchup.games;
                 matchup.winAdvantage = matchup.blackWinRate - matchup.whiteWinRate;
                 matchup.scoreAdvantage = matchup.avgScoreBlack - matchup.avgScoreWhite;
+
+                // Calculate score ratios based on board size
+                const maxPossibleScore = matchup.boardConfig.boardSize * matchup.boardConfig.boardSize;
+                matchup.scoreRatioBlack = (matchup.avgScoreBlack / maxPossibleScore) * 100;
+                matchup.scoreRatioWhite = (matchup.avgScoreWhite / maxPossibleScore) * 100;
             });
 
             // Sort matchups within each combination by player names for consistent ordering
@@ -114,7 +126,10 @@ class SimulationAnalyzer {
             timestamp,
             results: Object.entries(combinationResults).map(([combination, matchups]) => ({
                 combination,
-                boardConfig: matchups[0].boardConfig,
+                boardConfig: {
+                    ...matchups[0].boardConfig,
+                    boardSize: matchups[0].boardConfig.boardSize
+                },
                 matchups: matchups.map(matchup => ({
                     players: {
                         black: matchup.player1,
@@ -128,7 +143,9 @@ class SimulationAnalyzer {
                         avgScoreBlack: matchup.avgScoreBlack,
                         avgScoreWhite: matchup.avgScoreWhite,
                         winAdvantage: matchup.winAdvantage,
-                        scoreAdvantage: matchup.scoreAdvantage
+                        scoreAdvantage: matchup.scoreAdvantage,
+                        scoreRatioBlack: matchup.scoreRatioBlack,
+                        scoreRatioWhite: matchup.scoreRatioWhite
                     },
                     sampleGames: matchup.histories
                 }))
@@ -139,22 +156,29 @@ class SimulationAnalyzer {
     calculateAverages(matchups) {
         if (!matchups || matchups.length === 0) return null;
 
-        const sum = matchups.reduce((acc, matchup) => ({
-            blackWinRate: acc.blackWinRate + matchup.blackWinRate,
-            whiteWinRate: acc.whiteWinRate + matchup.whiteWinRate,
-            drawRate: acc.drawRate + matchup.drawRate,
-            avgScoreBlack: acc.avgScoreBlack + matchup.avgScoreBlack,
-            avgScoreWhite: acc.avgScoreWhite + matchup.avgScoreWhite,
-            winAdvantage: acc.winAdvantage + matchup.winAdvantage,
-            scoreAdvantage: acc.scoreAdvantage + matchup.scoreAdvantage
-        }), {
+        const sum = matchups.reduce((acc, matchup) => {
+            const maxScore = matchup.boardConfig.boardSize * matchup.boardConfig.boardSize;
+            return {
+                blackWinRate: acc.blackWinRate + matchup.blackWinRate,
+                whiteWinRate: acc.whiteWinRate + matchup.whiteWinRate,
+                drawRate: acc.drawRate + matchup.drawRate,
+                avgScoreBlack: acc.avgScoreBlack + matchup.avgScoreBlack,
+                avgScoreWhite: acc.avgScoreWhite + matchup.avgScoreWhite,
+                winAdvantage: acc.winAdvantage + matchup.winAdvantage,
+                scoreAdvantage: acc.scoreAdvantage + matchup.scoreAdvantage,
+                scoreRatioBlack: acc.scoreRatioBlack + ((matchup.avgScoreBlack / maxScore) * 100),
+                scoreRatioWhite: acc.scoreRatioWhite + ((matchup.avgScoreWhite / maxScore) * 100)
+            };
+        }, {
             blackWinRate: 0,
             whiteWinRate: 0,
             drawRate: 0,
             avgScoreBlack: 0,
             avgScoreWhite: 0,
             winAdvantage: 0,
-            scoreAdvantage: 0
+            scoreAdvantage: 0,
+            scoreRatioBlack: 0,
+            scoreRatioWhite: 0
         });
 
         const count = matchups.length;
@@ -165,7 +189,9 @@ class SimulationAnalyzer {
             avgScoreBlack: sum.avgScoreBlack / count,
             avgScoreWhite: sum.avgScoreWhite / count,
             winAdvantage: sum.winAdvantage / count,
-            scoreAdvantage: sum.scoreAdvantage / count
+            scoreAdvantage: sum.scoreAdvantage / count,
+            scoreRatioBlack: sum.scoreRatioBlack / count,
+            scoreRatioWhite: sum.scoreRatioWhite / count
         };
     }
 }

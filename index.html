@@ -21,7 +21,7 @@
         </p>
 
         <h2>🔧 Setup</h2>
-        <p>Both 5×5 boards are played in parallel. <strong>Each space has a matching space</strong> (same letter) on
+        <p>Both boards are played in parallel. <strong>Each space has a matching space</strong> (same letter) on
             the other board. Some stones might already be placed.</p>
 
         <h2>🎮 Playing</h2>
@@ -66,16 +66,26 @@
             </div>
 
             <div class="control-group">
+                <div class="size-select">
+                    <label for="board-size">Board Size:</label>
+                    <select id="board-size">
+                        <option value="4">4×4</option>
+                        <option value="5" selected>5×5</option>
+                        <option value="6">6×6</option>
+                        <option value="7">7×7</option>
+                    </select>
+                </div>
+
                 <div class="player-select">
                     <label for="board1-select">Board 1:</label>
-                    <!-- select options will be populated dynamically -->
+                    <!-- select options will be populated dynamically based on size -->
                     <select id="board1-select">
                     </select>
                 </div>
 
                 <div class="player-select">
                     <label for="board2-select">Board 2:</label>
-                    <!-- select options will be populated dynamically -->
+                    <!-- select options will be populated dynamically based on size -->
                     <select id="board2-select">
                     </select>
                 </div>

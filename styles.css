@@ -91,14 +91,53 @@ body.rules-hidden .game-container {
 
 .board {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
     gap: 2px;
     background: #ddd;
     padding: 2px;
     width: 100%;
-    max-width: 235px;
     aspect-ratio: 1;
     position: relative;
+}
+
+/* Grid size classes with proportional max-widths */
+.board.board-4 {
+    grid-template-columns: repeat(4, 1fr);
+    max-width: 188px;
+    /* 20% smaller than 5x5 */
+}
+
+.board.board-5 {
+    grid-template-columns: repeat(5, 1fr);
+    max-width: 235px;
+}
+
+.board.board-6 {
+    grid-template-columns: repeat(6, 1fr);
+    max-width: 282px;
+    /* 20% larger than 5x5 */
+}
+
+.board.board-7 {
+    grid-template-columns: repeat(7, 1fr);
+    max-width: 329px;
+    /* 40% larger than 5x5 */
+}
+
+/* Adjust font sizes for board sizes */
+.board.board-4 .cell-letter {
+    font-size: 1.7rem;
+}
+
+.board.board-5 .cell-letter {
+    font-size: 1.5rem;
+}
+
+.board.board-6 .cell-letter {
+    font-size: 1.3rem;
+}
+
+.board.board-7 .cell-letter {
+    font-size: 1.1rem;
 }
 
 .cell {
@@ -131,7 +170,6 @@ body.rules-hidden .game-container {
     position: absolute;
     z-index: 9999;
     color: #777;
-    font-size: 1.5rem;
     transition: color 0.2s;
     font-weight: 900;
 }
@@ -200,6 +238,28 @@ body.rules-hidden .game-container {
 
 .control-group h3 span {
     font-size: 1.2rem;
+}
+
+/* Size selector styling */
+.size-select {
+    margin-bottom: 1rem;
+    display: flex;
+    flex-direction: row;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.size-select label {
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.size-select select {
+    flex: 1;
+    padding: 0.5rem;
+    border: 1px solid #333;
+    border-radius: 4px;
+    font-size: 0.9rem;
 }
 
 button {

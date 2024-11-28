@@ -26,7 +26,18 @@ class GameController {
             BOARD_LAYOUTS[board2Select.value].grid :
             BOARD_LAYOUTS.board2.grid;
 
-        return new EntangledGame(board1Layout, board2Layout);
+        // Create new game instance
+        const game = new EntangledGame(board1Layout, board2Layout);
+
+        // Dispatch board size change event
+        document.dispatchEvent(new CustomEvent('boardSizeChange', {
+            detail: {
+                size: game.boardSize,
+                element: document.querySelector('.board')
+            }
+        }));
+
+        return game;
     }
 
     setupControls() {

@@ -15,19 +15,17 @@ function generateColorForLetter(index, total) {
 // Function to assign an evenly spaced color with good contrast to a letter element
 function assignRandomUniqueColor(letterElement) {
     const letter = letterElement.textContent.toUpperCase();
-    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&*+-=/?!~';
 
     if (!uniqueColors[letter]) {
         const index = alphabet.indexOf(letter);
         if (index !== -1) {
-            uniqueColors[letter] = generateColorForLetter(index, 25); // 25 letters
+            uniqueColors[letter] = generateColorForLetter(index, alphabet.length);
         } else {
-            // Fallback for non-alphabet characters
-            uniqueColors[letter] = '#000000'; // Black
+            uniqueColors[letter] = '#000000';
         }
     }
 
-    // Apply the color to the letter element
     letterElement.style.color = uniqueColors[letter];
 }
 
@@ -37,6 +35,7 @@ class GameReplayScreen {
         this.currentGame = null;
         this.currentMoveIndex = -1;
         this.matchupInfo = null;
+        this.boardSize = 5; // Default size
         this.render();
         this.attachEventListeners();
     }
@@ -64,6 +63,9 @@ class GameReplayScreen {
 
         [board1, board2].forEach((board, boardIndex) => {
             board.innerHTML = '';
+            // Set the board size class
+            board.className = `board board-${this.boardSize}`;
+
             let grid;
 
             // Determine which board layout to use
@@ -78,8 +80,8 @@ class GameReplayScreen {
                 grid = BOARD_LAYOUTS[boardIndex === 0 ? 'board1' : 'board2'].grid;
             }
 
-            for (let row = 0; row < 5; row++) {
-                for (let col = 0; col < 5; col++) {
+            for (let row = 0; row < this.boardSize; row++) {
+                for (let col = 0; col < this.boardSize; col++) {
                     const cell = this.createCell(grid[row][col], boardIndex + 1, row, col);
                     board.appendChild(cell);
                 }
@@ -169,6 +171,11 @@ class GameReplayScreen {
         this.currentGame = gameHistory;
         this.currentMoveIndex = -1;
         this.matchupInfo = matchupInfo;
+
+        // Get board size from game history
+        if (this.currentGame[0]?.state?.boardConfig?.boardSize) {
+            this.boardSize = this.currentGame[0].state.boardConfig.boardSize;
+        }
 
         // Update player info
         this.container.querySelector('#black-strategy').textContent = `Black: ${matchupInfo.player1}`;
@@ -261,8 +268,8 @@ class GameReplayScreen {
         const gameState = this.currentGame[moveIndex].state;
 
         // Update boards
-        for (let i = 0; i < 5; i++) {
-            for (let j = 0; j < 5; j++) {
+        for (let i = 0; i < this.boardSize; i++) {
+            for (let j = 0; j < this.boardSize; j++) {
                 this.updateCell(1, i, j, gameState.board1[i][j]);
                 this.updateCell(2, i, j, gameState.board2[i][j]);
                 this.updateCellHighlights(1, i, j, gameState.largestClusters);
