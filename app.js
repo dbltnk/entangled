@@ -51,14 +51,14 @@ function populateBoardsBySize(size) {
 
     // Set default selections for the current size
     const defaultBoards = {
-        4: 'board4x4',
-        5: 'board1',
-        6: 'board6x6',
-        7: 'board7x7'
+        4: ['board4x4', 'random4x4'],
+        5: ['board1', 'board2'],
+        6: ['board6x6', 'random6x6'],
+        7: ['board7x7', 'random7x7']
     };
 
-    board1Select.value = defaultBoards[size];
-    board2Select.value = size === 5 ? 'board2' : defaultBoards[size];
+    board1Select.value = defaultBoards[size][0];
+    board2Select.value = defaultBoards[size][1];
 }
 
 function getSelectedBoardLayout(boardSelect) {
@@ -67,7 +67,6 @@ function getSelectedBoardLayout(boardSelect) {
 
     if (selectedValue.startsWith('random')) {
         if (!currentRandomBoards[boardSelect.id]) {
-            // Create random board of the current size
             currentRandomBoards[boardSelect.id] = BOARD_LAYOUTS[`random${currentSize}x${currentSize}`].grid;
         }
         return currentRandomBoards[boardSelect.id];
@@ -189,6 +188,30 @@ function updateGroupSizes(boardElement, clusters, isBoard1) {
             boardElement.appendChild(sizeElement);
         }
     }
+}
+
+function stopGame() {
+    game = null;
+    // Clear any existing winner display
+    const existingWinner = document.querySelector('.winner');
+    if (existingWinner) {
+        existingWinner.remove();
+    }
+    // Reset score display
+    document.getElementById('score-display').textContent = 'Black: 0 - White: 0';
+    document.getElementById('current-player-display').textContent = '';
+    // Clear all stones from the board
+    const cells = document.querySelectorAll('.cell');
+    cells.forEach(cell => {
+        const stone = cell.querySelector('.stone');
+        if (stone) {
+            cell.removeChild(stone);
+        }
+        cell.classList.remove('has-stone', 'cell-highlight-black', 'cell-highlight-white');
+    });
+    // Remove any group size indicators
+    const groupSizes = document.querySelectorAll('.group-size');
+    groupSizes.forEach(el => el.remove());
 }
 
 function initializeBoards() {
@@ -324,23 +347,26 @@ function handleCellClick(symbol) {
 }
 
 function makeAIMove() {
-    if (!game || game.isGameOver()) return;
+    if (!game) return;
 
     const currentPlayer = game.getCurrentPlayer();
     const playerType = document.getElementById(`${currentPlayer.toLowerCase()}-player`).value;
 
     if (playerType !== 'human') {
         setTimeout(() => {
+            // Check again in case game was stopped during timeout
+            if (!game) return;
+
             const ai = createPlayer(playerType, game, currentPlayer);
             if (ai) {
                 const move = ai.chooseMove();
-                if (move) {
+                if (move && game) {  // Check game still exists
                     game.makeMove(move);
                     updateDisplay();
 
-                    if (game.isGameOver()) {
+                    if (game && game.isGameOver()) {
                         showWinner(game.getWinner());
-                    } else {
+                    } else if (game) {  // Check game still exists
                         makeAIMove();
                     }
                 }
@@ -385,33 +411,43 @@ function init() {
     // Set up board size change handler
     const boardSizeSelect = document.getElementById('board-size');
     boardSizeSelect.addEventListener('change', (e) => {
+        stopGame();
         const size = parseInt(e.target.value);
         populateBoardsBySize(size);
+        currentRandomBoards = { board1: null, board2: null };
         initializeBoards();
     });
 
     // Initial population of board dropdowns with default size (5)
     populateBoardsBySize(5);
 
-    document.getElementById('start-game').addEventListener('click', initializeGame);
-
-    document.getElementById('board1-select').addEventListener('change', () => {
-        const board1Select = document.getElementById('board1-select');
-        if (board1Select.value === 'random') {
-            currentRandomBoards.board1 = null;
-        }
-        initializeBoards();
+    // Start game button starts a new game with current settings
+    document.getElementById('start-game').addEventListener('click', () => {
+        stopGame();
+        initializeGame();
     });
 
-    document.getElementById('board2-select').addEventListener('change', () => {
-        const board2Select = document.getElementById('board2-select');
-        if (board2Select.value === 'random') {
-            currentRandomBoards.board2 = null;
-        }
-        initializeBoards();
+    // Add change handlers for all settings
+    const settingsElements = [
+        'board1-select',
+        'board2-select',
+        'black-player',
+        'white-player',
+        'starting-config'
+    ];
+
+    settingsElements.forEach(elementId => {
+        const element = document.getElementById(elementId);
+        element.addEventListener('change', () => {
+            stopGame();
+            if (elementId.startsWith('board') && element.value.startsWith('random')) {
+                currentRandomBoards[elementId] = null;
+            }
+            initializeBoards();
+        });
     });
 
-    initializeGame();
+    initializeBoards();
 }
 
 window.addEventListener('load', init);

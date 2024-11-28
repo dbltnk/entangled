@@ -1,19 +1,11 @@
 // Single source of truth for board layouts and metadata
 
 const getSymbolsForSize = (size) => {
-    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    const numbers = '0123456789';
-    const special = '@#$%&*+-=/?!~';
-
-    const symbolsNeeded = size * size;
-
-    if (symbolsNeeded <= 26) {
-        return letters.slice(0, symbolsNeeded);
-    } else if (symbolsNeeded <= 36) {
-        return letters + numbers.slice(0, symbolsNeeded - 26);
-    } else {
-        return letters + numbers + special.slice(0, symbolsNeeded - 36);
-    }
+    if (size === 4) return 'ABCDEFGHIJKLMNOP';
+    if (size === 5) return 'ABCDEFGHIJKLMNOPQRSTUVWXY';
+    if (size === 6) return 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    if (size === 7) return 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&*+-=/?!~';
+    return '';
 };
 
 const createRandomGrid = (size) => {
@@ -123,7 +115,7 @@ const BOARD_LAYOUTS = {
             ['+', '-', '=', '/', '?', '!', '~']
         ]
     },
-    random: {
+    random5x5: {
         name: "Random Board (5x5)",
         get grid() {
             return createRandomGrid(5);

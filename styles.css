@@ -102,8 +102,7 @@ body.rules-hidden .game-container {
 /* Grid size classes with proportional max-widths */
 .board.board-4 {
     grid-template-columns: repeat(4, 1fr);
-    max-width: 188px;
-    /* 20% smaller than 5x5 */
+    max-width: 235px;
 }
 
 .board.board-5 {
@@ -113,14 +112,13 @@ body.rules-hidden .game-container {
 
 .board.board-6 {
     grid-template-columns: repeat(6, 1fr);
-    max-width: 282px;
-    /* 20% larger than 5x5 */
+    max-width: 235px;
 }
 
 .board.board-7 {
     grid-template-columns: repeat(7, 1fr);
-    max-width: 329px;
-    /* 40% larger than 5x5 */
+    max-width: 235px;
+
 }
 
 /* Adjust font sizes for board sizes */

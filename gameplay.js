@@ -81,6 +81,12 @@ class EntangledGame {
     }
 
     placeStartingStones(config) {
+        // Valid characters for board cells based on size
+        const validSymbols = this.boardSize === 4 ? 'ABCDEFGHIJKLMNOP' :
+            this.boardSize === 5 ? 'ABCDEFGHIJKLMNOPQRSTUVWXY' :
+                this.boardSize === 6 ? 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789' :
+                    'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&*+-=/?!~';
+
         // Split the config string by commas
         const placements = config.split(',').map(p => p.trim());
 
@@ -92,6 +98,8 @@ class EntangledGame {
             const symbol = placement[1];
             const board = parseInt(placement[2]);
 
+            // Skip if symbol isn't valid for current board size
+            if (!validSymbols.includes(symbol)) continue;
             if (board !== 1 && board !== 2) continue;
 
             const boardState = board === 1 ? this.board1 : this.board2;

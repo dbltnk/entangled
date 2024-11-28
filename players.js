@@ -84,9 +84,11 @@ class EntangledPlayer {
     }
 
     simulateGame(state) {
+        if (!state || !state.board1 || !state.board2) return null;
+
         const simGame = new EntangledGame(this.gameEngine.board1Layout, this.gameEngine.board2Layout);
-        for (let i = 0; i < 5; i++) {
-            for (let j = 0; j < 5; j++) {
+        for (let i = 0; i < state.board1.length; i++) {
+            for (let j = 0; j < state.board1[i].length; j++) {
                 simGame.board1[i][j] = state.board1[i][j];
                 simGame.board2[i][j] = state.board2[i][j];
             }
