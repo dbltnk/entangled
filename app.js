@@ -13,19 +13,16 @@ function populatePlayerDropdowns() {
     const blackSelect = document.getElementById('black-player');
     const whiteSelect = document.getElementById('white-player');
 
-    // Clear existing options
     blackSelect.innerHTML = '';
     whiteSelect.innerHTML = '';
 
-    // Add human option first
     const humanOption = new Option('👤 Human', 'human');
     blackSelect.add(humanOption.cloneNode(true));
     whiteSelect.add(humanOption.cloneNode(true));
 
-    // Add AI options using the metadata from players.js
     Object.values(AI_PLAYERS).forEach(player => {
         const option = new Option(`🤖 ${player.name}`, player.id);
-        option.title = player.description; // Add tooltip with description
+        option.title = player.description;
         blackSelect.add(option.cloneNode(true));
         whiteSelect.add(option.cloneNode(true));
     });
@@ -35,18 +32,15 @@ function populateBoardDropdowns() {
     const board1Select = document.getElementById('board1-select');
     const board2Select = document.getElementById('board2-select');
 
-    // Clear existing options
     board1Select.innerHTML = '';
     board2Select.innerHTML = '';
 
-    // Add options for each board layout
     Object.entries(BOARD_LAYOUTS).forEach(([id, layout]) => {
         const option = new Option(layout.name, id);
         board1Select.add(option.cloneNode(true));
         board2Select.add(option.cloneNode(true));
     });
 
-    // Set defaults
     board1Select.value = 'board1';
     board2Select.value = 'board2';
 }
@@ -54,7 +48,6 @@ function populateBoardDropdowns() {
 function getSelectedBoardLayout(boardSelect) {
     const selectedValue = boardSelect.value;
     if (selectedValue === 'random') {
-        // Generate and store a new random board if one doesn't exist
         if (!currentRandomBoards[boardSelect.id]) {
             currentRandomBoards[boardSelect.id] = BOARD_LAYOUTS.random.grid;
         }
@@ -63,18 +56,15 @@ function getSelectedBoardLayout(boardSelect) {
     return BOARD_LAYOUTS[selectedValue].grid;
 }
 
-// Map to store unique colors for letters
 const uniqueColors = {};
 
-// Function to generate evenly spaced colors with good contrast
 function generateColorForLetter(index, total) {
-    const hue = (index / total) * 360; // Evenly spaced hues
-    const saturation = 70; // High saturation for vivid colors
-    const lightness = 50; // Moderate lightness for good contrast on white
+    const hue = (index / total) * 360;
+    const saturation = 70;
+    const lightness = 50;
     return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
 }
 
-// Function to assign an evenly spaced color with good contrast to a letter element
 function assignRandomUniqueColor(letterElement) {
     const letter = letterElement.textContent.toUpperCase();
     const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -82,14 +72,12 @@ function assignRandomUniqueColor(letterElement) {
     if (!uniqueColors[letter]) {
         const index = alphabet.indexOf(letter);
         if (index !== -1) {
-            uniqueColors[letter] = generateColorForLetter(index, 25); // 25 letters
+            uniqueColors[letter] = generateColorForLetter(index, 25);
         } else {
-            // Fallback for non-alphabet characters
-            uniqueColors[letter] = '#000000'; // Black
+            uniqueColors[letter] = '#000000';
         }
     }
 
-    // Apply the color to the letter element
     letterElement.style.color = uniqueColors[letter];
 }
 
@@ -114,26 +102,72 @@ function createCell(symbol, boardNum, row, col) {
     return cell;
 }
 
+function createGroupSizeElement(size, isBlackStone) {
+    const sizeElement = document.createElement('div');
+    sizeElement.className = `group-size ${isBlackStone ? 'on-black' : ''}`;
+    sizeElement.textContent = size;
+    return sizeElement;
+}
+
+function calculateClusterPosition(cluster, boardElement) {
+    const centralStone = game.findMostConnectedCell(cluster);
+    if (!centralStone) return null;
+
+    const cell = boardElement.children[centralStone.row * 5 + centralStone.col];
+    const rect = cell.getBoundingClientRect();
+    const boardRect = boardElement.getBoundingClientRect();
+
+    return {
+        left: rect.left - boardRect.left + (rect.width / 2),
+        top: rect.top - boardRect.top + (rect.height / 2)
+    };
+}
+
 function updateCellHighlights(boardNum, row, col, largestClusters) {
     const cell = document.querySelector(
         `.cell[data-board="${boardNum}"][data-row="${row}"][data-col="${col}"]`
     );
 
-    // Remove existing highlights
     cell.classList.remove('cell-highlight-black', 'cell-highlight-white');
 
-    // Check if cell is in black's largest cluster
     const isInBlackCluster = largestClusters.black[`board${boardNum}`]
         .some(pos => pos.row === row && pos.col === col);
     if (isInBlackCluster) {
         cell.classList.add('cell-highlight-black');
     }
 
-    // Check if cell is in white's largest cluster
     const isInWhiteCluster = largestClusters.white[`board${boardNum}`]
         .some(pos => pos.row === row && pos.col === col);
     if (isInWhiteCluster) {
         cell.classList.add('cell-highlight-white');
+    }
+}
+
+function updateGroupSizes(boardElement, clusters, isBoard1) {
+    const existingSizes = boardElement.querySelectorAll('.group-size');
+    existingSizes.forEach(el => el.remove());
+
+    const blackCluster = clusters.black[isBoard1 ? 'board1' : 'board2'];
+    const whiteCluster = clusters.white[isBoard1 ? 'board1' : 'board2'];
+
+    if (blackCluster.length >= 2) {
+        const pos = calculateClusterPosition(blackCluster, boardElement);
+        if (pos) {
+            const sizeElement = createGroupSizeElement(blackCluster.length, true);
+            sizeElement.style.left = `${pos.left}px`;
+            sizeElement.style.top = `${pos.top}px`;
+            boardElement.appendChild(sizeElement);
+        }
+    }
+
+    if (whiteCluster.length >= 2) {
+        const pos = calculateClusterPosition(whiteCluster, boardElement);
+        if (pos) {
+            const sizeElement = createGroupSizeElement(whiteCluster.length, false);
+            sizeElement.style.left = `${pos.left}px`;
+            sizeElement.style.top = `${pos.top}px`;
+            boardElement.appendChild(sizeElement);
+        }
     }
 }
 
@@ -194,19 +228,12 @@ function updateDisplay() {
     if (!game) return;
 
     const state = game.getGameState();
+    const board1Element = document.getElementById('board1');
+    const board2Element = document.getElementById('board2');
 
-    // Get largest clusters for both players
-    const blackClusters = {
-        board1: game.findLargestClusterCells(game.getBoard1(), PLAYERS.BLACK),
-        board2: game.findLargestClusterCells(game.getBoard2(), PLAYERS.BLACK)
-    };
-    const whiteClusters = {
-        board1: game.findLargestClusterCells(game.getBoard1(), PLAYERS.WHITE),
-        board2: game.findLargestClusterCells(game.getBoard2(), PLAYERS.WHITE)
-    };
-    const largestClusters = { black: blackClusters, white: whiteClusters };
+    updateGroupSizes(board1Element, state.largestClusters, true);
+    updateGroupSizes(board2Element, state.largestClusters, false);
 
-    // Update scores
     const blackScore = game.getScore(PLAYERS.BLACK);
     const blackBoard1Score = game.findLargestCluster(game.getBoard1(), PLAYERS.BLACK);
     const blackBoard2Score = game.findLargestCluster(game.getBoard2(), PLAYERS.BLACK);
@@ -221,13 +248,12 @@ function updateDisplay() {
     document.getElementById('current-player-display').textContent =
         `Current player: ${state.currentPlayer === PLAYERS.BLACK ? '⚫ Black' : '⚪ White'}`;
 
-    // Update boards
     for (let i = 0; i < 5; i++) {
         for (let j = 0; j < 5; j++) {
             updateCell(1, i, j, state.board1[i][j]);
             updateCell(2, i, j, state.board2[i][j]);
-            updateCellHighlights(1, i, j, largestClusters);
-            updateCellHighlights(2, i, j, largestClusters);
+            updateCellHighlights(1, i, j, state.largestClusters);
+            updateCellHighlights(2, i, j, state.largestClusters);
         }
     }
 }
@@ -290,7 +316,7 @@ function makeAIMove() {
                     if (game.isGameOver()) {
                         showWinner(game.getWinner());
                     } else {
-                        makeAIMove(); // Check if next player is also AI
+                        makeAIMove();
                     }
                 }
             }
@@ -303,23 +329,19 @@ function initializeGame() {
     const board2Select = document.getElementById('board2-select');
     const rawConfig = document.getElementById('starting-config').value;
 
-    // Sanitize the starting configuration
     const startingConfig = rawConfig
-        .toUpperCase() // Convert to uppercase
-        .replace(/\s+/g, '') // Remove all whitespace
-        .replace(/[,.;\s]+$/, ''); // Remove trailing separators
+        .toUpperCase()
+        .replace(/\s+/g, '')
+        .replace(/[,.;\s]+$/, '');
 
-    // Reset random boards when starting a new game
     currentRandomBoards = {
         board1: null,
         board2: null
     };
 
-    // Get board layouts (this will generate new random boards if needed)
     const board1Layout = getSelectedBoardLayout(board1Select);
     const board2Layout = getSelectedBoardLayout(board2Select);
 
-    // Create the game instance with starting configuration
     game = new EntangledGame(board1Layout, board2Layout, startingConfig);
 
     const existingWinner = document.querySelector('.winner');
@@ -337,12 +359,9 @@ function init() {
     populateBoardDropdowns();
     initializeBoards();
 
-    // Set up start game button
     document.getElementById('start-game').addEventListener('click', initializeGame);
 
-    // Add event listeners to update boards when selections change
     document.getElementById('board1-select').addEventListener('change', () => {
-        // Reset the random board for this selection
         const board1Select = document.getElementById('board1-select');
         if (board1Select.value === 'random') {
             currentRandomBoards.board1 = null;
@@ -351,7 +370,6 @@ function init() {
     });
 
     document.getElementById('board2-select').addEventListener('change', () => {
-        // Reset the random board for this selection
         const board2Select = document.getElementById('board2-select');
         if (board2Select.value === 'random') {
             currentRandomBoards.board2 = null;
@@ -359,7 +377,6 @@ function init() {
         initializeBoards();
     });
 
-    // Initialize the first game
     initializeGame();
 }
 

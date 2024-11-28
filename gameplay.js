@@ -53,6 +53,29 @@ class EntangledGame {
         }
     }
 
+    findMostConnectedCell(cluster) {
+        if (!cluster || cluster.length === 0) return null;
+        let bestCell = null;
+        let maxConnections = -1;
+
+        for (const cell of cluster) {
+            let connections = 0;
+            for (const [dRow, dCol] of DIRECTIONS) {
+                const newRow = cell.row + dRow;
+                const newCol = cell.col + dCol;
+                if (cluster.some(c => c.row === newRow && c.col === newCol)) {
+                    connections++;
+                }
+            }
+            if (connections > maxConnections) {
+                maxConnections = connections;
+                bestCell = cell;
+            }
+        }
+
+        return bestCell;
+    }
+
     placeStartingStones(config) {
         // Split the config string by commas
         const placements = config.split(',').map(p => p.trim());
