@@ -5,25 +5,17 @@ import BOARD_LAYOUTS from './boards.js';
 
 class SimulationScreen {
     constructor(containerElement) {
-        console.log('Initializing SimulationScreen');
         this.container = containerElement;
         this.runner = null;
         this.results = [];
         this.container.simulationResults = this.results;
         this.selectedCombinations = new Set();
+        this.currentBoardSize = 5; // Default board size
         this.render();
         this.attachEventListeners();
-
-        // Add default combination
-        //this.selectedCombinations.add('board1+board2 WU1,WU2');
-        this.updateCombinationsList();
     }
 
     render() {
-        const boardOptions = Object.entries(BOARD_LAYOUTS).map(([key, layout]) =>
-            `<option value="${key}">${layout.name}</option>`
-        ).join('');
-
         const aiOptionsFirst = Object.entries(AI_PLAYERS)
             .filter(([id]) => id !== 'human')
             .map(([id, ai]) => `
@@ -62,15 +54,22 @@ class SimulationScreen {
                         <div class="board-setup">
                             <div class="board-columns">
                                 <div class="board-column">
+                                    <label>Board Size:</label>
+                                    <select id="board-size" class="board-select">
+                                        <option value="4">4×4</option>
+                                        <option value="5" selected>5×5</option>
+                                        <option value="6">6×6</option>
+                                        <option value="7">7×7</option>
+                                    </select>
+                                </div>
+                                <div class="board-column">
                                     <label>Left Board</label>
                                     <select id="leftBoard" class="board-select">
-                                        ${boardOptions}
                                     </select>
                                 </div>
                                 <div class="board-column">
                                     <label>Right Board</label>
                                     <select id="rightBoard" class="board-select">
-                                        ${boardOptions}
                                     </select>
                                 </div>
                                 <div class="board-column">
@@ -128,37 +127,74 @@ class SimulationScreen {
             </div>
         `;
 
-        // Set default board selections
+        this.updateBoardsForSize(this.currentBoardSize);
+    }
+
+    getBoardsBySize(size) {
+        return Object.entries(BOARD_LAYOUTS)
+            .filter(([id, layout]) => layout.grid.length === size && !id.startsWith('random'))
+            .map(([id, layout]) => ({ id, name: layout.name }));
+    }
+
+    getRandomBoardId(size) {
+        return size === 5 ? 'random' : `random${size}x${size}`;
+    }
+
+    updateBoardsForSize(size) {
+        const leftBoard = this.container.querySelector('#leftBoard');
         const rightBoard = this.container.querySelector('#rightBoard');
-        rightBoard.value = 'board2';  // Knight's Jump
-        this.updateResults();
+        const startingSetup = this.container.querySelector('#startingSetup');
+
+        leftBoard.innerHTML = '';
+        rightBoard.innerHTML = '';
+
+        // Get all boards for this size
+        const boards = this.getBoardsBySize(size);
+        const randomBoardId = this.getRandomBoardId(size);
+
+        // Add regular boards
+        boards.forEach(board => {
+            leftBoard.add(new Option(board.name, board.id));
+            rightBoard.add(new Option(board.name, board.id));
+        });
+
+        // Add random board option
+        const randomOption = new Option(`Random ${size}×${size}`, randomBoardId);
+        leftBoard.add(randomOption.cloneNode(true));
+        rightBoard.add(randomOption.cloneNode(true));
+
+        // Set default values
+        if (size === 5) {
+            leftBoard.value = 'board1';
+            rightBoard.value = 'board2';
+            startingSetup.value = 'WM1,BM2';
+        } else {
+            const defaultBoard = `board${size}x${size}`;
+            leftBoard.value = defaultBoard;
+            rightBoard.value = randomBoardId;
+            // Clear starting setup as the default might not be valid for this size
+            startingSetup.value = '';
+        }
     }
 
     formatBoardCombination(combo) {
         try {
-            try {
-                const [boards, setup] = combo.split(' ');
-                const [board1, board2] = boards.split('+');
+            const [boards, setup] = combo.split(' ');
+            const [board1, board2] = boards.split('+');
 
-                // Check if the board layouts exist
-                const board1Layout = BOARD_LAYOUTS[board1];
-                const board2Layout = BOARD_LAYOUTS[board2];
+            // Check if the board layouts exist
+            const board1Layout = BOARD_LAYOUTS[board1];
+            const board2Layout = BOARD_LAYOUTS[board2];
 
-                if (!board1Layout || !board2Layout) {
-                    console.warn('Invalid board layouts:', { board1, board2, available: Object.keys(BOARD_LAYOUTS) });
-                    return `Unknown boards (${board1} + ${board2})${setup ? ' (' + setup + ')' : ''}`;
-                }
-
-                return `${board1Layout.name} + ${board2Layout.name}${setup ? ' (' + setup + ')' : ''}`;
-            } catch (error) {
-                console.warn('Error formatting board combination:', { combo, error });
-                return `Invalid format: ${combo}`;
+            if (!board1Layout || !board2Layout) {
+                console.warn('Invalid board layouts:', { board1, board2, available: Object.keys(BOARD_LAYOUTS) });
+                return `Unknown boards (${board1} + ${board2})${setup ? ' (' + setup + ')' : ''}`;
             }
 
             return `${board1Layout.name} + ${board2Layout.name}${setup ? ' (' + setup + ')' : ''}`;
         } catch (error) {
-            console.error('Error formatting board combination:', { combo, error });
-            return combo; // Fallback to raw combo string
+            console.warn('Error formatting board combination:', { combo, error });
+            return combo;
         }
     }
 
@@ -169,9 +205,10 @@ class SimulationScreen {
         const [boards, setup] = boardCombo.split(' ');
         const [board1, board2] = boards.split('+');
         const displayName = this.formatBoardCombination(boardCombo);
+        const boardSize = BOARD_LAYOUTS[board1].grid.length;
 
         table.innerHTML = `
-            <h3>${displayName} - ${gamesPlayed} games completed</h3>
+            <h3>${displayName} (${boardSize}×${boardSize}) - ${gamesPlayed} games completed</h3>
             <table class="results-table">
                 <thead>
                     <tr>
@@ -232,7 +269,7 @@ class SimulationScreen {
                     window.viewReplay(matchup.histories[gameIndex], {
                         player1: matchup.player1Name,
                         player2: matchup.player2Name,
-                        simulationResults: this.results  // Add this
+                        simulationResults: this.results
                     });
                 }
             });
@@ -260,6 +297,13 @@ class SimulationScreen {
     }
 
     attachEventListeners() {
+        // Board size change handler
+        this.container.querySelector('#board-size').addEventListener('change', (e) => {
+            this.currentBoardSize = parseInt(e.target.value);
+            this.updateBoardsForSize(this.currentBoardSize);
+            this.updateCombinationsList();
+        });
+
         // Add combination button
         this.container.querySelector('#addCombination').addEventListener('click', () => {
             const leftBoard = this.container.querySelector('#leftBoard').value;
@@ -268,11 +312,6 @@ class SimulationScreen {
                 .toUpperCase()
                 .replace(/\s+/g, '')
                 .replace(/[,.;\s]+$/, '');
-
-            if (!setup) {
-                alert('Starting setup is required');
-                return;
-            }
 
             const combination = `${leftBoard}+${rightBoard} ${setup}`;
             this.selectedCombinations.add(combination);
@@ -339,7 +378,8 @@ class SimulationScreen {
                 boardConfig: {
                     board1Layout: board1,
                     board2Layout: board2,
-                    startingConfig: setup || ''
+                    startingConfig: setup || '',
+                    boardSize: BOARD_LAYOUTS[board1].grid.length
                 }
             });
 
@@ -352,7 +392,8 @@ class SimulationScreen {
                         boardConfig: {
                             board1Layout: board1,
                             board2Layout: board2,
-                            startingConfig: setup || ''
+                            startingConfig: setup || '',
+                            boardSize: BOARD_LAYOUTS[board1].grid.length
                         }
                     },
                     {
@@ -361,7 +402,8 @@ class SimulationScreen {
                         boardConfig: {
                             board1Layout: board1,
                             board2Layout: board2,
-                            startingConfig: setup || ''
+                            startingConfig: setup || '',
+                            boardSize: BOARD_LAYOUTS[board1].grid.length
                         }
                     },
                     {
@@ -370,7 +412,8 @@ class SimulationScreen {
                         boardConfig: {
                             board1Layout: board1,
                             board2Layout: board2,
-                            startingConfig: setup || ''
+                            startingConfig: setup || '',
+                            boardSize: BOARD_LAYOUTS[board1].grid.length
                         }
                     }
                 );

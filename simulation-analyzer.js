@@ -11,13 +11,16 @@ class SimulationAnalyzer {
         return `${boardConfig.board1Layout}+${boardConfig.board2Layout} ${boardConfig.startingConfig || ''}`.trim();
     }
 
+    getMaxPossibleScore(boardSize) {
+        return boardSize * boardSize;  // Maximum score for one board
+    }
+
     getResultsByBoardCombination() {
         const combinations = {};
 
         for (const result of this.results) {
             if (!result.boardConfig) continue;
 
-            // Create board combination key
             const boardKey = this.getBoardCombinationKey(result.boardConfig);
             if (!boardKey) continue;
 
@@ -25,7 +28,6 @@ class SimulationAnalyzer {
                 combinations[boardKey] = [];
             }
 
-            // Find existing matchup or create new one
             const matchupKey = `${result.matchup.player1}-${result.matchup.player2}`;
             let matchup = combinations[boardKey].find(m => m.matchupId === matchupKey);
 
@@ -44,10 +46,15 @@ class SimulationAnalyzer {
                     blackTotalScore: 0,
                     whiteTotalScore: 0,
                     histories: [],
-                    boardConfig: {
-                        ...result.boardConfig,
-                        boardSize: result.boardConfig.boardSize
-                    }
+                    boardConfig: result.boardConfig,
+                    // Track separate scores for each board
+                    blackBoard1Total: 0,
+                    blackBoard2Total: 0,
+                    whiteBoard1Total: 0,
+                    whiteBoard2Total: 0,
+                    // Track highest scores achieved
+                    blackHighestScore: 0,
+                    whiteHighestScore: 0
                 };
                 combinations[boardKey].push(matchup);
             }
@@ -66,11 +73,24 @@ class SimulationAnalyzer {
             matchup.blackTotalScore += result.finalScore.black;
             matchup.whiteTotalScore += result.finalScore.white;
 
+            // Track per-board scores
+            const board1Black = result.largestClusters.black.board1.length;
+            const board2Black = result.largestClusters.black.board2.length;
+            const board1White = result.largestClusters.white.board1.length;
+            const board2White = result.largestClusters.white.board2.length;
+
+            matchup.blackBoard1Total += board1Black;
+            matchup.blackBoard2Total += board2Black;
+            matchup.whiteBoard1Total += board1White;
+            matchup.whiteBoard2Total += board2White;
+
+            // Update highest scores
+            const blackScore = board1Black + board2Black;
+            const whiteScore = board1White + board2White;
+            matchup.blackHighestScore = Math.max(matchup.blackHighestScore, blackScore);
+            matchup.whiteHighestScore = Math.max(matchup.whiteHighestScore, whiteScore);
+
             if (result.history) {
-                const historyWithSize = {
-                    ...result.history,
-                    boardSize: result.boardConfig.boardSize
-                };
                 matchup.histories.push(result.history);
             }
         }
@@ -78,6 +98,9 @@ class SimulationAnalyzer {
         // Calculate derived statistics for each matchup
         Object.values(combinations).forEach(matchups => {
             matchups.forEach(matchup => {
+                const maxBoardScore = this.getMaxPossibleScore(matchup.boardConfig.boardSize);
+                const maxTotalScore = maxBoardScore * 2;
+
                 matchup.blackWinRate = (matchup.blackWins / matchup.games) * 100;
                 matchup.whiteWinRate = (matchup.whiteWins / matchup.games) * 100;
                 matchup.drawRate = (matchup.draws / matchup.games) * 100;
@@ -86,23 +109,25 @@ class SimulationAnalyzer {
                 matchup.winAdvantage = matchup.blackWinRate - matchup.whiteWinRate;
                 matchup.scoreAdvantage = matchup.avgScoreBlack - matchup.avgScoreWhite;
 
-                // Calculate score ratios based on board size
-                const maxPossibleScore = matchup.boardConfig.boardSize * matchup.boardConfig.boardSize;
-                matchup.scoreRatioBlack = (matchup.avgScoreBlack / maxPossibleScore) * 100;
-                matchup.scoreRatioWhite = (matchup.avgScoreWhite / maxPossibleScore) * 100;
+                // Calculate average per-board scores
+                matchup.avgBlackBoard1 = matchup.blackBoard1Total / matchup.games;
+                matchup.avgBlackBoard2 = matchup.blackBoard2Total / matchup.games;
+                matchup.avgWhiteBoard1 = matchup.whiteBoard1Total / matchup.games;
+                matchup.avgWhiteBoard2 = matchup.whiteBoard2Total / matchup.games;
+
+                // Calculate score percentages
+                matchup.blackScorePercentage = (matchup.avgScoreBlack / maxTotalScore) * 100;
+                matchup.whiteScorePercentage = (matchup.avgScoreWhite / maxTotalScore) * 100;
+                matchup.blackHighestPercentage = (matchup.blackHighestScore / maxTotalScore) * 100;
+                matchup.whiteHighestPercentage = (matchup.whiteHighestScore / maxTotalScore) * 100;
             });
 
-            // Sort matchups within each combination by player names for consistent ordering
+            // Sort matchups
             matchups.sort((a, b) => {
-                // Self-play matchups first
                 const aSelf = a.player1 === a.player2;
                 const bSelf = b.player1 === b.player2;
                 if (aSelf !== bSelf) return aSelf ? -1 : 1;
-
-                // Then sort by player names
-                if (a.player1 === b.player1) {
-                    return a.player2.localeCompare(b.player2);
-                }
+                if (a.player1 === b.player1) return a.player2.localeCompare(b.player2);
                 return a.player1.localeCompare(b.player1);
             });
         });
@@ -111,25 +136,16 @@ class SimulationAnalyzer {
     }
 
     getMatchupStats() {
-        // Get all stats grouped by board combination
-        const combinationResults = this.getResultsByBoardCombination();
-
-        // Flatten and return all matchups
-        return Object.values(combinationResults).flat();
+        return Object.values(this.getResultsByBoardCombination()).flat();
     }
 
     exportResults() {
         const combinationResults = this.getResultsByBoardCombination();
-        const timestamp = new Date().toISOString();
-
         return {
-            timestamp,
+            timestamp: new Date().toISOString(),
             results: Object.entries(combinationResults).map(([combination, matchups]) => ({
                 combination,
-                boardConfig: {
-                    ...matchups[0].boardConfig,
-                    boardSize: matchups[0].boardConfig.boardSize
-                },
+                boardConfig: matchups[0].boardConfig,
                 matchups: matchups.map(matchup => ({
                     players: {
                         black: matchup.player1,
@@ -142,10 +158,19 @@ class SimulationAnalyzer {
                         drawRate: matchup.drawRate,
                         avgScoreBlack: matchup.avgScoreBlack,
                         avgScoreWhite: matchup.avgScoreWhite,
+                        avgBlackBoard1: matchup.avgBlackBoard1,
+                        avgBlackBoard2: matchup.avgBlackBoard2,
+                        avgWhiteBoard1: matchup.avgWhiteBoard1,
+                        avgWhiteBoard2: matchup.avgWhiteBoard2,
                         winAdvantage: matchup.winAdvantage,
                         scoreAdvantage: matchup.scoreAdvantage,
-                        scoreRatioBlack: matchup.scoreRatioBlack,
-                        scoreRatioWhite: matchup.scoreRatioWhite
+                        blackScorePercentage: matchup.blackScorePercentage,
+                        whiteScorePercentage: matchup.whiteScorePercentage,
+                        blackHighestScore: matchup.blackHighestScore,
+                        whiteHighestScore: matchup.whiteHighestScore,
+                        blackHighestPercentage: matchup.blackHighestPercentage,
+                        whiteHighestPercentage: matchup.whiteHighestPercentage,
+                        boardSize: matchup.boardConfig.boardSize
                     },
                     sampleGames: matchup.histories
                 }))
@@ -156,18 +181,26 @@ class SimulationAnalyzer {
     calculateAverages(matchups) {
         if (!matchups || matchups.length === 0) return null;
 
-        const sum = matchups.reduce((acc, matchup) => {
-            const maxScore = matchup.boardConfig.boardSize * matchup.boardConfig.boardSize;
+        const totals = matchups.reduce((acc, matchup) => {
+            const maxBoardScore = this.getMaxPossibleScore(matchup.boardConfig.boardSize);
+            const maxTotalScore = maxBoardScore * 2;
+
             return {
                 blackWinRate: acc.blackWinRate + matchup.blackWinRate,
                 whiteWinRate: acc.whiteWinRate + matchup.whiteWinRate,
                 drawRate: acc.drawRate + matchup.drawRate,
                 avgScoreBlack: acc.avgScoreBlack + matchup.avgScoreBlack,
                 avgScoreWhite: acc.avgScoreWhite + matchup.avgScoreWhite,
+                avgBlackBoard1: acc.avgBlackBoard1 + matchup.avgBlackBoard1,
+                avgBlackBoard2: acc.avgBlackBoard2 + matchup.avgBlackBoard2,
+                avgWhiteBoard1: acc.avgWhiteBoard1 + matchup.avgWhiteBoard1,
+                avgWhiteBoard2: acc.avgWhiteBoard2 + matchup.avgWhiteBoard2,
                 winAdvantage: acc.winAdvantage + matchup.winAdvantage,
                 scoreAdvantage: acc.scoreAdvantage + matchup.scoreAdvantage,
-                scoreRatioBlack: acc.scoreRatioBlack + ((matchup.avgScoreBlack / maxScore) * 100),
-                scoreRatioWhite: acc.scoreRatioWhite + ((matchup.avgScoreWhite / maxScore) * 100)
+                blackScorePercentage: acc.blackScorePercentage + matchup.blackScorePercentage,
+                whiteScorePercentage: acc.whiteScorePercentage + matchup.whiteScorePercentage,
+                blackHighestPercentage: acc.blackHighestPercentage + matchup.blackHighestPercentage,
+                whiteHighestPercentage: acc.whiteHighestPercentage + matchup.whiteHighestPercentage
             };
         }, {
             blackWinRate: 0,
@@ -175,24 +208,22 @@ class SimulationAnalyzer {
             drawRate: 0,
             avgScoreBlack: 0,
             avgScoreWhite: 0,
+            avgBlackBoard1: 0,
+            avgBlackBoard2: 0,
+            avgWhiteBoard1: 0,
+            avgWhiteBoard2: 0,
             winAdvantage: 0,
             scoreAdvantage: 0,
-            scoreRatioBlack: 0,
-            scoreRatioWhite: 0
+            blackScorePercentage: 0,
+            whiteScorePercentage: 0,
+            blackHighestPercentage: 0,
+            whiteHighestPercentage: 0
         });
 
         const count = matchups.length;
-        return {
-            blackWinRate: sum.blackWinRate / count,
-            whiteWinRate: sum.whiteWinRate / count,
-            drawRate: sum.drawRate / count,
-            avgScoreBlack: sum.avgScoreBlack / count,
-            avgScoreWhite: sum.avgScoreWhite / count,
-            winAdvantage: sum.winAdvantage / count,
-            scoreAdvantage: sum.scoreAdvantage / count,
-            scoreRatioBlack: sum.scoreRatioBlack / count,
-            scoreRatioWhite: sum.scoreRatioWhite / count
-        };
+        return Object.fromEntries(
+            Object.entries(totals).map(([key, value]) => [key, value / count])
+        );
     }
 }
 

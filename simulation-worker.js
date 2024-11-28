@@ -19,13 +19,21 @@ workerContext.onmessage = async function (e) {
 
         const { player1, player2 } = matchup;
 
-        // Use specified board layouts or fall back to defaults
-        const board1Layout = boardConfig?.board1Layout ?
-            BOARD_LAYOUTS[boardConfig.board1Layout].grid :
-            BOARD_LAYOUTS.board1.grid;
-        const board2Layout = boardConfig?.board2Layout ?
-            BOARD_LAYOUTS[boardConfig.board2Layout].grid :
-            BOARD_LAYOUTS.board2.grid;
+        // Handle both fixed and random board layouts
+        const getLayout = (layoutKey, size) => {
+            // For random boards, create a new layout each time
+            if (layoutKey.startsWith('random')) {
+                return layoutKey === 'random' ?
+                    BOARD_LAYOUTS.random.grid :
+                    BOARD_LAYOUTS[`random${size}x${size}`].grid;
+            }
+            return BOARD_LAYOUTS[layoutKey].grid;
+        };
+
+        // Get board layouts using the size information
+        const size = boardConfig.boardSize || 5;
+        const board1Layout = getLayout(boardConfig.board1Layout, size);
+        const board2Layout = getLayout(boardConfig.board2Layout, size);
 
         // Create game with starting configuration
         const game = new EntangledGame(
@@ -66,11 +74,12 @@ workerContext.onmessage = async function (e) {
                             board2: state.board2,
                             currentPlayer: state.currentPlayer,
                             largestClusters: state.largestClusters,
+                            winner: state.winner,
                             boardConfig: {
-                                board1Layout: boardConfig?.board1Layout,
-                                board2Layout: boardConfig?.board2Layout,
-                                startingConfig: boardConfig?.startingConfig,
-                                boardSize: game.boardSize
+                                board1Layout: boardConfig.board1Layout,
+                                board2Layout: boardConfig.board2Layout,
+                                startingConfig: boardConfig.startingConfig,
+                                boardSize: size
                             }
                         }
                     });
@@ -92,10 +101,10 @@ workerContext.onmessage = async function (e) {
                         largestClusters: finalState.largestClusters,
                         winner: game.getWinner(),
                         boardConfig: {
-                            board1Layout: boardConfig?.board1Layout,
-                            board2Layout: boardConfig?.board2Layout,
-                            startingConfig: boardConfig?.startingConfig,
-                            boardSize: game.boardSize
+                            board1Layout: boardConfig.board1Layout,
+                            board2Layout: boardConfig.board2Layout,
+                            startingConfig: boardConfig.startingConfig,
+                            boardSize: size
                         }
                     }
                 });
@@ -115,7 +124,7 @@ workerContext.onmessage = async function (e) {
                 history: gameHistory,
                 boardConfig: {
                     ...boardConfig,
-                    boardSize: game.boardSize
+                    boardSize: size
                 }
             };
 

@@ -4,14 +4,18 @@ class GameRouter {
         this.container = container;
         this.currentScreen = null;
         this.screens = {};
+        this.currentBoardSize = 5; // Default board size
 
         // Add listener at class level instead of per-navigation
         this.handleBack = (event) => {
-            this.navigate('simulation', { results: event.detail?.results });
+            this.navigate('simulation', {
+                results: event.detail?.results,
+                boardSize: this.currentBoardSize
+            });
         };
 
-        // Add board size change handler
         this.handleBoardSizeChange = (event) => {
+            this.currentBoardSize = event.detail.size;
             if (this.currentScreen && typeof this.currentScreen.onBoardSizeChange === 'function') {
                 this.currentScreen.onBoardSizeChange(event.detail.size);
             }
@@ -37,7 +41,9 @@ class GameRouter {
             throw new Error(`Screen "${screenName}" not found`);
         }
 
-        this.currentScreen = new ScreenClass(this.container);
+        // Pass board size to new screen
+        params.boardSize = params.boardSize || this.currentBoardSize;
+        this.currentScreen = new ScreenClass(this.container, params);
 
         // Handle screen-specific initialization
         if (screenName === 'replay' && params.gameHistory) {

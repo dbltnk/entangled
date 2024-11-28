@@ -371,4 +371,9 @@
     .boards {
         order: -1;
     }
+
+    .board {
+        max-width: none !important;
+        width: 100% !important;
+    }
 }

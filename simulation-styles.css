@@ -110,23 +110,26 @@
     color: #bd2130;
 }
 
-/* Board Preview */
+/* Preview Boards */
+.board-preview-container {
+    display: flex;
+    gap: 20px;
+    margin-top: 15px;
+}
+
 .board-preview {
     display: grid;
     gap: 2px;
     background: #ddd;
     padding: 2px;
     width: 100%;
-    max-width: 235px;
-    aspect-ratio: 1;
     position: relative;
 }
 
 /* Grid size classes with proportional max-widths */
 .board-preview.board-4 {
     grid-template-columns: repeat(4, 1fr);
-    max-width: 188px;
-    /* 20% smaller than 5x5 */
+    max-width: 235px;
 }
 
 .board-preview.board-5 {
@@ -136,31 +139,51 @@
 
 .board-preview.board-6 {
     grid-template-columns: repeat(6, 1fr);
-    max-width: 282px;
-    /* 20% larger than 5x5 */
+    max-width: 235px;
 }
 
 .board-preview.board-7 {
     grid-template-columns: repeat(7, 1fr);
-    max-width: 329px;
-    /* 40% larger than 5x5 */
+    max-width: 235px;
 }
 
 /* Adjust font sizes for preview board sizes */
 .board-preview.board-4 .cell-letter {
-    font-size: 1.7rem;
+    font-size: 1.2rem;
 }
 
 .board-preview.board-5 .cell-letter {
-    font-size: 1.5rem;
+    font-size: 1.1rem;
 }
 
 .board-preview.board-6 .cell-letter {
-    font-size: 1.3rem;
+    font-size: 1rem;
 }
 
 .board-preview.board-7 .cell-letter {
-    font-size: 1.1rem;
+    font-size: 0.9rem;
+}
+
+/* Board size select */
+.board-size-select {
+    margin-bottom: 15px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+}
+
+.board-size-select label {
+    font-size: 14px;
+    color: #666;
+    min-width: 80px;
+}
+
+.board-size-select select {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    min-width: 100px;
 }
 
 /* Simulation Parameters */
@@ -218,6 +241,7 @@
     padding: 12px;
     text-align: right;
     border-bottom: 1px solid #ddd;
+    white-space: nowrap;
 }
 
 .results-table th {
@@ -228,6 +252,7 @@
 
 .results-table td:first-child {
     text-align: left;
+    white-space: normal;
 }
 
 .results-table td.positive {
@@ -329,7 +354,7 @@
     color: #666;
 }
 
-/* Cell styling */
+/* Cell styling for previews */
 .preview-cell {
     background: white;
     display: flex;
@@ -384,5 +409,10 @@
 
     .simulation-params {
         flex-direction: column;
+    }
+
+    .board-size-select {
+        flex-direction: column;
+        align-items: flex-start;
     }
 }

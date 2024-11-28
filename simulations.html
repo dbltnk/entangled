@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Entangled - AI Simulations</title>
+    <title>Entangled - Simulations</title>
     <style>
         * {
             margin: 0;
@@ -29,6 +29,33 @@
             text-decoration: none;
             margin-right: 1rem;
         }
+
+        .mode-navigation {
+            margin-bottom: 2rem;
+        }
+
+        .mode-button {
+            padding: 0.5rem 1rem;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 0.5rem;
+        }
+
+        .mode-button.active {
+            background: #333;
+            color: white;
+            border-color: #333;
+        }
+
+        .screen {
+            display: none;
+        }
+
+        .screen.active {
+            display: block;
+        }
     </style>
     <link rel="stylesheet" href="simulation-styles.css">
     <link rel="stylesheet" href="replay-styles.css">
@@ -51,6 +78,18 @@
     <div id="replay-screen" class="screen">
         <!-- Replay interface will be mounted here -->
     </div>
+
+    <template id="board-size-selector">
+        <div class="board-size-select">
+            <label>Board Size:</label>
+            <select class="board-size">
+                <option value="4">4×4</option>
+                <option value="5" selected>5×5</option>
+                <option value="6">6×6</option>
+                <option value="7">7×7</option>
+            </select>
+        </div>
+    </template>
 
     <script type="module">
         import { GameRouter } from './routing.js';
@@ -99,6 +138,9 @@
 
         // Start with simulation screen
         router.navigate('simulation');
+
+        // Make board size selector template available globally
+        window.boardSizeSelectorTemplate = document.getElementById('board-size-selector');
     </script>
 </body>
 

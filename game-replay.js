@@ -74,7 +74,16 @@ class GameReplayScreen {
                 const layoutKey = boardIndex === 0 ?
                     this.currentGame[0].state.boardConfig.board1Layout :
                     this.currentGame[0].state.boardConfig.board2Layout;
-                grid = BOARD_LAYOUTS[layoutKey]?.grid || BOARD_LAYOUTS[boardIndex === 0 ? 'board1' : 'board2'].grid;
+
+                // Handle both fixed and random layouts
+                if (layoutKey.startsWith('random')) {
+                    // For random boards, use the actual board state since it's already generated
+                    grid = this.currentGame[0].state[`board${boardIndex + 1}`].map(row =>
+                        row.map(() => this.getNextRandomSymbol())
+                    );
+                } else {
+                    grid = BOARD_LAYOUTS[layoutKey]?.grid || BOARD_LAYOUTS[boardIndex === 0 ? 'board1' : 'board2'].grid;
+                }
             } else {
                 // Fallback to default boards
                 grid = BOARD_LAYOUTS[boardIndex === 0 ? 'board1' : 'board2'].grid;
@@ -87,6 +96,18 @@ class GameReplayScreen {
                 }
             }
         });
+    }
+
+    // Get next available symbol for random boards
+    getNextRandomSymbol() {
+        const symbolSets = {
+            4: 'ABCDEFGHIJKLMNOP',
+            5: 'ABCDEFGHIJKLMNOPQRSTUVWXY',
+            6: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
+            7: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&*+-=/?!~'
+        };
+        const symbols = symbolSets[this.boardSize].split('');
+        return symbols[Math.floor(Math.random() * symbols.length)];
     }
 
     render() {
@@ -155,6 +176,9 @@ class GameReplayScreen {
                             <div class="setup-info" id="board-setup">
                                 Layout: Board 1 vs Board 2
                             </div>
+                            <div class="setup-info" id="board-size-info">
+                                Size: 5×5
+                            </div>
                             <div class="setup-info" id="starting-setup">
                                 Start: WM1,BM2
                             </div>
@@ -187,6 +211,8 @@ class GameReplayScreen {
         const board2Name = BOARD_LAYOUTS[boardConfig.board2Layout].name;
         this.container.querySelector('#board-setup').textContent =
             `Layout: ${board1Name} vs ${board2Name}`;
+        this.container.querySelector('#board-size-info').textContent =
+            `Size: ${this.boardSize}×${this.boardSize}`;
         this.container.querySelector('#starting-setup').textContent =
             `Start: ${boardConfig.startingConfig || 'None'}`;
 
@@ -335,9 +361,14 @@ class GameReplayScreen {
         const whiteBoard1 = clusters.white.board1.length;
         const whiteBoard2 = clusters.white.board2.length;
 
+        // Calculate percentages of maximum possible score
+        const maxBoardScore = this.boardSize * this.boardSize;
+        const blackPercentage = ((blackTotal / (maxBoardScore * 2)) * 100).toFixed(1);
+        const whitePercentage = ((whiteTotal / (maxBoardScore * 2)) * 100).toFixed(1);
+
         this.container.querySelector('#score-display').innerHTML =
-            `<strong>⚫ ${blackTotal}</strong> (${blackBoard1} + ${blackBoard2}) vs ` +
-            `<strong>⚪ ${whiteTotal}</strong> (${whiteBoard1} + ${whiteBoard2})`;
+            `<strong>⚫ ${blackTotal}</strong> (${blackBoard1} + ${blackBoard2}) [${blackPercentage}%] vs ` +
+            `<strong>⚪ ${whiteTotal}</strong> (${whiteBoard1} + ${whiteBoard2}) [${whitePercentage}%]`;
     }
 
     updateNavigationButtons() {
