@@ -155,7 +155,7 @@
 }
 
 .stone-count {
-    font-size: 1.1rem;
+    font-size: 0.9rem;
     color: #333;
     font-weight: 500;
 }
@@ -354,26 +354,4 @@
     border-radius: 12px;
     box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
     animation: fillPulse 1s ease-in-out infinite;
-}
-
-/* Responsive adjustments for smaller screens */
-@media (max-width: 1200px) {
-    .replay-panel {
-        flex-direction: column;
-        height: auto;
-    }
-
-    .navigation,
-    .game-info {
-        width: 100%;
-    }
-
-    .boards {
-        order: -1;
-    }
-
-    .board {
-        max-width: none !important;
-        width: 100% !important;
-    }
 }

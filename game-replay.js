@@ -367,8 +367,8 @@ class GameReplayScreen {
         const whitePercentage = ((whiteTotal / (maxBoardScore * 2)) * 100).toFixed(1);
 
         this.container.querySelector('#score-display').innerHTML =
-            `<strong>⚫ ${blackTotal}</strong> (${blackBoard1} + ${blackBoard2}) [${blackPercentage}%] vs ` +
-            `<strong>⚪ ${whiteTotal}</strong> (${whiteBoard1} + ${whiteBoard2}) [${whitePercentage}%]`;
+            `<strong>⚫ ${blackTotal}</strong> (${blackBoard1} + ${blackBoard2}) vs ` +
+            `<strong>⚪ ${whiteTotal}</strong> (${whiteBoard1} + ${whiteBoard2})`;
     }
 
     updateNavigationButtons() {
