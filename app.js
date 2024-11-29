@@ -52,7 +52,7 @@ function populateBoardsBySize(size) {
     // Set default selections for the current size
     const defaultBoards = {
         4: ['board4x4', 'random4x4'],
-        5: ['board1', 'board2'],
+        5: ['board1', 'board5'],
         6: ['board6x6', 'random6x6'],
         7: ['board7x7', 'random7x7']
     };

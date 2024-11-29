@@ -75,7 +75,7 @@ class SimulationScreen {
                                 <div class="board-column">
                                     <label>Starting Setup</label>
                                     <input type="text" id="startingSetup" 
-                                           value="WM1,BM2"
+                                           value="WW1,WW2"
                                            placeholder="e.g., WM1,BM2"
                                            title="Required format: B|W followed by letter A-Y followed by 1|2, separated by commas">
                                 </div>
@@ -166,8 +166,8 @@ class SimulationScreen {
         // Set default values
         if (size === 5) {
             leftBoard.value = 'board1';
-            rightBoard.value = 'board2';
-            startingSetup.value = 'WM1,BM2';
+            rightBoard.value = 'board5';
+            startingSetup.value = 'WW1,WW2';
         } else {
             const defaultBoard = `board${size}x${size}`;
             leftBoard.value = defaultBoard;

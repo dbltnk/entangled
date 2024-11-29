@@ -243,12 +243,8 @@ class GameReplayScreen {
                     <div class="control-group">
                         <h3><span>🎲</span> Game Setup</h3>
                         <div class="stats">
-                            <div class="setup-info" id="board-setup">
-                                Layout: Board 1 vs Board 2
-                            </div>
-                            <div class="setup-info" id="starting-setup">
-                                Start: WM1,BM2
-                            </div>
+                            <div class="setup-info" id="board-setup"></div>
+                            <div class="setup-info" id="starting-setup"></div>
                         </div>
                     </div>
                 </div>
