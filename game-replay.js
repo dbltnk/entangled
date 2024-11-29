@@ -246,9 +246,6 @@ class GameReplayScreen {
                             <div class="setup-info" id="board-setup">
                                 Layout: Board 1 vs Board 2
                             </div>
-                            <div class="setup-info" id="board-size-info">
-                                Size: 5×5
-                            </div>
                             <div class="setup-info" id="starting-setup">
                                 Start: WM1,BM2
                             </div>
@@ -281,8 +278,6 @@ class GameReplayScreen {
         const board2Name = BOARD_LAYOUTS[boardConfig.board2Layout].name;
         this.container.querySelector('#board-setup').textContent =
             `Layout: ${board1Name} vs ${board2Name}`;
-        this.container.querySelector('#board-size-info').textContent =
-            `Size: ${this.boardSize}×${this.boardSize}`;
         this.container.querySelector('#starting-setup').textContent =
             `Start: ${boardConfig.startingConfig || 'None'}`;
 
