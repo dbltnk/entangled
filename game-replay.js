@@ -57,6 +57,76 @@ class GameReplayScreen {
         return cell;
     }
 
+    createGroupSizeElement(size, isBlackStone) {
+        const sizeElement = document.createElement('div');
+        sizeElement.className = `group-size ${isBlackStone ? 'on-black' : ''}`;
+        sizeElement.textContent = size;
+        return sizeElement;
+    }
+
+    calculateClusterPosition(cluster, boardElement) {
+        if (!cluster || cluster.length === 0) return null;
+
+        // Find most connected cell manually
+        let bestCell = null;
+        let maxConnections = -1;
+        const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+
+        for (const cell of cluster) {
+            let connections = 0;
+            for (const [dRow, dCol] of directions) {
+                const newRow = cell.row + dRow;
+                const newCol = cell.col + dCol;
+                if (cluster.some(c => c.row === newRow && c.col === newCol)) {
+                    connections++;
+                }
+            }
+            if (connections > maxConnections) {
+                maxConnections = connections;
+                bestCell = cell;
+            }
+        }
+
+        if (!bestCell) return null;
+
+        const cell = boardElement.children[bestCell.row * this.boardSize + bestCell.col];
+        const rect = cell.getBoundingClientRect();
+        const boardRect = boardElement.getBoundingClientRect();
+
+        return {
+            left: rect.left - boardRect.left + (rect.width / 2),
+            top: rect.top - boardRect.top + (rect.height / 2)
+        };
+    }
+
+    updateGroupSizes(boardElement, clusters, isBoard1) {
+        const existingSizes = boardElement.querySelectorAll('.group-size');
+        existingSizes.forEach(el => el.remove());
+
+        const blackCluster = clusters.black[isBoard1 ? 'board1' : 'board2'];
+        const whiteCluster = clusters.white[isBoard1 ? 'board1' : 'board2'];
+
+        if (blackCluster.length >= 2) {
+            const pos = this.calculateClusterPosition(blackCluster, boardElement);
+            if (pos) {
+                const sizeElement = this.createGroupSizeElement(blackCluster.length, true);
+                sizeElement.style.left = `${pos.left}px`;
+                sizeElement.style.top = `${pos.top}px`;
+                boardElement.appendChild(sizeElement);
+            }
+        }
+
+        if (whiteCluster.length >= 2) {
+            const pos = this.calculateClusterPosition(whiteCluster, boardElement);
+            if (pos) {
+                const sizeElement = this.createGroupSizeElement(whiteCluster.length, false);
+                sizeElement.style.left = `${pos.left}px`;
+                sizeElement.style.top = `${pos.top}px`;
+                boardElement.appendChild(sizeElement);
+            }
+        }
+    }
+
     initializeBoards() {
         const board1 = this.container.querySelector('#replayBoard1');
         const board2 = this.container.querySelector('#replayBoard2');
@@ -311,6 +381,12 @@ class GameReplayScreen {
 
         // Update scores
         this.updateScores(gameState.largestClusters);
+
+        // Update board sizes
+        const board1Element = this.container.querySelector('#replayBoard1');
+        const board2Element = this.container.querySelector('#replayBoard2');
+        this.updateGroupSizes(board1Element, gameState.largestClusters, true);
+        this.updateGroupSizes(board2Element, gameState.largestClusters, false);
 
         // Update winner display on last move
         if (moveIndex === this.currentGame.length - 1) {
