@@ -489,6 +489,7 @@ class MCTSPlayer extends EntangledPlayer {
     }
 
     chooseMove() {
+        const startTime = performance.now();
         const validMoves = this.gameEngine.getValidMoves();
         const moveEvaluations = validMoves.map(move => {
             let totalScore = 0;
@@ -512,10 +513,16 @@ class MCTSPlayer extends EntangledPlayer {
 
         moveEvaluations.sort((a, b) => b.score - a.score);
 
-        return this.randomizeChoice(
+        const selectedMove = this.randomizeChoice(
             moveEvaluations.map(m => m.move),
             moveEvaluations.map(m => m.score)
         );
+
+        const endTime = performance.now();
+        const duration = endTime - startTime;
+        console.log(`MCTS agent (${this.playerColor}) turn took ${duration.toFixed(2)} milliseconds.`);
+
+        return selectedMove;
     }
 
     playRandomGame(game) {
