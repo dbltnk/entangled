@@ -486,9 +486,43 @@ class MCTSPlayer extends EntangledPlayer {
     constructor(gameEngine, playerColor, config = {}) {
         super(gameEngine, playerColor, config);
         this.simulationCount = config.simulationCount || 100;
+        // Initialize cluster cache
+        this.clusterCache = new Map();
+        // Cache hit tracking for debugging
+        this.cacheHits = 0;
+        this.cacheMisses = 0;
+    }
+
+    // Create a cache key from board state
+    createBoardKey(board, player) {
+        return board.map(row =>
+            row.map(cell => cell === null ? '0' : cell === 'BLACK' ? '1' : '2').join('')
+        ).join('') + player;
+    }
+
+    // Get cached cluster size or calculate and cache it
+    getCachedLargestCluster(simGame, board, player) {
+        const boardKey = this.createBoardKey(board, player);
+
+        let clusterSize = this.clusterCache.get(boardKey);
+        if (clusterSize !== undefined) {
+            this.cacheHits++;
+            return clusterSize;
+        }
+
+        this.cacheMisses++;
+        clusterSize = simGame.findLargestCluster(board, player);
+        this.clusterCache.set(boardKey, clusterSize);
+
+        return clusterSize;
     }
 
     chooseMove() {
+        // Reset cache for new move decision
+        this.clusterCache.clear();
+        this.cacheHits = 0;
+        this.cacheMisses = 0;
+
         const startTime = performance.now();
         const validMoves = this.gameEngine.getValidMoves();
         const moveEvaluations = validMoves.map(move => {
@@ -520,46 +554,61 @@ class MCTSPlayer extends EntangledPlayer {
 
         const endTime = performance.now();
         const duration = endTime - startTime;
-        console.log(`MCTS agent (${this.playerColor}) turn took ${duration.toFixed(2)} milliseconds.`);
+
+        // Log cache performance
+        console.log(`MCTS agent (${this.playerColor}) turn stats:
+            Duration: ${duration.toFixed(2)}ms
+            Cache hits: ${this.cacheHits}
+            Cache misses: ${this.cacheMisses}
+            Hit rate: ${(this.cacheHits / (this.cacheHits + this.cacheMisses) * 100).toFixed(1)}%`);
 
         return selectedMove;
     }
 
-    // Inside MCTSPlayer class, replace playRandomGame method:
-    playRandomGame(game) {
-        // Reuse simulation game instance instead of creating new one each time
-        const simGame = this.simulateGame(game.getGameState());
-        let moveCount = 0;
+    playRandomGame(simGame) {
         const maxMoves = simGame.boardSize * simGame.boardSize;
-
-        // Pre-calculate valid moves array size
-        const movesArraySize = Math.ceil(maxMoves / 2);
-        const validMoves = new Array(movesArraySize);
+        const validMoves = new Array(Math.ceil(maxMoves / 2));
+        let moveCount = 0;
 
         while (!simGame.isGameOver() && moveCount < maxMoves) {
-            // Get valid moves without creating new arrays
-            let moveCount = 0;
+            let validMoveCount = 0;
             const symbols = simGame.symbolToPosition.keys();
             for (const symbol of symbols) {
                 if (simGame.isValidMove(symbol)) {
-                    validMoves[moveCount++] = symbol;
+                    validMoves[validMoveCount++] = symbol;
                 }
             }
 
-            if (moveCount === 0) break;
+            if (validMoveCount === 0) break;
 
-            // Use direct array access instead of Math.random() * array.length
-            const randomMove = validMoves[Math.floor(Math.random() * moveCount)];
+            const randomMove = validMoves[Math.floor(Math.random() * validMoveCount)];
 
             try {
                 if (!simGame.isValidMove(randomMove)) break;
                 simGame.makeMove(randomMove);
+                moveCount++;
             } catch (error) {
                 break;
             }
         }
 
-        return this.evaluatePosition(simGame);
+        // Use cached cluster calculations for evaluation
+        const blackScore =
+            this.getCachedLargestCluster(simGame, simGame.board1, 'BLACK') +
+            this.getCachedLargestCluster(simGame, simGame.board2, 'BLACK');
+
+        const whiteScore =
+            this.getCachedLargestCluster(simGame, simGame.board1, 'WHITE') +
+            this.getCachedLargestCluster(simGame, simGame.board2, 'WHITE');
+
+        // Return score from our player's perspective
+        return this.playerColor === 'BLACK' ? blackScore - whiteScore : whiteScore - blackScore;
+    }
+
+    // Clean up cache when instance is destroyed
+    destroy() {
+        this.clusterCache.clear();
+        this.clusterCache = null;
     }
 }
 
