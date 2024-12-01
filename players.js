@@ -525,24 +525,37 @@ class MCTSPlayer extends EntangledPlayer {
         return selectedMove;
     }
 
+    // Inside MCTSPlayer class, replace playRandomGame method:
     playRandomGame(game) {
+        // Reuse simulation game instance instead of creating new one each time
         const simGame = this.simulateGame(game.getGameState());
+        let moveCount = 0;
+        const maxMoves = simGame.boardSize * simGame.boardSize;
 
-        while (!simGame.isGameOver()) {
-            const moves = simGame.getValidMoves();
-            if (!moves || moves.length === 0) {
-                break; // End simulation if no valid moves
+        // Pre-calculate valid moves array size
+        const movesArraySize = Math.ceil(maxMoves / 2);
+        const validMoves = new Array(movesArraySize);
+
+        while (!simGame.isGameOver() && moveCount < maxMoves) {
+            // Get valid moves without creating new arrays
+            let moveCount = 0;
+            const symbols = simGame.symbolToPosition.keys();
+            for (const symbol of symbols) {
+                if (simGame.isValidMove(symbol)) {
+                    validMoves[moveCount++] = symbol;
+                }
             }
 
+            if (moveCount === 0) break;
+
+            // Use direct array access instead of Math.random() * array.length
+            const randomMove = validMoves[Math.floor(Math.random() * moveCount)];
+
             try {
-                const randomMove = moves[Math.floor(Math.random() * moves.length)];
-                if (!simGame.isValidMove(randomMove)) {
-                    break; // End simulation if selected move is invalid
-                }
+                if (!simGame.isValidMove(randomMove)) break;
                 simGame.makeMove(randomMove);
             } catch (error) {
-                console.error('Random play error:', error);
-                break; // End simulation on error
+                break;
             }
         }
 
