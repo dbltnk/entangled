@@ -32,6 +32,44 @@ const createRandomGrid = (size) => {
     return grid;
 };
 
+const createCenteredRandomGrid = (size, centerSymbol) => {
+    const symbols = getSymbolsForSize(size);
+    const centerPos = Math.floor(size / 2);
+
+    // Split and shuffle symbols, excluding the center symbol
+    const chars = symbols.split('').filter(c => c !== centerSymbol);
+    for (let i = chars.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [chars[i], chars[j]] = [chars[j], chars[i]];
+    }
+
+    // Create the grid
+    const grid = [];
+    let charIndex = 0;
+    for (let row = 0; row < size; row++) {
+        const gridRow = [];
+        for (let col = 0; col < size; col++) {
+            if (row === centerPos && col === centerPos) {
+                gridRow.push(centerSymbol);
+            } else {
+                gridRow.push(chars[charIndex++]);
+            }
+        }
+        grid.push(gridRow);
+    }
+    return grid;
+};
+
+class CenteredRandomBoard {
+    constructor(size, centerSymbol) {
+        this._grid = createCenteredRandomGrid(size, centerSymbol);
+    }
+
+    get grid() {
+        return this._grid;
+    }
+}
+
 const BOARD_LAYOUTS = {
     board1: {
         name: "Top left to bottom right (5x5)",
@@ -114,6 +152,13 @@ const BOARD_LAYOUTS = {
             ['0', '@', '#', '$', '%', '&', '*'],
             ['+', '-', '=', '/', '?', '!', '~']
         ]
+    },
+    centeredRandom7x7: {
+        name: "Centered Random (7x7)",
+        board: new CenteredRandomBoard(7, 'Y'),
+        get grid() {
+            return this.board.grid;
+        }
     },
     random5x5: {
         name: "Random Board (5x5)",

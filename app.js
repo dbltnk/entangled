@@ -36,6 +36,7 @@ function getBoardSize(boardId) {
 function populateBoardsBySize(size) {
     const board1Select = document.getElementById('board1-select');
     const board2Select = document.getElementById('board2-select');
+    const startingConfigInput = document.getElementById('starting-config');
 
     board1Select.innerHTML = '';
     board2Select.innerHTML = '';
@@ -54,11 +55,19 @@ function populateBoardsBySize(size) {
         4: ['board4x4', 'random4x4'],
         5: ['board1', 'board5'],
         6: ['board6x6', 'random6x6'],
-        7: ['board7x7', 'random7x7']
+        7: ['board7x7', 'centeredRandom7x7']
+    };
+
+    const defaultConfigs = {
+        4: '',
+        5: 'WQ1,WQ2',
+        6: '',
+        7: 'WY1,WY2'  // Center stones for 7x7 boards
     };
 
     board1Select.value = defaultBoards[size][0];
     board2Select.value = defaultBoards[size][1];
+    startingConfigInput.value = defaultConfigs[size];
 }
 
 function getSelectedBoardLayout(boardSelect) {
