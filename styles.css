@@ -192,6 +192,46 @@ body.rules-hidden .game-container {
     border: 2px solid #000;
 }
 
+/* Hover stones */
+.cell:not(.has-stone):hover::before {
+    content: '';
+    position: absolute;
+    width: 80%;
+    height: 80%;
+    border-radius: 50%;
+    z-index: 1;
+    opacity: 0.5;
+}
+
+.cell.black-turn:not(.has-stone):hover::before {
+    background: #000;
+}
+
+.cell.white-turn:not(.has-stone):hover::before {
+    background: #fff;
+    border: 2px solid #000;
+}
+
+/* When tile highlighting is enabled, show hover stones on matching tiles */
+.cell.highlighted:not(.has-stone)::before {
+    content: '';
+    position: absolute;
+    width: 80%;
+    height: 80%;
+    border-radius: 50%;
+    z-index: 1;
+    opacity: 0.5;
+}
+
+.cell.highlighted.black-turn:not(.has-stone)::before {
+    background: #000;
+}
+
+.cell.highlighted.white-turn:not(.has-stone)::before {
+    background: #fff;
+    border: 2px solid #000;
+}
+
 .group-size {
     position: absolute;
     z-index: 3;

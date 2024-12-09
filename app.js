@@ -344,16 +344,37 @@ function initializeBoards() {
     }
 }
 
+function isHumanTurn() {
+    if (!game || game.isGameOver()) return false;
+    const currentPlayer = game.getCurrentPlayer().toLowerCase();
+    const playerType = document.getElementById(`${currentPlayer}-player`)?.value;
+    return playerType === 'human';
+}
+
 function highlightCorrespondingCells(symbol) {
     if (!gameSettings.hover) return;
     const cells = document.querySelectorAll(`.cell[data-symbol="${symbol}"]`);
-    cells.forEach(cell => cell.classList.add('highlighted'));
+    const showHoverStones = isHumanTurn();
+
+    cells.forEach(cell => {
+        cell.classList.add('highlighted');
+        if (showHoverStones && !cell.classList.contains('has-stone')) {
+            if (game.getCurrentPlayer() === PLAYERS.BLACK) {
+                cell.classList.add('black-turn');
+            } else {
+                cell.classList.add('white-turn');
+            }
+        }
+    });
 }
 
 function removeHighlights() {
     if (!gameSettings.hover) return;
     const cells = document.querySelectorAll('.cell');
-    cells.forEach(cell => cell.classList.remove('highlighted'));
+    cells.forEach(cell => {
+        cell.classList.remove('highlighted');
+        cell.classList.remove('black-turn', 'white-turn');
+    });
 }
 
 function updateCell(boardNum, row, col, player) {
@@ -410,6 +431,20 @@ function updateDisplay() {
         currentPlayerDisplay.textContent =
             `Current player: ${state.currentPlayer === PLAYERS.BLACK ? '⚫ Black' : '⚪ White'}`;
     }
+
+    // Update hover state classes for empty cells
+    const cells = document.querySelectorAll('.cell');
+    cells.forEach(cell => {
+        cell.classList.remove('black-turn', 'white-turn');
+        // Only add turn classes if it's a human player's turn
+        if (!cell.classList.contains('has-stone') && isHumanTurn()) {
+            if (state.currentPlayer === PLAYERS.BLACK) {
+                cell.classList.add('black-turn');
+            } else {
+                cell.classList.add('white-turn');
+            }
+        }
+    });
 
     for (let i = 0; i < game.boardSize; i++) {
         for (let j = 0; j < game.boardSize; j++) {
