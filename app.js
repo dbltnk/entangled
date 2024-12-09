@@ -528,7 +528,7 @@ function init() {
     });
 
     // Settings checkboxes
-    ['hover', 'groups', 'size', 'score'].forEach(setting => {
+    ['hover', 'groups', 'size', 'score', 'currentPlayer'].forEach(setting => {
         const checkbox = document.getElementById(`setting-${setting}`);
         checkbox.addEventListener('change', (e) => {
             gameSettings[setting] = e.target.checked;
