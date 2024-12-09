@@ -118,7 +118,6 @@ body.rules-hidden .game-container {
 .board.board-7 {
     grid-template-columns: repeat(7, 1fr);
     max-width: 235px;
-
 }
 
 /* Adjust font sizes for board sizes */
@@ -397,4 +396,75 @@ select {
 
 #start-game span {
     font-size: 1.1rem;
+}
+
+/* Settings styles */
+.settings-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+}
+
+.toggle-settings {
+    background: none;
+    border: none;
+    padding: 4px;
+    cursor: pointer;
+}
+
+.toggle-icon {
+    display: inline-block;
+    transition: transform 0.3s;
+}
+
+.toggle-icon.rotated {
+    transform: rotate(-180deg);
+}
+
+.settings-content {
+    margin-top: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    transition: max-height 0.3s ease-out;
+    overflow: hidden;
+}
+
+.settings-content.hidden {
+    max-height: 0;
+    margin-top: 0;
+}
+
+.setting-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.setting-item input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+}
+
+.setting-item label {
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+.stats-row:first-child.score-hidden {
+    display: none;
+}
+
+.group-size.size-hidden {
+    display: none;
+}
+
+.cell.groups-hidden.cell-highlight-black,
+.cell.groups-hidden.cell-highlight-white {
+    background-color: white;
+}
+
+.cell.groups-hidden:hover {
+    background-color: #f0f0f0;
 }

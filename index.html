@@ -53,6 +53,37 @@
         </div>
 
         <div class="panel controls">
+            <div class="control-group settings-group">
+                <div class="settings-header">
+                    <h3><span>⚙️</span> Settings</h3>
+                    <button id="toggle-settings" class="toggle-settings">
+                        <span class="toggle-icon">▼</span>
+                    </button>
+                </div>
+                <div class="settings-content hidden">
+                    <div class="setting-item">
+                        <input type="checkbox" id="setting-hover" checked>
+                        <label for="setting-hover">Highlight matching tiles on hover</label>
+                    </div>
+                    <div class="setting-item">
+                        <input type="checkbox" id="setting-groups" checked>
+                        <label for="setting-groups">Show largest group highlights</label>
+                    </div>
+                    <div class="setting-item">
+                        <input type="checkbox" id="setting-size" checked>
+                        <label for="setting-size">Show group size numbers</label>
+                    </div>
+                    <div class="setting-item">
+                        <input type="checkbox" id="setting-score" checked>
+                        <label for="setting-score">Show live score</label>
+                    </div>
+                    <div class="setting-item">
+                        <input type="checkbox" id="setting-current-player" checked>
+                        <label for="setting-current-player">Show current player</label>
+                    </div>
+                </div>
+            </div>
+
             <div class="control-group">
                 <h3><span>📊</span> Score</h3>
                 <div class="stats">

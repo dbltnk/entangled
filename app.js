@@ -3,11 +3,86 @@ import { EntangledGame, PLAYERS } from './gameplay.js';
 import { createPlayer, AI_PLAYERS } from './players.js';
 import { GameController } from './game-controller.js';
 
+// Settings management
+const SETTINGS_KEY = 'entangled_settings';
+let gameSettings = {
+    hover: true,
+    groups: true,
+    size: true,
+    score: true,
+    currentPlayer: true
+};
+
 let game = null;
 let currentRandomBoards = {
     board1: null,
     board2: null
 };
+
+function loadSettings() {
+    const saved = localStorage.getItem(SETTINGS_KEY);
+    if (saved) {
+        gameSettings = { ...gameSettings, ...JSON.parse(saved) };
+    }
+
+    // Initialize checkboxes
+    Object.entries(gameSettings).forEach(([key, value]) => {
+        const checkbox = document.getElementById(`setting-${key}`);
+        if (checkbox) checkbox.checked = value;
+    });
+
+    applySettings();
+}
+
+function saveSettings() {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(gameSettings));
+}
+
+function applySettings() {
+    // Apply hover setting
+    const cells = document.querySelectorAll('.cell');
+    cells.forEach(cell => {
+        if (!gameSettings.hover) {
+            cell.removeEventListener('mouseenter', () => highlightCorrespondingCells(cell.dataset.symbol));
+            cell.removeEventListener('mouseleave', removeHighlights);
+        }
+    });
+
+    // Apply groups setting
+    cells.forEach(cell => {
+        if (!gameSettings.groups) {
+            cell.classList.add('groups-hidden');
+        } else {
+            cell.classList.remove('groups-hidden');
+        }
+    });
+
+    // Apply size setting
+    const sizes = document.querySelectorAll('.group-size');
+    sizes.forEach(size => {
+        if (!gameSettings.size) {
+            size.classList.add('size-hidden');
+        } else {
+            size.classList.remove('size-hidden');
+        }
+    });
+
+    // Apply score setting
+    const scoreRow = document.querySelector('.stats-row:first-child');
+    if (scoreRow) {
+        if (!gameSettings.score) {
+            scoreRow.classList.add('score-hidden');
+        } else {
+            scoreRow.classList.remove('score-hidden');
+        }
+    }
+
+    // Apply current player setting
+    const currentPlayerDisplay = document.getElementById('current-player-display');
+    if (currentPlayerDisplay) {
+        currentPlayerDisplay.style.display = gameSettings.currentPlayer ? '' : 'none';
+    }
+}
 
 function populatePlayerDropdowns() {
     const blackSelect = document.getElementById('black-player');
@@ -122,8 +197,11 @@ function createCell(symbol, boardNum, row, col) {
     assignRandomUniqueColor(letter);
     cell.appendChild(letter);
 
-    cell.addEventListener('mouseenter', () => highlightCorrespondingCells(symbol));
-    cell.addEventListener('mouseleave', () => removeHighlights());
+    if (gameSettings.hover) {
+        cell.addEventListener('mouseenter', () => highlightCorrespondingCells(symbol));
+        cell.addEventListener('mouseleave', () => removeHighlights());
+    }
+
     cell.addEventListener('click', () => handleCellClick(symbol));
 
     return cell;
@@ -132,6 +210,9 @@ function createCell(symbol, boardNum, row, col) {
 function createGroupSizeElement(size, isBlackStone) {
     const sizeElement = document.createElement('div');
     sizeElement.className = `group-size ${isBlackStone ? 'on-black' : ''}`;
+    if (!gameSettings.size) {
+        sizeElement.classList.add('size-hidden');
+    }
     sizeElement.textContent = size;
     return sizeElement;
 }
@@ -158,6 +239,11 @@ function updateCellHighlights(boardNum, row, col, largestClusters) {
 
     cell.classList.remove('cell-highlight-black', 'cell-highlight-white');
 
+    if (!gameSettings.groups) {
+        cell.classList.add('groups-hidden');
+        return;
+    }
+
     const isInBlackCluster = largestClusters.black[`board${boardNum}`]
         .some(pos => pos.row === row && pos.col === col);
     if (isInBlackCluster) {
@@ -174,6 +260,8 @@ function updateCellHighlights(boardNum, row, col, largestClusters) {
 function updateGroupSizes(boardElement, clusters, isBoard1) {
     const existingSizes = boardElement.querySelectorAll('.group-size');
     existingSizes.forEach(el => el.remove());
+
+    if (!gameSettings.size) return;
 
     const blackCluster = clusters.black[isBoard1 ? 'board1' : 'board2'];
     const whiteCluster = clusters.white[isBoard1 ? 'board1' : 'board2'];
@@ -201,24 +289,20 @@ function updateGroupSizes(boardElement, clusters, isBoard1) {
 
 function stopGame() {
     game = null;
-    // Clear any existing winner display
     const existingWinner = document.querySelector('.winner');
     if (existingWinner) {
         existingWinner.remove();
     }
-    // Reset score display
     document.getElementById('score-display').textContent = 'Black: 0 - White: 0';
     document.getElementById('current-player-display').textContent = '';
-    // Clear all stones from the board
     const cells = document.querySelectorAll('.cell');
     cells.forEach(cell => {
         const stone = cell.querySelector('.stone');
         if (stone) {
             cell.removeChild(stone);
         }
-        cell.classList.remove('has-stone', 'cell-highlight-black', 'cell-highlight-white');
+        cell.classList.remove('has-stone', 'cell-highlight-black', 'cell-highlight-white', 'groups-hidden');
     });
-    // Remove any group size indicators
     const groupSizes = document.querySelectorAll('.group-size');
     groupSizes.forEach(el => el.remove());
 }
@@ -236,7 +320,6 @@ function initializeBoards() {
     board1Element.innerHTML = '';
     board2Element.innerHTML = '';
 
-    // Add the appropriate board size class
     board1Element.className = `board board-${currentSize}`;
     board2Element.className = `board board-${currentSize}`;
 
@@ -245,6 +328,11 @@ function initializeBoards() {
             const cell1 = createCell(board1Layout[i][j], 1, i, j);
             const cell2 = createCell(board2Layout[i][j], 2, i, j);
 
+            if (!gameSettings.groups) {
+                cell1.classList.add('groups-hidden');
+                cell2.classList.add('groups-hidden');
+            }
+
             board1Element.appendChild(cell1);
             board2Element.appendChild(cell2);
         }
@@ -252,11 +340,13 @@ function initializeBoards() {
 }
 
 function highlightCorrespondingCells(symbol) {
+    if (!gameSettings.hover) return;
     const cells = document.querySelectorAll(`.cell[data-symbol="${symbol}"]`);
     cells.forEach(cell => cell.classList.add('highlighted'));
 }
 
 function removeHighlights() {
+    if (!gameSettings.hover) return;
     const cells = document.querySelectorAll('.cell');
     cells.forEach(cell => cell.classList.remove('highlighted'));
 }
@@ -299,11 +389,22 @@ function updateDisplay() {
     const whiteBoard1Score = game.findLargestCluster(game.getBoard1(), PLAYERS.WHITE);
     const whiteBoard2Score = game.findLargestCluster(game.getBoard2(), PLAYERS.WHITE);
 
-    document.getElementById('score-display').innerHTML =
-        `<strong>⚫ ${blackScore}</strong> (${blackBoard1Score} + ${blackBoard2Score}) vs <strong>⚪ ${whiteScore}</strong> (${whiteBoard1Score} + ${whiteBoard2Score})`;
+    const scoreDisplay = document.getElementById('score-display');
+    scoreDisplay.innerHTML = `<strong>⚫ ${blackScore}</strong> (${blackBoard1Score} + ${blackBoard2Score}) vs <strong>⚪ ${whiteScore}</strong> (${whiteBoard1Score} + ${whiteBoard2Score})`;
+    if (!gameSettings.score) {
+        scoreDisplay.parentElement.classList.add('score-hidden');
+    } else {
+        scoreDisplay.parentElement.classList.remove('score-hidden');
+    }
 
-    document.getElementById('current-player-display').textContent =
-        `Current player: ${state.currentPlayer === PLAYERS.BLACK ? '⚫ Black' : '⚪ White'}`;
+    const currentPlayerDisplay = document.getElementById('current-player-display');
+    if (!gameSettings.currentPlayer) {
+        currentPlayerDisplay.style.display = 'none';
+    } else {
+        currentPlayerDisplay.style.display = '';
+        currentPlayerDisplay.textContent =
+            `Current player: ${state.currentPlayer === PLAYERS.BLACK ? '⚫ Black' : '⚪ White'}`;
+    }
 
     for (let i = 0; i < game.boardSize; i++) {
         for (let j = 0; j < game.boardSize; j++) {
@@ -415,6 +516,30 @@ function initializeGame() {
 }
 
 function init() {
+    // Settings initialization
+    loadSettings();
+
+    // Settings event listeners
+    document.getElementById('toggle-settings').addEventListener('click', () => {
+        const content = document.querySelector('.settings-content');
+        const icon = document.querySelector('.toggle-icon');
+        content.classList.toggle('hidden');
+        icon.classList.toggle('rotated');
+    });
+
+    // Settings checkboxes
+    ['hover', 'groups', 'size', 'score'].forEach(setting => {
+        const checkbox = document.getElementById(`setting-${setting}`);
+        checkbox.addEventListener('change', (e) => {
+            gameSettings[setting] = e.target.checked;
+            saveSettings();
+            applySettings();
+            if (game) {
+                updateDisplay();
+            }
+        });
+    });
+
     populatePlayerDropdowns();
 
     // Set up board size change handler
