@@ -42,9 +42,14 @@ function applySettings() {
     // Apply hover setting
     const cells = document.querySelectorAll('.cell');
     cells.forEach(cell => {
-        if (!gameSettings.hover) {
-            cell.removeEventListener('mouseenter', () => highlightCorrespondingCells(cell.dataset.symbol));
-            cell.removeEventListener('mouseleave', removeHighlights);
+        // Remove existing listeners first to avoid duplicates
+        cell.removeEventListener('mouseenter', () => highlightCorrespondingCells(cell.dataset.symbol));
+        cell.removeEventListener('mouseleave', removeHighlights);
+
+        // Add listeners if hover is enabled
+        if (gameSettings.hover) {
+            cell.addEventListener('mouseenter', () => highlightCorrespondingCells(cell.dataset.symbol));
+            cell.addEventListener('mouseleave', removeHighlights);
         }
     });
 
