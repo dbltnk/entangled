@@ -121,6 +121,96 @@ const BOARD_LAYOUTS = {
             ['M', 'Y', 'P', 'B', 'I']
         ]
     },
+    board7: {
+        name: "asymmetric 2",
+        grid: [
+            ['M', 'V', 'F', 'T', 'D'],
+            ['J', 'S', 'C', 'L', 'U'],
+            ['B', 'K', 'Y', 'I', 'R'],
+            ['X', 'H', 'Q', 'A', 'O'],
+            ['P', 'E', 'N', 'W', 'G']
+        ]
+    },
+    board8: {
+        name: "asymmetric 3",
+        grid: [
+            ['M', 'V', 'P', 'J', 'D'],
+            ['T', 'I', 'C', 'L', 'U'],
+            ['B', 'K', 'Y', 'S', 'H'],
+            ['X', 'R', 'G', 'A', 'O'],
+            ['F', 'E', 'N', 'W', 'Q']
+        ]
+    },
+    board9: {
+        name: "asymmetric 4",
+        grid: [
+            ['M', 'X', 'F', 'S', 'B'],
+            ['J', 'Q', 'C', 'N', 'U'],
+            ['D', 'K', 'Y', 'G', 'R'],
+            ['V', 'H', 'S', 'A', 'O'],
+            ['P', 'E', 'L', 'W', 'I']
+        ]
+    },
+    board10: {
+        name: "asymmetric 5",
+        grid: [
+            ['S', 'C', 'L', 'U', 'J'],
+            ['K', 'Y', 'I', 'R', 'B'],
+            ['H', 'Q', 'A', 'O', 'X'],
+            ['E', 'N', 'W', 'G', 'P'],
+            ['V', 'F', 'T', 'D', 'M']
+        ]
+    },
+    board11: {
+        name: "asymmetric 6",
+        grid: [
+            ['I', 'C', 'L', 'U', 'T'],
+            ['K', 'Y', 'S', 'H', 'B'],
+            ['R', 'G', 'A', 'O', 'X'],
+            ['E', 'N', 'W', 'Q', 'F'],
+            ['V', 'P', 'J', 'D', 'M']
+        ]
+    },
+    board12: {
+        name: "asymmetric 7",
+        grid: [
+            ['Q', 'C', 'N', 'U', 'J'],
+            ['K', 'Y', 'G', 'R', 'D'],
+            ['H', 'S', 'A', 'O', 'V'],
+            ['E', 'L', 'W', 'I', 'P'],
+            ['X', 'F', 'T', 'B', 'M']
+        ]
+    },
+    board13: {
+        name: "alternative",
+        grid: [
+            ['X', 'C', 'L', 'F', 'T'],
+            ['K', 'J', 'S', 'W', 'B'],
+            ['R', 'V', 'A', 'O', 'I'],
+            ['E', 'N', 'H', 'Q', 'U'],
+            ['G', 'P', 'Y', 'D', 'M']
+        ]
+    },
+    board14: {
+        name: "alternative 2",
+        grid: [
+            ['T', 'C', 'N', 'U', 'G'],
+            ['K', 'Y', 'J', 'R', 'D'],
+            ['H', 'S', 'A', 'L', 'Y'],
+            ['B', 'O', 'W', 'I', 'P'],
+            ['X', 'F', 'Q', 'E', 'M']
+        ]
+    },
+    board15: {
+        name: "alternative 3",
+        grid: [
+            ['M', 'V', 'A', 'J', 'S'],
+            ['E', 'I', 'R', 'L', 'U'],
+            ['Q', 'K', 'Y', 'D', 'H'],
+            ['X', 'C', 'G', 'P', 'O'],
+            ['F', 'T', 'N', 'W', 'B']
+        ]
+    },
     board4x4: {
         name: "Top left to bottom right (4x4)",
         grid: [
