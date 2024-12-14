@@ -645,26 +645,6 @@ export const AI_PLAYERS = {
             randomThreshold: 0.1
         }
     },
-    //'balanced-no-rng': {
-    //    id: 'balanced-no-rng',
-    //    name: 'Greedy Low AI (no-rng)',
-    //    description: 'Balances cluster sizes across boards',
-    //    implementation: GreedyLowPlayer,
-    //    defaultConfig: {
-    //        randomize: false,
-    //        randomThreshold: 0.1
-    //    }
-    //},
-    //'balanced-some-rng': {
-    //    id: 'balanced-some-rng',
-    //    name: 'Greedy Low AI (some-rng)',
-    //    description: 'Balances cluster sizes across boards with randomization',
-    //    implementation: GreedyLowPlayer,
-    //    defaultConfig: {
-    //        randomize: true,
-    //        randomThreshold: 0.1
-    //    }
-    //},
     'defensive-no-rng': {
         id: 'defensive-no-rng',
         name: 'Defensive (no-rng)',
@@ -685,72 +665,6 @@ export const AI_PLAYERS = {
             randomThreshold: 0.1
         }
     },
-    //'enhancedAggressive-no-rng': {
-    //    id: 'enhancedAggressive-no-rng',
-    //    name: 'Enhanced Greedy AI (no-rng)',
-    //    description: 'Advanced aggressive strategy with lookahead',
-    //    implementation: EnhancedGreedyPlayer,
-    //    defaultConfig: {
-    //        randomize: false,
-    //        randomThreshold: 0.1,
-    //        lookahead: 10
-    //    }
-    //},
-    //'enhancedAggressive-some-rng': {
-    //    id: 'enhancedAggressive-some-rng',
-    //    name: 'Enhanced Greedy AI (some-rng)',
-    //    description: 'Advanced aggressive strategy with lookahead and randomization',
-    //    implementation: EnhancedGreedyPlayer,
-    //    defaultConfig: {
-    //        randomize: true,
-    //        randomThreshold: 0.1,
-    //        lookahead: 10
-    //    }
-    //},
-    //'enhancedBalanced-no-rng': {
-    //    id: 'enhancedBalanced-no-rng',
-    //    name: 'Enhanced Balanced AI (no-rng)',
-    //    description: 'Advanced balanced strategy with lookahead',
-    //    implementation: EnhancedBalancedPlayer,
-    //    defaultConfig: {
-    //        randomize: false,
-    //        randomThreshold: 0.1,
-    //        lookahead: 10
-    //    }
-    //},
-    //'enhancedBalanced-some-rng': {
-    //    id: 'enhancedBalanced-some-rng',
-    //    name: 'Enhanced Balanced AI (some-rng)',
-    //    description: 'Advanced balanced strategy with lookahead and randomization',
-    //    implementation: EnhancedBalancedPlayer,
-    //    defaultConfig: {
-    //        randomize: true,
-    //        randomThreshold: 0.1,
-    //          lookahead: 10
-    //    }
-    //},
-    //'enhancedDefensive-no-rng': {
-    //    id: 'enhancedDefensive-no-rng',
-    //    name: 'Enhanced Defensive AI (no-rng)',
-    //    description: 'Advanced defensive strategy with lookahead',
-    //    implementation: EnhancedDefensivePlayer,
-    //    defaultConfig: {
-    //        randomize: false,
-    //        randomThreshold: 0.1,
-    //        lookahead: 10
-    //    }
-    //},
-    //'enhancedDefensive-some-rng': {
-    //    id: 'enhancedDefensive-some-rng',
-    //    name: 'Enhanced Defensive AI (some-rng)',
-    //    description: 'Advanced defensive strategy with lookahead and randomization',
-    //    implementation: EnhancedDefensivePlayer,
-    //    defaultConfig: {
-    //        randomize: true,
-    //        randomThreshold: 0.1,
-    //        lookahead: 10
-    //    }
-    //},
     'minimax-no-rng': {
         id: 'minimax-no-rng',
         name: 'Minimax (no-rng)',
