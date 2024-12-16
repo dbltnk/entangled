@@ -15,6 +15,26 @@ self.onmessage = function (e) {
     const blackPlayer = createPlayer(matchup.black, game, PLAYERS.BLACK);
     const whitePlayer = createPlayer(matchup.white, game, PLAYERS.WHITE);
 
+    // Track game history
+    const history = [];
+    const recordState = () => {
+        const state = game.getGameState();
+        history.push({
+            move: history.length > 0 ? state.lastMove : null,
+            board1: state.board1,
+            board2: state.board2,
+            currentPlayer: state.currentPlayer,
+            blackScore: game.getScore(PLAYERS.BLACK),
+            whiteScore: game.getScore(PLAYERS.WHITE),
+            largestClusters: state.largestClusters,
+            board1Layout: boardConfig.board1Layout,
+            board2Layout: boardConfig.board2Layout
+        });
+    };
+
+    // Record initial state
+    recordState();
+
     // Play the game
     while (!game.isGameOver()) {
         const currentPlayer = game.getCurrentPlayer();
@@ -24,6 +44,7 @@ self.onmessage = function (e) {
             const move = player.chooseMove();
             if (move) {
                 game.makeMove(move);
+                recordState();
             } else {
                 break;
             }
@@ -53,7 +74,8 @@ self.onmessage = function (e) {
         result: {
             winner,
             blackScore,
-            whiteScore
+            whiteScore,
+            history
         }
     });
 };

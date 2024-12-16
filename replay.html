@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Game Replay</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="replay.css">
+</head>
+
+<body class="replay-body">
+    <main class="replay-container panel">
+        <header class="replay-header">
+            <div class="match-info">
+                <h2>Game Replay</h2>
+                <div id="players-info"></div>
+                <div id="board-info"></div>
+            </div>
+        </header>
+
+        <div class="boards-container">
+            <div class="board-container">
+                <div class="board" id="board1"></div>
+            </div>
+            <div class="board-container">
+                <div class="board" id="board2"></div>
+            </div>
+        </div>
+
+        <div class="replay-stats">
+            <div class="move-controls">
+                <button id="first-move" title="First Move (Home)">⏮</button>
+                <button id="prev-move" title="Previous Move (Left Arrow)">◀</button>
+                <span id="move-count">Move 0/0</span>
+                <button id="next-move" title="Next Move (Right Arrow)">▶</button>
+                <button id="last-move" title="Last Move (End)">⏭</button>
+            </div>
+            <div class="stats">
+                <div class="stats-row">
+                    <span id="score-display">Black: 0 - White: 0</span>
+                </div>
+                <div class="stats-row">
+                    <span id="current-player-display"></span>
+                </div>
+            </div>
+        </div>
+    </main>
+    <script type="module" src="replay.js"></script>
+</body>
+
+</html>

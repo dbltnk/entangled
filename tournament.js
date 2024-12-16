@@ -523,12 +523,15 @@ class TournamentManager {
             matchupDiv.style.marginBottom = '15px';
 
             const gamesHtml = result.games.map((game, index) => `
-                <div class="game-result" style="margin-bottom:3px;">
-                    <span class="game-number"><strong>Game ${index + 1}:</strong></span>
-                    <span class="winner-${game.winner.toLowerCase()}" style="margin-left:5px;">
-                        ${game.winner === 'TIE' ? 'Draw' : game.winner + ' wins'}
-                    </span>
-                    <span style="margin-left:5px;">(Black: ${game.blackScore} - White: ${game.whiteScore})</span>
+                <div class="game-result" style="margin-bottom:3px; display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <span class="game-number"><strong>Game ${index + 1}:</strong></span>
+                        <span class="winner-${game.winner.toLowerCase()}" style="margin-left:5px;">
+                            ${game.winner === 'TIE' ? 'Draw' : game.winner + ' wins'}
+                        </span>
+                        <span style="margin-left:5px;">(Black: ${game.blackScore} - White: ${game.whiteScore})</span>
+                    </div>
+                    <button class="replay-button" data-game-index="${index}">Replay</button>
                 </div>
             `).join('');
 
@@ -537,6 +540,28 @@ class TournamentManager {
                 <div style="margin-bottom:5px;">Results: <strong>${result.blackWins}-${result.whiteWins}-${result.draws}</strong></div>
                 <div class="game-moves">${gamesHtml}</div>
             `;
+
+            // Add event listeners for replay buttons
+            matchupDiv.querySelectorAll('.replay-button').forEach((button, index) => {
+                button.addEventListener('click', () => {
+                    const gameData = {
+                        history: result.games[index].history,
+                        matchInfo: {
+                            black: AI_PLAYERS[result.black].name,
+                            white: AI_PLAYERS[result.white].name,
+                            board1Name: BOARD_LAYOUTS[document.getElementById('tournament-board1-select').value].name,
+                            board2Name: BOARD_LAYOUTS[document.getElementById('tournament-board2-select').value].name,
+                            startingConfig: document.getElementById('tournament-starting-config').value
+                        },
+                        boardSize: this.boardConfigs[0].board1Layout.length
+                    };
+
+                    const replayWindow = window.open('replay.html', '_blank');
+                    replayWindow.addEventListener('load', () => {
+                        replayWindow.initializeReplay(gameData);
+                    });
+                });
+            });
 
             container.appendChild(matchupDiv);
         });
