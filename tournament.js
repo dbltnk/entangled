@@ -66,7 +66,7 @@ class TournamentManager {
     setDefaultBoardSelections(size, board1Select, board2Select) {
         const defaultSelections = {
             4: ['board4x4', 'random4x4'],
-            5: ['board1', 'board2'],
+            5: ['board1', 'board5'],
             6: ['board6x6', 'random6x6'],
             7: ['board7x7', 'centeredRandom7x7']
         };
