@@ -556,11 +556,11 @@ class MCTSPlayer extends EntangledPlayer {
         const duration = endTime - startTime;
 
         // Log cache performance
-        console.log(`MCTS agent (${this.playerColor}) turn stats:
-            Duration: ${duration.toFixed(2)}ms
-            Cache hits: ${this.cacheHits}
-            Cache misses: ${this.cacheMisses}
-            Hit rate: ${(this.cacheHits / (this.cacheHits + this.cacheMisses) * 100).toFixed(1)}%`);
+        // console.log(`MCTS agent (${this.playerColor}) turn stats:
+        //     Duration: ${duration.toFixed(2)}ms
+        //     Cache hits: ${this.cacheHits}
+        //     Cache misses: ${this.cacheMisses}
+        //     Hit rate: ${(this.cacheHits / (this.cacheHits + this.cacheMisses) * 100).toFixed(1)}%`);
 
         return selectedMove;
     }
