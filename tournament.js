@@ -40,7 +40,7 @@ class TournamentManager {
     }
 
     isDefaultAI(id) {
-        const defaultAIs = ['aggressive-some-rng', 'defensive-some-rng', 'minimax-some-rng', 'mcts'];
+        const defaultAIs = ['random', 'aggressive-some-rng', 'defensive-some-rng'];
         return defaultAIs.includes(id);
     }
 
@@ -120,19 +120,20 @@ class TournamentManager {
         let matchups = [];
         for (let i = 0; i < selectedAIs.length; i++) {
             for (let j = i; j < selectedAIs.length; j++) {
+                // Always just create one set of matchups regardless of self-play
                 matchups.push({
                     black: selectedAIs[i],
                     white: selectedAIs[j]
                 });
-                if (i !== j) {
-                    matchups.push({
-                        black: selectedAIs[j],
-                        white: selectedAIs[i]
-                    });
-                }
+                // Always add reverse matchup regardless of self-play
+                matchups.push({
+                    black: selectedAIs[j],
+                    white: selectedAIs[i]
+                });
             }
         }
 
+        // Shuffle matchups
         for (let i = matchups.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [matchups[i], matchups[j]] = [matchups[j], matchups[i]];
@@ -416,7 +417,8 @@ class TournamentManager {
         tbody.innerHTML = '';
 
         this.results.forEach((result) => {
-            if (result.black === result.white && result.black > result.white) return;
+            // Remove this early return to show all matchups
+            // if (result.black === result.white && result.black > result.white) return;
 
             const isSelfPlay = result.black === result.white;
             const reverseKey = `${result.white}-${result.black}`;
@@ -426,12 +428,10 @@ class TournamentManager {
             row.innerHTML = `
                 <td style="white-space: normal;">${AI_PLAYERS[result.black].name}</td>
                 <td style="white-space: normal;">${AI_PLAYERS[result.white].name}</td>
-                <td>${result.games.length * (isSelfPlay ? 1 : 2)}</td>
+                <td>${result.games.length}</td>
                 <td>${result.blackWins}-${result.whiteWins}-${result.draws}</td>
-                <td>${isSelfPlay || !reverseResult ? 'N/A' :
-                    `${reverseResult.whiteWins}-${reverseResult.blackWins}-${reverseResult.draws}`}</td>
+                <td>${reverseResult ? `${reverseResult.whiteWins}-${reverseResult.blackWins}-${reverseResult.draws}` : 'N/A'}</td>
             `;
-            // ELO Change column removed
         });
     }
 
