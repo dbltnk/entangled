@@ -40,7 +40,7 @@ class TournamentManager {
     }
 
     isDefaultAI(id) {
-        const defaultAIs = ['random', 'aggressive-some-rng', 'defensive-some-rng'];
+        const defaultAIs = ['mcts', 'minimax-some-rng', 'defensive-some-rng'];
         return defaultAIs.includes(id);
     }
 
