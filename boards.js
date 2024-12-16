@@ -195,7 +195,7 @@ const BOARD_LAYOUTS = {
         name: "alternative 2",
         grid: [
             ['T', 'C', 'N', 'U', 'G'],
-            ['K', 'Y', 'J', 'R', 'D'],
+            ['K', 'V', 'J', 'R', 'D'],
             ['H', 'S', 'A', 'L', 'Y'],
             ['B', 'O', 'W', 'I', 'P'],
             ['X', 'F', 'Q', 'E', 'M']
