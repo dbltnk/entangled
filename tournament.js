@@ -162,13 +162,15 @@ class TournamentManager {
 
         this.displayBoardConfiguration();
 
+        // Reset all tournament state
         this.matchups = this.generateMatchups(this.selectedAIs);
         this.totalGames = this.matchups.length * this.gamesPerMatchup;
         this.gamesCompleted = 0;
         this.currentMatchIndex = 0;
-        this.results.clear();
-        this.matchCounts.clear();
+        this.results = new Map();
+        this.matchCounts = new Map();
         this.startTime = Date.now();
+        this.elo = new ELOSystem(); // Create fresh ELO system
 
         this.matchups.forEach(matchup => {
             this.matchCounts.set(`${matchup.black}-${matchup.white}`, 0);
@@ -178,6 +180,12 @@ class TournamentManager {
 
         document.getElementById('progress-container').classList.remove('hidden');
         this.updateProgress();
+
+        // Stop any existing workers
+        if (this.workers.length > 0) {
+            this.workers.forEach(worker => worker.terminate());
+            this.workers = [];
+        }
 
         const workerCount = Math.min(parallelGames, navigator.hardwareConcurrency || 4);
         this.workers = Array(workerCount).fill(null).map(() => {
@@ -324,7 +332,7 @@ class TournamentManager {
 
         ['black', 'white'].forEach(color => {
             const stats = colorStats[color];
-            const winRate = ((stats.wins + stats.draws * 0.5) / stats.total * 100).toFixed(1);
+            const winRate = (stats.wins / stats.total * 100).toFixed(1);
             const drawRate = (stats.draws / stats.total * 100).toFixed(1);
             const avgScore = (stats.score / stats.total).toFixed(1);
 
