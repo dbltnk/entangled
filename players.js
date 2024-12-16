@@ -6,8 +6,8 @@ class EntangledPlayer {
     constructor(gameEngine, playerColor, config = {}) {
         this.gameEngine = gameEngine;
         this.playerColor = playerColor;
-        this.randomize = config.randomize || false;
-        this.randomThreshold = config.randomThreshold || 0.1;
+        this.randomize = config.randomize;
+        this.randomThreshold = config.randomThreshold;
     }
 
     randomizeChoice(moves, scores) {
@@ -420,7 +420,7 @@ class EnhancedDefensivePlayer extends EntangledPlayer {
 class MinimaxPlayer extends EntangledPlayer {
     constructor(gameEngine, playerColor, config = {}) {
         super(gameEngine, playerColor, config);
-        this.lookahead = config.lookahead || 2;
+        this.lookahead = config.lookahead;
     }
 
     chooseMove() {
@@ -485,10 +485,8 @@ class MinimaxPlayer extends EntangledPlayer {
 class MCTSPlayer extends EntangledPlayer {
     constructor(gameEngine, playerColor, config = {}) {
         super(gameEngine, playerColor, config);
-        this.simulationCount = config.simulationCount || 100;
-        // Initialize cluster cache
+        this.simulationCount = config.simulationCount;
         this.clusterCache = new Map();
-        // Cache hit tracking for debugging
         this.cacheHits = 0;
         this.cacheMisses = 0;
     }
@@ -615,16 +613,19 @@ class MCTSPlayer extends EntangledPlayer {
 class HybridStrongPlayer extends EntangledPlayer {
     constructor(gameEngine, playerColor, config = {}) {
         super(gameEngine, playerColor, config);
-        this.mctsCount = config.simulationCount || 200;
-        this.minimaxDepth = config.lookahead || 4;
+        this.mctsCount = config.simulationCount;
+        this.minimaxDepth = config.lookahead;
     }
 
     chooseMove() {
         const validMoves = this.gameEngine.getValidMoves();
+        console.log(validMoves.length);
         if (!validMoves.length) return null;
-        if (validMoves.length < 8) {
+        if (validMoves.length < 10) {
+            console.log("Using Minimax");
             return this.minimaxChoice(validMoves);
         } else {
+            console.log("Using MCTS");
             return this.mctsChoice(validMoves);
         }
     }
@@ -770,7 +771,7 @@ export const AI_PLAYERS = {
         defaultConfig: {
             randomize: true,
             randomThreshold: 0.1,
-            lookahead: 4
+            lookahead: 5
         }
     },
     'mcts': {
@@ -781,7 +782,7 @@ export const AI_PLAYERS = {
         defaultConfig: {
             randomize: true,
             randomThreshold: 0.1,
-            simulationCount: 300
+            simulationCount: 5000
         }
     },
     'hybrid-strong': {
@@ -791,9 +792,9 @@ export const AI_PLAYERS = {
         implementation: HybridStrongPlayer,
         defaultConfig: {
             randomize: true,
-            randomThreshold: 0.1,
-            simulationCount: 300,
-            lookahead: 4
+            randomThreshold: 0.05,
+            simulationCount: 5000,
+            lookahead: 10
         }
     }
 };
