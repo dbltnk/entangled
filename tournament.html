@@ -4,13 +4,12 @@
 <head>
     <meta charset="UTF-8">
     <title>Entangled Tournament</title>
-    <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="tournament.css">
 </head>
 
 <body class="tournament-body">
-    <div class="tournament-container">
-        <div class="panel setup-panel">
+    <main class="tournament-container">
+        <aside class="setup-panel panel">
             <h1>Tournament Setup</h1>
 
             <div class="section">
@@ -22,13 +21,13 @@
                 <h2>Board Configuration</h2>
                 <div class="board-setup">
                     <div class="setup-row">
-                        <label>Board Sizes:</label>
-                        <div class="size-checkboxes">
-                            <label><input type="checkbox" name="board-size" value="4" checked> 4×4</label>
-                            <label><input type="checkbox" name="board-size" value="5" checked> 5×5</label>
-                            <label><input type="checkbox" name="board-size" value="6" checked> 6×6</label>
-                            <label><input type="checkbox" name="board-size" value="7" checked> 7×7</label>
-                        </div>
+                        <label>Board Size:</label>
+                        <select id="board-size">
+                            <option value="4">4×4</option>
+                            <option value="5" selected>5×5</option>
+                            <option value="6">6×6</option>
+                            <option value="7">7×7</option>
+                        </select>
                     </div>
                     <div class="setup-row">
                         <label>Board 1:</label>
@@ -60,22 +59,22 @@
             </div>
 
             <button id="start-tournament" class="tournament-button">Start Tournament</button>
-        </div>
+        </aside>
 
-        <div class="panel results-panel">
+        <section class="results-panel panel">
             <h1>Tournament Results</h1>
 
             <div id="current-config" class="hidden">
                 <h2>Current Tournament Configuration</h2>
                 <div class="config-details">
-                    <div class="board-preview">
-                        <div class="preview-board">
-                            <h3>Board 1</h3>
-                            <div id="board1-preview"></div>
+                    <div class="board-names">
+                        <div class="board-name">
+                            <h3>Board 1:</h3>
+                            <div id="board1-name"></div>
                         </div>
-                        <div class="preview-board">
-                            <h3>Board 2</h3>
-                            <div id="board2-preview"></div>
+                        <div class="board-name">
+                            <h3>Board 2:</h3>
+                            <div id="board2-name"></div>
                         </div>
                     </div>
                     <div class="starting-config">
@@ -106,16 +105,13 @@
                 <div class="tab-content">
                     <div id="overview-tab" class="tab-pane active">
                         <div class="overview-section">
-                            <h3>Overall Performance</h3>
-                            <table id="overview-table" class="results-table">
+                            <h3>Color Statistics</h3>
+                            <table id="color-stats-table" class="results-table">
                                 <thead>
                                     <tr>
-                                        <th>AI</th>
-                                        <th>ELO (Black)</th>
-                                        <th>ELO (White)</th>
-                                        <th>Win Rate (Black)</th>
-                                        <th>Win Rate (White)</th>
-                                        <th>Total Games</th>
+                                        <th>Color</th>
+                                        <th>Win Rate</th>
+                                        <th>Draw Rate</th>
                                         <th>Avg Score</th>
                                     </tr>
                                 </thead>
@@ -124,13 +120,16 @@
                         </div>
 
                         <div class="overview-section">
-                            <h3>Color Statistics</h3>
-                            <table id="color-stats-table" class="results-table">
+                            <h3>Overall Performance</h3>
+                            <table id="overview-table" class="results-table">
                                 <thead>
                                     <tr>
-                                        <th>Color</th>
+                                        <th>AI</th>
+                                        <th>ELO</th>
                                         <th>Win Rate</th>
-                                        <th>Draw Rate</th>
+                                        <th>As Black</th>
+                                        <th>As White</th>
+                                        <th>Games</th>
                                         <th>Avg Score</th>
                                     </tr>
                                 </thead>
@@ -148,7 +147,6 @@
                                     <th>Games</th>
                                     <th>As Black (W/L/D)</th>
                                     <th>As White (W/L/D)</th>
-                                    <th>ELO Change</th>
                                 </tr>
                             </thead>
                             <tbody></tbody>
@@ -164,8 +162,8 @@
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
+        </section>
+    </main>
     <script type="module" src="tournament.js"></script>
 </body>
 

@@ -1,25 +1,48 @@
+:root {
+    --color-background: #f8f9fa;
+    --color-border: #ccc;
+    --color-hover: #eee;
+    --color-text: #333;
+    --color-white: #fff;
+
+    --border-radius: 4px;
+    --border-radius-sm: 2px;
+
+    --font-size-base: 14px;
+    --font-size-sm: 12px;
+    --font-size-lg: 16px;
+
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-md: 16px;
+    --spacing-lg: 24px;
+    --spacing-xl: 32px;
+}
+
 .tournament-body {
-    padding: var(--spacing-xl);
-    display: flex;
-    justify-content: center;
+    min-height: 100vh;
+    padding: 2rem;
     background: var(--color-background);
+    font-family: sans-serif;
+    font-size: var(--font-size-base);
+    color: var(--color-text);
 }
 
 .tournament-container {
     display: flex;
-    gap: var(--spacing-xl);
-    max-width: 1600px;
-    width: 100%;
+    gap: 2rem;
+    max-width: 1800px;
+    margin: 0 auto;
 }
 
 .setup-panel {
     width: 400px;
-    flex-shrink: 0;
+    flex: 0 0 auto;
 }
 
 .results-panel {
-    flex-grow: 1;
-    min-width: 800px;
+    flex: 1;
+    min-width: 0;
 }
 
 .section {
@@ -29,12 +52,12 @@
 .section h2 {
     margin-bottom: var(--spacing-md);
     font-size: var(--font-size-lg);
+    font-weight: 600;
 }
 
-/* Checkbox grid for AI selection */
 .checkbox-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
     gap: var(--spacing-sm);
 }
 
@@ -46,6 +69,8 @@
     border: 1px solid var(--color-border);
     border-radius: var(--border-radius-sm);
     cursor: pointer;
+    font-size: 0.9em;
+    background: var(--color-white);
 }
 
 .checkbox-item:hover {
@@ -57,21 +82,6 @@
     height: 16px;
 }
 
-/* Board size selection */
-.size-checkboxes {
-    display: flex;
-    gap: var(--spacing-md);
-    flex-wrap: wrap;
-}
-
-.size-checkboxes label {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-xs);
-    cursor: pointer;
-}
-
-/* Board setup and tournament settings */
 .board-setup,
 .tournament-settings {
     display: flex;
@@ -86,32 +96,43 @@
 }
 
 .setup-row label {
-    min-width: 120px;
+    min-width: 100px;
     font-weight: 600;
+    font-size: 0.9em;
 }
 
 .setup-row select,
 .setup-row input {
-    flex-grow: 1;
+    flex: 1;
     padding: var(--spacing-sm);
     border: 1px solid var(--color-border);
     border-radius: var(--border-radius-sm);
+    font-size: 0.9em;
+    min-width: 0;
+    background: var(--color-white);
 }
 
 .setup-row input[type="number"] {
-    width: 80px;
+    width: 70px;
 }
 
-/* Tournament button */
 .tournament-button {
     width: 100%;
     padding: var(--spacing-md);
     font-size: var(--font-size-lg);
     font-weight: 600;
     margin-top: var(--spacing-md);
+    border: none;
+    background: var(--color-text);
+    color: var(--color-white);
+    border-radius: var(--border-radius);
+    cursor: pointer;
 }
 
-/* Current configuration display */
+.tournament-button:hover {
+    background: #555;
+}
+
 .config-details {
     margin: var(--spacing-lg) 0;
     padding: var(--spacing-md);
@@ -120,21 +141,26 @@
     border-radius: var(--border-radius);
 }
 
-.board-preview {
+.board-names {
     display: flex;
-    gap: var(--spacing-xl);
+    justify-content: space-between;
     margin-bottom: var(--spacing-lg);
 }
 
-.preview-board {
+.board-name {
     flex: 1;
+    padding: var(--spacing-md);
+    background: var(--color-hover);
+    border-radius: var(--border-radius-sm);
 }
 
-.preview-board h3 {
+.board-name h3 {
     margin-bottom: var(--spacing-sm);
+    color: var(--color-text);
+    font-weight: 600;
+    font-size: var(--font-size-base);
 }
 
-/* Progress bar */
 .progress-container {
     margin: var(--spacing-xl) 0;
 }
@@ -143,6 +169,7 @@
     display: flex;
     justify-content: space-between;
     margin-bottom: var(--spacing-sm);
+    font-size: var(--font-size-sm);
 }
 
 .progress-bar {
@@ -159,7 +186,6 @@
     transition: width 0.3s ease;
 }
 
-/* Results tabs and tables */
 .results-tabs {
     display: flex;
     gap: var(--spacing-sm);
@@ -174,6 +200,7 @@
     cursor: pointer;
     font-size: var(--font-size-base);
     border-bottom: 2px solid transparent;
+    color: var(--color-text);
 }
 
 .tab-button:hover {
@@ -193,20 +220,23 @@
     display: block;
 }
 
-/* Overview sections */
 .overview-section {
     margin-bottom: var(--spacing-xl);
 }
 
 .overview-section h3 {
     margin-bottom: var(--spacing-md);
+    font-size: var(--font-size-base);
+    font-weight: 600;
 }
 
-/* Results tables */
 .results-table {
     width: 100%;
     border-collapse: collapse;
     margin-top: var(--spacing-md);
+    table-layout: fixed;
+    font-size: var(--font-size-sm);
+    background: var(--color-white);
 }
 
 .results-table th,
@@ -214,21 +244,25 @@
     padding: var(--spacing-sm);
     text-align: left;
     border-bottom: 1px solid var(--color-border);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .results-table th {
     font-weight: 600;
     background: var(--color-hover);
+    font-size: var(--font-size-base);
+    color: var(--color-text);
 }
 
 .results-table tr:hover td {
     background: var(--color-hover);
 }
 
-/* Player stats */
 .player-stats-container {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    grid-template-columns: repeat(2, 1fr);
     gap: var(--spacing-lg);
 }
 
@@ -243,28 +277,29 @@
     margin-bottom: var(--spacing-md);
     padding-bottom: var(--spacing-sm);
     border-bottom: 1px solid var(--color-border);
+    font-size: var(--font-size-base);
+    font-weight: 600;
 }
 
-.rating-history {
-    margin-top: var(--spacing-md);
-}
-
-/* Game details */
 .game-detail {
     padding: var(--spacing-md);
     margin-bottom: var(--spacing-md);
     border: 1px solid var(--color-border);
     border-radius: var(--border-radius-sm);
+    background: var(--color-white);
 }
 
 .game-detail h3 {
     margin-bottom: var(--spacing-sm);
+    font-size: var(--font-size-base);
+    font-weight: 600;
 }
 
 .game-result {
     display: flex;
     gap: var(--spacing-md);
     margin-bottom: var(--spacing-xs);
+    font-size: var(--font-size-sm);
 }
 
 .winner-black {

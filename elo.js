@@ -1,24 +1,18 @@
-// ELO Rating System for Entangled Tournament
-
 class ELOSystem {
     constructor(config = {}) {
-        this.K = config.K || 32; // Base K-factor
+        this.K = config.K || 32;
         this.initialRating = config.initialRating || 1500;
-        this.ratings = new Map(); // {playerId: {black: rating, white: rating}}
-        this.history = new Map(); // {playerId: [{date, blackRating, whiteRating}]}
+        this.ratings = new Map();
+        this.history = new Map();
         this.confidenceIntervals = new Map();
     }
 
     initializePlayer(playerId) {
         if (!this.ratings.has(playerId)) {
-            this.ratings.set(playerId, {
-                black: this.initialRating,
-                white: this.initialRating
-            });
+            this.ratings.set(playerId, this.initialRating);
             this.history.set(playerId, [{
                 date: new Date(),
-                blackRating: this.initialRating,
-                whiteRating: this.initialRating
+                rating: this.initialRating
             }]);
             this.updateConfidence(playerId);
         }
@@ -29,7 +23,6 @@ class ELOSystem {
     }
 
     calculateNewRating(oldRating, expectedScore, actualScore, gamesPlayed) {
-        // Adjust K-factor based on number of games played
         let adjustedK = this.K;
         if (gamesPlayed > 30) adjustedK = Math.max(16, adjustedK * 0.75);
         if (gamesPlayed > 100) adjustedK = Math.max(8, adjustedK * 0.5);
@@ -38,11 +31,19 @@ class ELOSystem {
     }
 
     updateRating(playerId, color, opponentId, opponentColor, result) {
+        if (playerId === opponentId) {
+            return {
+                oldRating: this.initialRating,
+                newRating: this.initialRating,
+                change: 0
+            };
+        }
+
         this.initializePlayer(playerId);
         this.initializePlayer(opponentId);
 
-        const playerRating = this.ratings.get(playerId)[color];
-        const opponentRating = this.ratings.get(opponentId)[opponentColor];
+        const playerRating = this.ratings.get(playerId);
+        const opponentRating = this.ratings.get(opponentId);
 
         const expectedScore = this.getExpectedScore(playerRating, opponentRating);
         const actualScore = result === 'win' ? 1 : result === 'loss' ? 0 : 0.5;
@@ -50,19 +51,14 @@ class ELOSystem {
         const gamesPlayed = this.getGamesPlayed(playerId);
         const newRating = this.calculateNewRating(playerRating, expectedScore, actualScore, gamesPlayed);
 
-        // Update ratings
-        const currentRatings = this.ratings.get(playerId);
-        currentRatings[color] = newRating;
+        this.ratings.set(playerId, newRating);
 
-        // Record history
-        const history = this.history.get(playerId);
-        history.push({
+        this.history.get(playerId).push({
             date: new Date(),
-            blackRating: currentRatings.black,
-            whiteRating: currentRatings.white
+            rating: newRating,
+            color: color
         });
 
-        // Update confidence intervals
         this.updateConfidence(playerId);
 
         return {
@@ -74,31 +70,17 @@ class ELOSystem {
 
     updateConfidence(playerId) {
         const history = this.history.get(playerId);
-        const recentGames = history.slice(-30); // Last 30 games for confidence
+        const recentGames = history.slice(-30);
 
         if (recentGames.length < 5) {
-            this.confidenceIntervals.set(playerId, {
-                black: 200,
-                white: 200
-            });
+            this.confidenceIntervals.set(playerId, 200);
             return;
         }
 
-        // Calculate standard deviation for both colors
-        const blackRatings = recentGames.map(h => h.blackRating);
-        const whiteRatings = recentGames.map(h => h.whiteRating);
-
-        const blackStdDev = this.calculateStdDev(blackRatings);
-        const whiteStdDev = this.calculateStdDev(whiteRatings);
-
-        // 95% confidence interval = 1.96 * stdDev / sqrt(n)
-        const blackInterval = Math.round(1.96 * blackStdDev / Math.sqrt(recentGames.length));
-        const whiteInterval = Math.round(1.96 * whiteStdDev / Math.sqrt(recentGames.length));
-
-        this.confidenceIntervals.set(playerId, {
-            black: blackInterval,
-            white: whiteInterval
-        });
+        const ratings = recentGames.map(h => h.rating);
+        const stdDev = this.calculateStdDev(ratings);
+        const interval = Math.round(1.96 * stdDev / Math.sqrt(recentGames.length));
+        this.confidenceIntervals.set(playerId, interval);
     }
 
     calculateStdDev(values) {
@@ -111,15 +93,15 @@ class ELOSystem {
         return Math.sqrt(avgSquareDiff);
     }
 
-    getRating(playerId, color) {
+    getRating(playerId) {
         if (!this.ratings.has(playerId)) {
             this.initializePlayer(playerId);
         }
-        return this.ratings.get(playerId)[color];
+        return this.ratings.get(playerId);
     }
 
-    getConfidenceInterval(playerId, color) {
-        return this.confidenceIntervals.get(playerId)?.[color] || 200;
+    getConfidenceInterval(playerId) {
+        return this.confidenceIntervals.get(playerId) || 200;
     }
 
     getRatingHistory(playerId) {
@@ -130,10 +112,14 @@ class ELOSystem {
         return (this.history.get(playerId)?.length || 1) - 1;
     }
 
-    getFormattedRating(playerId, color) {
-        const rating = this.getRating(playerId, color);
-        const confidence = this.getConfidenceInterval(playerId, color);
+    getFormattedRating(playerId) {
+        const rating = this.getRating(playerId);
+        const confidence = this.getConfidenceInterval(playerId);
         return `${rating} ±${confidence}`;
+    }
+
+    isSelfPlay(playerId1, playerId2) {
+        return playerId1 === playerId2;
     }
 }
 
