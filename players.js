@@ -612,6 +612,92 @@ class MCTSPlayer extends EntangledPlayer {
     }
 }
 
+class HybridStrongPlayer extends EntangledPlayer {
+    constructor(gameEngine, playerColor, config = {}) {
+        super(gameEngine, playerColor, config);
+        this.mctsCount = config.simulationCount || 200;
+        this.minimaxDepth = config.lookahead || 4;
+    }
+
+    chooseMove() {
+        const validMoves = this.gameEngine.getValidMoves();
+        if (!validMoves.length) return null;
+        if (validMoves.length < 8) {
+            return this.minimaxChoice(validMoves);
+        } else {
+            return this.mctsChoice(validMoves);
+        }
+    }
+
+    minimaxChoice(moves) {
+        const evaluations = moves.map(m => {
+            const sim = this.simulateGame(this.gameEngine.getGameState());
+            sim.makeMove(m);
+            return { move: m, score: this.minimax(sim, this.minimaxDepth - 1, false, -Infinity, Infinity) };
+        });
+        evaluations.sort((a, b) => b.score - a.score);
+        return this.randomizeChoice(evaluations.map(e => e.move), evaluations.map(e => e.score));
+    }
+
+    minimax(game, depth, maxing, alpha, beta) {
+        if (depth === 0 || game.isGameOver()) return this.evaluatePosition(game);
+        const moves = game.getValidMoves();
+        if (!moves.length) return this.evaluatePosition(game);
+        if (maxing) {
+            let val = -Infinity;
+            for (const m of moves) {
+                const sim = this.simulateGame(game.getGameState());
+                sim.currentPlayer = this.playerColor;
+                sim.makeMove(m);
+                val = Math.max(val, this.minimax(sim, depth - 1, false, alpha, beta));
+                alpha = Math.max(alpha, val);
+                if (beta <= alpha) break;
+            }
+            return val;
+        } else {
+            let val = Infinity;
+            const opp = this.playerColor === 'BLACK' ? 'WHITE' : 'BLACK';
+            for (const m of moves) {
+                const sim = this.simulateGame(game.getGameState());
+                sim.currentPlayer = opp;
+                sim.makeMove(m);
+                val = Math.min(val, this.minimax(sim, depth - 1, true, alpha, beta));
+                beta = Math.min(beta, val);
+                if (beta <= alpha) break;
+            }
+            return val;
+        }
+    }
+
+    mctsChoice(moves) {
+        const evals = moves.map(m => {
+            let total = 0;
+            for (let i = 0; i < this.mctsCount; i++) {
+                const sim = this.simulateGame(this.gameEngine.getGameState());
+                sim.makeMove(m);
+                total += this.playRandomGame(sim);
+            }
+            return { move: m, score: total / this.mctsCount };
+        });
+        evals.sort((a, b) => b.score - a.score);
+        return this.randomizeChoice(evals.map(e => e.move), evals.map(e => e.score));
+    }
+
+    playRandomGame(sim) {
+        while (!sim.isGameOver()) {
+            const vm = sim.getValidMoves();
+            if (!vm.length) break;
+            const rnd = vm[Math.floor(Math.random() * vm.length)];
+            sim.makeMove(rnd);
+        }
+        const my = this.playerColor;
+        const opp = my === 'BLACK' ? 'WHITE' : 'BLACK';
+        const myScore = sim.getScore(my);
+        const oppScore = sim.getScore(opp);
+        return myScore - oppScore;
+    }
+}
+
 export const AI_PLAYERS = {
     random: {
         id: 'random',
@@ -696,6 +782,18 @@ export const AI_PLAYERS = {
             randomize: true,
             randomThreshold: 0.1,
             simulationCount: 300
+        }
+    },
+    'hybrid-strong': {
+        id: 'hybrid-strong',
+        name: 'Hybrid Strong Player',
+        description: 'Combines MCTS and Minimax adaptively',
+        implementation: HybridStrongPlayer,
+        defaultConfig: {
+            randomize: true,
+            randomThreshold: 0.1,
+            simulationCount: 300,
+            lookahead: 4
         }
     }
 };
