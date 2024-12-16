@@ -771,7 +771,7 @@ export const AI_PLAYERS = {
         defaultConfig: {
             randomize: true,
             randomThreshold: 0.1,
-            lookahead: 5
+            lookahead: 4
         }
     },
     'mcts': {
@@ -782,7 +782,7 @@ export const AI_PLAYERS = {
         defaultConfig: {
             randomize: true,
             randomThreshold: 0.1,
-            simulationCount: 5000
+            simulationCount: 2000
         }
     },
     'hybrid-strong': {
