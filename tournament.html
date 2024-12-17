@@ -105,35 +105,29 @@
                 <div class="tab-content">
                     <div id="overview-tab" class="tab-pane active">
                         <div class="overview-section">
-                            <h3>Color Statistics</h3>
-                            <table id="color-stats-table" class="results-table">
+                            <table id="overview-table" class="overview-table">
                                 <thead>
                                     <tr>
-                                        <th>Color</th>
-                                        <th>Win Rate</th>
-                                        <th>Draw Rate</th>
-                                        <th>Avg Score</th>
+                                        <th colspan="2"></th>
+                                        <th colspan="4">AS WHITE</th>
+                                        <th colspan="4">AS BLACK</th>
                                     </tr>
-                                </thead>
-                                <tbody></tbody>
-                            </table>
-                        </div>
-
-                        <div class="overview-section">
-                            <h3>Overall Performance</h3>
-                            <table id="overview-table" class="results-table">
-                                <thead>
                                     <tr>
-                                        <th>AI</th>
+                                        <th>Player</th>
                                         <th>ELO</th>
-                                        <th>Win Rate</th>
-                                        <th>As Black</th>
-                                        <th>As White</th>
-                                        <th>Games</th>
-                                        <th>Avg Score</th>
+                                        <th>Score avg<br>min-max</th>
+                                        <th>Win %</th>
+                                        <th>Loss %</th>
+                                        <th>Draw %</th>
+                                        <th>Score avg<br>min-max</th>
+                                        <th>Win %</th>
+                                        <th>Loss %</th>
+                                        <th>Draw %</th>
                                     </tr>
                                 </thead>
-                                <tbody></tbody>
+                                <tbody>
+                                    <!-- Rows will be populated by JavaScript -->
+                                </tbody>
                             </table>
                         </div>
                     </div>

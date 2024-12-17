@@ -260,12 +260,6 @@
     background: var(--color-hover);
 }
 
-.player-stats-container {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: var(--spacing-lg);
-}
-
 .player-card {
     padding: var(--spacing-md);
     border: 1px solid var(--color-border);
@@ -332,4 +326,96 @@
 
 .hidden {
     display: none;
+}
+
+
+.overview-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    background: white;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.overview-table thead {
+    background: #f3f4f6;
+}
+
+.overview-table th {
+    padding: 12px 8px;
+    text-align: left;
+    font-weight: 600;
+    color: #374151;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.overview-table tr:nth-child(even) {
+    background: #fafafa;
+}
+
+.overview-table td {
+    padding: 12px 8px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.player-name {
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.elo-rating {
+    color: #2563eb;
+    font-weight: 600;
+}
+
+.elo-rating .confidence {
+    font-size: 12px;
+    color: #6b7280;
+    font-weight: normal;
+}
+
+.color-stats {
+    padding: 8px;
+}
+
+.score-stats {
+    display: flex;
+    flex-direction: column;
+}
+
+.avg-score {
+    font-weight: 600;
+    color: #1f2937;
+    font-size: 15px;
+}
+
+.score-range {
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.win-percent {
+    font-weight: 600;
+    color: #059669;
+}
+
+.loss-percent {
+    color: #dc2626;
+}
+
+.draw-percent {
+    color: #6b7280;
+}
+
+/* Column group headers */
+.overview-table thead tr:first-child th {
+    text-align: center;
+    padding: 8px;
+    font-size: 16px;
+    background: #f3f4f6;
+}
+
+.overview-table thead tr:first-child th:first-child,
+.overview-table thead tr:first-child th:nth-child(2) {
+    background: transparent;
 }

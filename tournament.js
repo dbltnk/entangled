@@ -120,12 +120,10 @@ class TournamentManager {
         let matchups = [];
         for (let i = 0; i < selectedAIs.length; i++) {
             for (let j = i; j < selectedAIs.length; j++) {
-                // Always just create one set of matchups regardless of self-play
                 matchups.push({
                     black: selectedAIs[i],
                     white: selectedAIs[j]
                 });
-                // Always add reverse matchup regardless of self-play
                 matchups.push({
                     black: selectedAIs[j],
                     white: selectedAIs[i]
@@ -133,7 +131,6 @@ class TournamentManager {
             }
         }
 
-        // Shuffle matchups
         for (let i = matchups.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [matchups[i], matchups[j]] = [matchups[j], matchups[i]];
@@ -163,7 +160,6 @@ class TournamentManager {
 
         this.displayBoardConfiguration();
 
-        // Reset all tournament state
         this.matchups = this.generateMatchups(this.selectedAIs);
         this.totalGames = this.matchups.length * this.gamesPerMatchup;
         this.gamesCompleted = 0;
@@ -171,7 +167,7 @@ class TournamentManager {
         this.results = new Map();
         this.matchCounts = new Map();
         this.startTime = Date.now();
-        this.elo = new ELOSystem(); // Create fresh ELO system
+        this.elo = new ELOSystem();
 
         this.matchups.forEach(matchup => {
             this.matchCounts.set(`${matchup.black}-${matchup.white}`, 0);
@@ -182,7 +178,6 @@ class TournamentManager {
         document.getElementById('progress-container').classList.remove('hidden');
         this.updateProgress();
 
-        // Stop any existing workers
         if (this.workers.length > 0) {
             this.workers.forEach(worker => worker.terminate());
             this.workers = [];
@@ -304,7 +299,6 @@ class TournamentManager {
     }
 
     updateResults() {
-        // Show Overview, then Player Stats, then Matchups, then Details
         this.updateOverviewTab();
         this.updatePlayerStatsTab();
         this.updateMatchupsTab();
@@ -312,104 +306,173 @@ class TournamentManager {
     }
 
     updateOverviewTab() {
-        const colorStats = {
-            black: { wins: 0, draws: 0, total: 0, score: 0 },
-            white: { wins: 0, draws: 0, total: 0, score: 0 }
-        };
-
-        this.results.forEach(result => {
-            colorStats.black.wins += result.blackWins;
-            colorStats.white.wins += result.whiteWins;
-            colorStats.black.draws += result.draws;
-            colorStats.white.draws += result.draws;
-            colorStats.black.total += result.games.length;
-            colorStats.white.total += result.games.length;
-            colorStats.black.score += result.totalBlackScore;
-            colorStats.white.score += result.totalWhiteScore;
-        });
-
-        const colorStatsBody = document.querySelector('#color-stats-table tbody');
-        colorStatsBody.innerHTML = '';
-
-        ['black', 'white'].forEach(color => {
-            const stats = colorStats[color];
-            const winRate = (stats.wins / stats.total * 100).toFixed(1);
-            const drawRate = (stats.draws / stats.total * 100).toFixed(1);
-            const avgScore = (stats.score / stats.total).toFixed(1);
-
-            const row = colorStatsBody.insertRow();
-            row.innerHTML = `
-                <td style="white-space: normal; font-weight:bold;">${color.charAt(0).toUpperCase() + color.slice(1)}</td>
-                <td>${winRate}%</td>
-                <td>${drawRate}%</td>
-                <td>${avgScore}</td>
-            `;
-        });
-
-        // Build overview data with per-color stats for each AI
-        const overviewData = new Map();
-        this.selectedAIs.forEach(ai => {
-            overviewData.set(ai, {
-                wins: 0,
-                losses: 0,
-                draws: 0,
-                totalGames: 0,
-                totalScore: 0,
-                blackWins: 0,
-                blackGames: 0,
-                whiteWins: 0,
-                whiteGames: 0
-            });
-        });
-
-        this.results.forEach((result) => {
-            const blackData = overviewData.get(result.black);
-            const whiteData = overviewData.get(result.white);
-
-            if (blackData) {
-                blackData.wins += result.blackWins;
-                blackData.losses += result.whiteWins;
-                blackData.draws += result.draws;
-                blackData.totalGames += result.games.length;
-                blackData.totalScore += result.totalBlackScore;
-                blackData.blackWins += result.blackWins;
-                blackData.blackGames += result.games.length;
-            }
-
-            if (whiteData) {
-                whiteData.wins += result.whiteWins;
-                whiteData.losses += result.blackWins;
-                whiteData.draws += result.draws;
-                whiteData.totalGames += result.games.length;
-                whiteData.totalScore += result.totalWhiteScore;
-                whiteData.whiteWins += result.whiteWins;
-                whiteData.whiteGames += result.games.length;
-            }
-        });
-
-        const sortedAIs = Array.from(overviewData.entries())
-            .sort((a, b) => this.elo.getRating(b[0]) - this.elo.getRating(a[0]));
-
         const tbody = document.querySelector('#overview-table tbody');
         tbody.innerHTML = '';
 
-        sortedAIs.forEach(([ai, data]) => {
-            const overallWR = ((data.wins + data.draws * 0.5) / (data.totalGames || 1) * 100).toFixed(1);
-            const avgScore = (data.totalScore / (data.totalGames || 1)).toFixed(1);
-            const blackWR = data.blackGames > 0 ? ((data.blackWins / data.blackGames) * 100).toFixed(1) : '0.0';
-            const whiteWR = data.whiteGames > 0 ? ((data.whiteWins / data.whiteGames) * 100).toFixed(1) : '0.0';
+        // Calculate aggregated stats
+        const aggregatedStats = {
+            totalGames: 0,
+            whiteGames: 0,
+            blackGames: 0,
+            whiteWins: 0,
+            blackWins: 0,
+            whiteDraws: 0,
+            blackDraws: 0,
+            whiteLosses: 0,
+            blackLosses: 0,
+            whiteScores: [],
+            blackScores: []
+        };
 
-            const row = tbody.insertRow();
-            row.innerHTML = `
-                <td style="white-space: normal; font-weight:bold;">${AI_PLAYERS[ai].name}</td>
-                <td>${this.elo.getFormattedRating(ai)}</td>
-                <td>${overallWR}%</td>
-                <td>${blackWR}%</td>
-                <td>${whiteWR}%</td>
-                <td>${data.totalGames}</td>
-                <td>${avgScore}</td>
-            `;
+        // Collect all stats first
+        this.results.forEach((result) => {
+            const blackData = {
+                games: result.games.length,
+                wins: result.blackWins,
+                draws: result.draws,
+                scores: result.games.map(g => g.blackScore)
+            };
+            const whiteData = {
+                games: result.games.length,
+                wins: result.whiteWins,
+                draws: result.draws,
+                scores: result.games.map(g => g.whiteScore)
+            };
+
+            aggregatedStats.totalGames += result.games.length;
+            aggregatedStats.blackGames += blackData.games;
+            aggregatedStats.blackWins += blackData.wins;
+            aggregatedStats.blackDraws += blackData.draws;
+            aggregatedStats.blackLosses += whiteData.wins;
+            aggregatedStats.blackScores.push(...blackData.scores);
+
+            aggregatedStats.whiteGames += whiteData.games;
+            aggregatedStats.whiteWins += whiteData.wins;
+            aggregatedStats.whiteDraws += whiteData.draws;
+            aggregatedStats.whiteLosses += blackData.wins;
+            aggregatedStats.whiteScores.push(...whiteData.scores);
         });
+
+        // Calculate averages
+        const avgRow = this.createStatsRow('Average', {
+            elo: null,
+            white: {
+                games: aggregatedStats.whiteGames,
+                wins: aggregatedStats.whiteWins,
+                draws: aggregatedStats.whiteDraws,
+                losses: aggregatedStats.whiteLosses,
+                scores: aggregatedStats.whiteScores
+            },
+            black: {
+                games: aggregatedStats.blackGames,
+                wins: aggregatedStats.blackWins,
+                draws: aggregatedStats.blackDraws,
+                losses: aggregatedStats.blackLosses,
+                scores: aggregatedStats.blackScores
+            }
+        });
+        tbody.appendChild(avgRow);
+
+        // Add individual AI rows
+        const sortedAIs = Array.from(this.selectedAIs)
+            .sort((a, b) => this.elo.getRating(b) - this.elo.getRating(a));
+
+        sortedAIs.forEach(ai => {
+            const aiStats = {
+                elo: {
+                    rating: this.elo.getRating(ai),
+                    confidence: this.elo.getConfidenceInterval(ai)
+                },
+                white: { games: 0, wins: 0, draws: 0, losses: 0, scores: [] },
+                black: { games: 0, wins: 0, draws: 0, losses: 0, scores: [] }
+            };
+
+            // Collect stats when AI plays as white
+            this.results.forEach(result => {
+                if (result.white === ai) {
+                    aiStats.white.games += result.games.length;
+                    aiStats.white.wins += result.whiteWins;
+                    aiStats.white.draws += result.draws;
+                    aiStats.white.losses += result.blackWins;
+                    aiStats.white.scores.push(...result.games.map(g => g.whiteScore));
+                }
+                if (result.black === ai) {
+                    aiStats.black.games += result.games.length;
+                    aiStats.black.wins += result.blackWins;
+                    aiStats.black.draws += result.draws;
+                    aiStats.black.losses += result.whiteWins;
+                    aiStats.black.scores.push(...result.games.map(g => g.blackScore));
+                }
+            });
+
+            const row = this.createStatsRow(AI_PLAYERS[ai].name, aiStats);
+            tbody.appendChild(row);
+        });
+    }
+
+    createStatsRow(name, stats) {
+        const row = document.createElement('tr');
+
+        // Helper for calculating percentages
+        const getPercent = (value, total) => ((value / (total || 1)) * 100).toFixed(1);
+
+        // Helper for score stats
+        const getScoreStats = (scores) => {
+            if (!scores || scores.length === 0) return { avg: 0, min: 0, max: 0 };
+            return {
+                avg: (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1),
+                min: Math.min(...scores).toFixed(1),
+                max: Math.max(...scores).toFixed(1)
+            };
+        };
+
+        // Create stats for both colors
+        const createColorStats = (colorStats) => {
+            if (!colorStats || !colorStats.games) return { wins: 0, draws: 0, losses: 0, scores: [] };
+            return {
+                winPercent: getPercent(colorStats.wins, colorStats.games),
+                drawPercent: getPercent(colorStats.draws, colorStats.games),
+                lossPercent: getPercent(colorStats.losses, colorStats.games),
+                scores: getScoreStats(colorStats.scores)
+            };
+        };
+
+        const whiteStats = createColorStats(stats.white);
+        const blackStats = createColorStats(stats.black);
+
+        // Build row HTML
+        row.innerHTML = `
+            <td class="player-name">
+                ${name}
+                <div class="games-count" style="font-size: 12px; color: #666;">${stats.white.games + (stats.black?.games || 0)} games</div>
+            </td>            
+            <td class="elo-rating">
+                ${stats.elo ? `
+                    <span class="rating-value">${stats.elo.rating}</span>
+                    <span class="confidence">±${stats.elo.confidence}</span>
+                ` : '---'}
+            </td>
+            <td class="color-stats white-stats">
+                <div class="score-stats">
+                    <span class="avg-score">${whiteStats.scores.avg}</span>
+                    <span class="score-range">${whiteStats.scores.min}-${whiteStats.scores.max}</span>
+                </div>
+            </td>
+            <td class="win-percent">${whiteStats.winPercent}%</td>
+            <td class="loss-percent">${whiteStats.lossPercent}%</td>
+            <td class="draw-percent">${whiteStats.drawPercent}%</td>
+            <td class="color-stats black-stats">
+                <div class="score-stats">
+                    <span class="avg-score">${blackStats.scores.avg}</span>
+                    <span class="score-range">${blackStats.scores.min}-${blackStats.scores.max}</span>
+                </div>
+            </td>
+            <td class="win-percent">${blackStats.winPercent}%</td>
+            <td class="loss-percent">${blackStats.lossPercent}%</td>
+            <td class="draw-percent">${blackStats.drawPercent}%</td>
+        `;
+
+        return row;
     }
 
     updateMatchupsTab() {
@@ -417,10 +480,6 @@ class TournamentManager {
         tbody.innerHTML = '';
 
         this.results.forEach((result) => {
-            // Remove this early return to show all matchups
-            // if (result.black === result.white && result.black > result.white) return;
-
-            const isSelfPlay = result.black === result.white;
             const reverseKey = `${result.white}-${result.black}`;
             const reverseResult = this.results.get(reverseKey);
 
@@ -496,8 +555,6 @@ class TournamentManager {
             }
         });
 
-        // If player never appeared in results, stats.totalGames would be 0
-        // Ensure they still show up
         if (!stats.totalGames) {
             stats.wins = 0;
             stats.losses = 0;
@@ -541,7 +598,6 @@ class TournamentManager {
                 <div class="game-moves">${gamesHtml}</div>
             `;
 
-            // Add event listeners for replay buttons
             matchupDiv.querySelectorAll('.replay-button').forEach((button, index) => {
                 button.addEventListener('click', () => {
                     const gameData = {
@@ -577,3 +633,5 @@ class TournamentManager {
 window.addEventListener('load', () => {
     new TournamentManager();
 });
+
+export default TournamentManager;
