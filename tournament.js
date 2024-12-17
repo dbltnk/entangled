@@ -306,10 +306,11 @@ class TournamentManager {
     }
 
     updateOverviewTab() {
+        // Update main table
         const tbody = document.querySelector('#overview-table tbody');
         tbody.innerHTML = '';
 
-        // Calculate aggregated stats
+        // Calculate aggregated stats (existing code stays the same)
         const aggregatedStats = {
             totalGames: 0,
             whiteGames: 0,
@@ -324,8 +325,10 @@ class TournamentManager {
             blackScores: []
         };
 
-        // Collect all stats first
+        // Collect all non-self-play stats
         this.results.forEach((result) => {
+            if (result.black === result.white) return; // Skip self-play for main table
+
             const blackData = {
                 games: result.games.length,
                 wins: result.blackWins,
@@ -353,7 +356,7 @@ class TournamentManager {
             aggregatedStats.whiteScores.push(...whiteData.scores);
         });
 
-        // Calculate averages
+        // Calculate averages for main table
         const avgRow = this.createStatsRow('Average', {
             elo: null,
             white: {
@@ -373,7 +376,7 @@ class TournamentManager {
         });
         tbody.appendChild(avgRow);
 
-        // Add individual AI rows
+        // Add individual AI rows for main table
         const sortedAIs = Array.from(this.selectedAIs)
             .sort((a, b) => this.elo.getRating(b) - this.elo.getRating(a));
 
@@ -387,8 +390,10 @@ class TournamentManager {
                 black: { games: 0, wins: 0, draws: 0, losses: 0, scores: [] }
             };
 
-            // Collect stats when AI plays as white
+            // Collect stats when AI plays as white/black (excluding self-play)
             this.results.forEach(result => {
+                if (result.black === result.white) return; // Skip self-play
+
                 if (result.white === ai) {
                     aiStats.white.games += result.games.length;
                     aiStats.white.wins += result.whiteWins;
@@ -407,6 +412,108 @@ class TournamentManager {
 
             const row = this.createStatsRow(AI_PLAYERS[ai].name, aiStats);
             tbody.appendChild(row);
+        });
+
+        // Update self-play table
+        const selfPlayTbody = document.querySelector('#self-play-table tbody');
+        selfPlayTbody.innerHTML = '';
+
+        // Calculate self-play averages
+        const selfPlayStats = {
+            totalGames: 0,
+            whiteGames: 0,
+            blackGames: 0,
+            whiteWins: 0,
+            blackWins: 0,
+            whiteDraws: 0,
+            blackDraws: 0,
+            whiteLosses: 0,
+            blackLosses: 0,
+            whiteScores: [],
+            blackScores: []
+        };
+
+        // Collect all self-play stats
+        this.results.forEach((result) => {
+            if (result.black !== result.white) return; // Only include self-play
+
+            const blackData = {
+                games: result.games.length,
+                wins: result.blackWins,
+                draws: result.draws,
+                scores: result.games.map(g => g.blackScore)
+            };
+            const whiteData = {
+                games: result.games.length,
+                wins: result.whiteWins,
+                draws: result.draws,
+                scores: result.games.map(g => g.whiteScore)
+            };
+
+            selfPlayStats.totalGames += result.games.length;
+            selfPlayStats.blackGames += blackData.games;
+            selfPlayStats.blackWins += blackData.wins;
+            selfPlayStats.blackDraws += blackData.draws;
+            selfPlayStats.blackLosses += whiteData.wins;
+            selfPlayStats.blackScores.push(...blackData.scores);
+
+            selfPlayStats.whiteGames += whiteData.games;
+            selfPlayStats.whiteWins += whiteData.wins;
+            selfPlayStats.whiteDraws += whiteData.draws;
+            selfPlayStats.whiteLosses += blackData.wins;
+            selfPlayStats.whiteScores.push(...whiteData.scores);
+        });
+
+        // Add average row for self-play
+        const selfPlayAvgRow = this.createStatsRow('Average', {
+            elo: null,
+            white: {
+                games: selfPlayStats.whiteGames,
+                wins: selfPlayStats.whiteWins,
+                draws: selfPlayStats.whiteDraws,
+                losses: selfPlayStats.whiteLosses,
+                scores: selfPlayStats.whiteScores
+            },
+            black: {
+                games: selfPlayStats.blackGames,
+                wins: selfPlayStats.blackWins,
+                draws: selfPlayStats.blackDraws,
+                losses: selfPlayStats.blackLosses,
+                scores: selfPlayStats.blackScores
+            }
+        });
+        selfPlayTbody.appendChild(selfPlayAvgRow);
+
+        // Add individual AI rows for self-play
+        sortedAIs.forEach(ai => {
+            const selfPlayAiStats = {
+                elo: {
+                    rating: this.elo.getRating(ai),
+                    confidence: this.elo.getConfidenceInterval(ai)
+                },
+                white: { games: 0, wins: 0, draws: 0, losses: 0, scores: [] },
+                black: { games: 0, wins: 0, draws: 0, losses: 0, scores: [] }
+            };
+
+            // Collect self-play stats
+            this.results.forEach(result => {
+                if (result.black !== result.white || result.black !== ai) return;
+
+                selfPlayAiStats.white.games += result.games.length;
+                selfPlayAiStats.white.wins += result.whiteWins;
+                selfPlayAiStats.white.draws += result.draws;
+                selfPlayAiStats.white.losses += result.blackWins;
+                selfPlayAiStats.white.scores.push(...result.games.map(g => g.whiteScore));
+
+                selfPlayAiStats.black.games += result.games.length;
+                selfPlayAiStats.black.wins += result.blackWins;
+                selfPlayAiStats.black.draws += result.draws;
+                selfPlayAiStats.black.losses += result.whiteWins;
+                selfPlayAiStats.black.scores.push(...result.games.map(g => g.blackScore));
+            });
+
+            const row = this.createStatsRow(AI_PLAYERS[ai].name, selfPlayAiStats);
+            selfPlayTbody.appendChild(row);
         });
     }
 
