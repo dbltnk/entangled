@@ -181,36 +181,6 @@ const BOARD_LAYOUTS = {
             ['X', 'F', 'T', 'B', 'M']
         ]
     },
-    board13: {
-        name: "alternative",
-        grid: [
-            ['X', 'C', 'L', 'F', 'T'],
-            ['K', 'J', 'S', 'W', 'B'],
-            ['R', 'V', 'A', 'O', 'I'],
-            ['E', 'N', 'H', 'Q', 'U'],
-            ['G', 'P', 'Y', 'D', 'M']
-        ]
-    },
-    board14: {
-        name: "alternative 2",
-        grid: [
-            ['T', 'C', 'N', 'U', 'G'],
-            ['K', 'V', 'J', 'R', 'D'],
-            ['H', 'S', 'A', 'L', 'Y'],
-            ['B', 'O', 'W', 'I', 'P'],
-            ['X', 'F', 'Q', 'E', 'M']
-        ]
-    },
-    board15: {
-        name: "alternative 3",
-        grid: [
-            ['M', 'V', 'A', 'J', 'S'],
-            ['E', 'I', 'R', 'L', 'U'],
-            ['Q', 'K', 'Y', 'D', 'H'],
-            ['X', 'C', 'G', 'P', 'O'],
-            ['F', 'T', 'N', 'W', 'B']
-        ]
-    },
     board16: {
         name: "b+w initial stones",
         grid: [
