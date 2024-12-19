@@ -211,6 +211,66 @@ const BOARD_LAYOUTS = {
             ['F', 'T', 'N', 'W', 'B']
         ]
     },
+    board16: {
+        name: "b+w initial stones",
+        grid: [
+            ['S', 'J', 'K', 'W', 'B'],
+            ['U', 'C', 'Q', 'I', 'O'],
+            ['G', 'N', 'Y', 'A', 'R'],
+            ['E', 'P', 'H', 'L', 'X'],
+            ['M', 'V', 'D', 'T', 'F']
+        ]
+    },
+    board17: {
+        name: "b+w initial stones 2",
+        grid: [
+            ['Q', 'J', 'K', 'W', 'D'],
+            ['U', 'C', 'S', 'G', 'O'],
+            ['I', 'L', 'Y', 'A', 'R'],
+            ['E', 'P', 'H', 'N', 'V'],
+            ['M', 'X', 'B', 'T', 'F']
+        ]
+    },
+    board18: {
+        name: "b+w initial stones 3",
+        grid: [
+            ['F', 'O', 'C', 'V', 'S'],
+            ['W', 'Q', 'I', 'K', 'E'],
+            ['N', 'A', 'Y', 'R', 'G'],
+            ['T', 'H', 'L', 'D', 'U'],
+            ['B', 'X', 'P', 'J', 'M']
+        ]
+    },
+    board19: {
+        name: "b+w initial stones 4",
+        grid: [
+            ['C', 'L', 'Y', 'F', 'S'],
+            ['U', 'I', 'R', 'B', 'O'],
+            ['Q', 'E', 'K', 'X', 'H'],
+            ['N', 'W', 'G', 'T', 'A'],
+            ['J', 'P', 'D', 'M', 'V']
+        ]
+    },
+    board20: {
+        name: "b+w initial stones 5",
+        grid: [
+            ['H', 'O', 'S', 'U', 'B'],
+            ['P', 'V', 'C', 'J', 'N'],
+            ['E', 'I', 'K', 'Q', 'W'],
+            ['L', 'R', 'Y', 'D', 'F'],
+            ['X', 'A', 'G', 'M', 'T']
+        ]
+    },
+    board21: {
+        name: "b+w initial stones 6",
+        grid: [
+            ['H', 'L', 'T', 'U', 'D'],
+            ['P', 'X', 'C', 'G', 'O'],
+            ['B', 'J', 'K', 'S', 'W'],
+            ['N', 'R', 'V', 'E', 'F'],
+            ['Y', 'A', 'I', 'M', 'Q']
+        ]
+    },
     board4x4: {
         name: "Top left to bottom right (4x4)",
         grid: [
