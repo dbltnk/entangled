@@ -2,6 +2,7 @@ import { EntangledGame, PLAYERS } from './gameplay.js';
 import { createPlayer, AI_PLAYERS } from './players.js';
 import BOARD_LAYOUTS from './boards.js';
 import ELOSystem from './elo.js';
+import TournamentStorage from './tournament-storage.js';
 
 class TournamentManager {
     constructor() {
@@ -17,7 +18,7 @@ class TournamentManager {
         this.matchCounts = new Map();
         this.elo = new ELOSystem();
         this.selectedAIs = [];
-
+        this.storage = new TournamentStorage();
         this.initializeUI();
         this.setupEventListeners();
     }
@@ -175,6 +176,9 @@ class TournamentManager {
             this.elo.initializePlayer(matchup.white);
         });
 
+        // Initialize storage
+        await this.storage.initializeStorage(this.selectedAIs, this.boardConfigs);
+
         document.getElementById('progress-container').classList.remove('hidden');
         this.updateProgress();
 
@@ -222,7 +226,7 @@ class TournamentManager {
         return false;
     }
 
-    handleWorkerMessage(e) {
+    async handleWorkerMessage(e) {
         const { matchup, result } = e.data;
         this.gamesCompleted++;
 
@@ -231,6 +235,17 @@ class TournamentManager {
         if (matchup.black !== matchup.white) {
             this.updateELORatings(matchup, result);
         }
+
+        // Store game result
+        await this.storage.addGameResult({
+            matchup,
+            result: {
+                winner: result.winner,
+                blackScore: result.blackScore,
+                whiteScore: result.whiteScore,
+                history: result.history
+            }
+        });
 
         this.updateProgress();
         this.updateResults();
@@ -730,9 +745,10 @@ class TournamentManager {
         });
     }
 
-    tournamentComplete() {
+    async tournamentComplete() {
         this.workers.forEach(worker => worker.terminate());
         this.workers = [];
+        await this.storage.flushBuffers();
         console.log('Tournament complete!');
     }
 }
