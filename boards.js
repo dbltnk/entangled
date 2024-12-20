@@ -144,7 +144,7 @@ const BOARD_LAYOUTS = {
     board9: {
         name: "asymmetric 4",
         grid: [
-            ['M', 'X', 'F', 'S', 'B'],
+            ['M', 'X', 'F', 'T', 'B'],
             ['J', 'Q', 'C', 'N', 'U'],
             ['D', 'K', 'Y', 'G', 'R'],
             ['V', 'H', 'S', 'A', 'O'],
