@@ -55,6 +55,8 @@ class EntangledGame {
         if (startingConfig) {
             this.placeStartingStones(startingConfig);
         }
+
+        this._lastMove = null;
     }
 
     findMostConnectedCell(cluster) {
@@ -163,11 +165,12 @@ class EntangledGame {
         this.board1[board1.row][board1.col] = this.currentPlayer;
         this.board2[board2.row][board2.col] = this.currentPlayer;
 
+        this._lastMove = symbol;
+
         // Update game state
         this.remainingStones[this.currentPlayer] -= 2;
         this.playerTurns[this.currentPlayer]++;
 
-        // Check if all cells are filled
         let isBoardFull = true;
         for (let i = 0; i < this.boardSize; i++) {
             for (let j = 0; j < this.boardSize; j++) {
@@ -184,7 +187,6 @@ class EntangledGame {
         }
 
         if (!this.gameOver) {
-            // Switch players if game isn't over
             this.currentPlayer =
                 this.currentPlayer === PLAYERS.BLACK ? PLAYERS.WHITE : PLAYERS.BLACK;
         }
@@ -346,6 +348,7 @@ class EntangledGame {
             remainingStones: { ...this.remainingStones },
             playerTurns: { ...this.playerTurns },
             validMoves: this.getValidMoves(),
+            lastMove: this._lastMove,
             largestClusters: {
                 black: blackClusters,
                 white: whiteClusters

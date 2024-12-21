@@ -3,13 +3,14 @@ import { AI_PLAYERS } from './players.js';
 class TournamentStorage {
     constructor() {
         this.gamesBuffer = [];
-        this.BATCH_SIZE = 128;
+        this.BATCH_SIZE = 16;
         this.stats = {
             metadata: null,
             elo: {},
             results: {}
         };
         this.dirHandle = null;
+        this.currentTournamentComplete = false;
     }
 
     async initializeStorage(selectedAIs, boardConfigs) {
@@ -21,16 +22,25 @@ class TournamentStorage {
                 startIn: 'documents'
             });
 
+            // Reset state for new tournament
+            this.currentTournamentComplete = false;
+            this.gamesBuffer = [];
+            this.stats = {
+                metadata: null,
+                elo: {},
+                results: {}
+            };
+
             const timestamp = new Date().toISOString();
-            const board1Name = document.getElementById('tournament-board1-select').selectedOptions[0].text;
-            const board2Name = document.getElementById('tournament-board2-select').selectedOptions[0].text;
+            const board1Id = document.getElementById('tournament-board1-select').value;
+            const board2Id = document.getElementById('tournament-board2-select').value;
             const startingConfig = boardConfigs[0].startingConfig || 'empty';
 
             const configString = JSON.stringify({
                 timestamp,
                 ais: selectedAIs,
-                board1: board1Name,
-                board2: board2Name,
+                board1: board1Id,
+                board2: board2Id,
                 startingConfig
             });
             const runId = await this.hashString(configString);
@@ -40,15 +50,12 @@ class TournamentStorage {
                 timestamp,
                 selectedAIs,
                 boards: {
-                    board1: board1Name,
-                    board2: board2Name
+                    board1: board1Id,
+                    board2: board2Id
                 },
                 startingConfig,
                 totalGames: this.calculateTotalGames(selectedAIs)
             };
-
-            await this.saveStats();
-            await this.saveReplays();
 
         } catch (error) {
             console.error('Failed to initialize storage:', error);
@@ -61,58 +68,32 @@ class TournamentStorage {
         return n * n * parseInt(document.getElementById('games-per-matchup').value);
     }
 
-    generateFilename(type) {
+    generateFilename() {
         const metadata = this.stats.metadata;
         const board1Short = metadata.boards.board1.replace(/[^a-zA-Z0-9]/g, '').slice(0, 10);
         const board2Short = metadata.boards.board2.replace(/[^a-zA-Z0-9]/g, '').slice(0, 10);
         const configShort = metadata.startingConfig.replace(/[^a-zA-Z0-9]/g, '').slice(0, 10);
-        return `${metadata.runId}-${board1Short}-${board2Short}-${configShort}-${type}.json`;
+        return `${metadata.runId}-${board1Short}-${board2Short}-${configShort}.json`;
     }
 
-    async saveStats() {
-        const filename = this.generateFilename('stats');
+    async saveData() {
+        const filename = this.generateFilename();
         const fileHandle = await this.dirHandle.getFileHandle(filename, { create: true });
         const writable = await fileHandle.createWritable();
 
-        const compactStats = {
+        const tournamentData = {
             metadata: this.stats.metadata,
             elo: this.stats.elo,
             results: this.stats.results
         };
 
-        await writable.write(JSON.stringify(compactStats, null, 2));
-        await writable.close();
-    }
-
-    async saveReplays() {
-        const filename = this.generateFilename('replays');
-        const fileHandle = await this.dirHandle.getFileHandle(filename, { create: true });
-        const writable = await fileHandle.createWritable();
-
-        const replayData = {
-            metadata: {
-                ...this.stats.metadata,
-                timestamp: new Date().toISOString()
-            },
-            games: this.gamesBuffer.map(({ matchup, result }) => ({
-                matchup: {
-                    black: matchup.black,
-                    white: matchup.white
-                },
-                result: {
-                    winner: result.winner === 'TIE' ? 'draw' : result.winner.toLowerCase(),
-                    black: result.blackScore,
-                    white: result.whiteScore,
-                    history: result.history
-                }
-            }))
-        };
-
-        await writable.write(JSON.stringify(replayData, null, 2));
+        await writable.write(JSON.stringify(tournamentData, null, 2));
         await writable.close();
     }
 
     async addGameResult(gameData) {
+        if (this.currentTournamentComplete) return;
+
         this.gamesBuffer.push(gameData);
         this.updateStats(gameData);
 
@@ -132,10 +113,13 @@ class TournamentStorage {
         }
 
         const result = this.stats.results[matchupKey];
+        const moves = gameData.result.history.slice(1).map(state => state.move);
+
         result.games.push({
             winner: gameData.result.winner === 'TIE' ? 'draw' : gameData.result.winner.toLowerCase(),
             black: gameData.result.blackScore,
-            white: gameData.result.whiteScore
+            white: gameData.result.whiteScore,
+            moves: moves
         });
     }
 
@@ -156,12 +140,13 @@ class TournamentStorage {
 
     async flushBuffers() {
         if (this.gamesBuffer.length > 0) {
-            await Promise.all([
-                this.saveStats(),
-                this.saveReplays()
-            ]);
-            this.gamesBuffer = [];
+            await this.saveData();
         }
+    }
+
+    finishTournament() {
+        this.currentTournamentComplete = true;
+        return this.flushBuffers();
     }
 }
 
