@@ -773,7 +773,7 @@ export const AI_PLAYERS = {
     },
     'mcts-no-rng': {
         id: 'mcts-no-rng',
-        name: 'Monte (no rng))',
+        name: 'MCTS (no rng)',
         description: 'Uses Monte Carlo Tree Search simulation without randomization',
         implementation: MCTSPlayer,
         defaultConfig: {
@@ -783,7 +783,7 @@ export const AI_PLAYERS = {
     },
     'mcts-some-rng': {
         id: 'mcts-some-rng',
-        name: 'Monte (some rng))',
+        name: 'MCTS (some rng)',
         description: 'Uses Monte Carlo Tree Search simulation with randomization',
         implementation: MCTSPlayer,
         defaultConfig: {
