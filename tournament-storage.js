@@ -15,7 +15,7 @@ class TournamentStorage {
 
     async initializeStorage(selectedAIs, boardConfigs) {
         try {
-            alert("Please select the 'tournaments' folder to store tournament data");
+            alert("Please select the your entangled app folder to store tournament data");
             this.dirHandle = await window.showDirectoryPicker({
                 id: 'tournaments',
                 mode: 'readwrite',

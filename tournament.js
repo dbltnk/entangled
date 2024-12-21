@@ -41,7 +41,8 @@ class TournamentManager {
     }
 
     isDefaultAI(id) {
-        const defaultAIs = ['hybrid-strong', 'mcts', 'minimax-some-rng', 'defensive-some-rng'];
+        //const defaultAIs = ['hybrid-strong', 'mcts', 'minimax-some-rng', 'defensive-some-rng'];
+        const defaultAIs = ['random', 'deterministic', 'aggressive-some-rng'];
         return defaultAIs.includes(id);
     }
 
@@ -67,7 +68,7 @@ class TournamentManager {
     setDefaultBoardSelections(size, board1Select, board2Select) {
         const defaultSelections = {
             4: ['board4x4', 'random4x4'],
-            5: ['board1', 'board5'],
+            5: ['board1', 'board4'],
             6: ['board6x6', 'random6x6'],
             7: ['board7x7', 'centeredRandom7x7']
         };
