@@ -619,13 +619,10 @@ class HybridStrongPlayer extends EntangledPlayer {
 
     chooseMove() {
         const validMoves = this.gameEngine.getValidMoves();
-        console.log(validMoves.length);
         if (!validMoves.length) return null;
         if (validMoves.length < 10) {
-            console.log("Using Minimax");
             return this.minimaxChoice(validMoves);
         } else {
-            console.log("Using MCTS");
             return this.mctsChoice(validMoves);
         }
     }
