@@ -771,9 +771,19 @@ export const AI_PLAYERS = {
             lookahead: 4
         }
     },
-    'mcts': {
-        id: 'mcts',
-        name: 'Monte Carlo Tree Search',
+    'mcts-no-rng': {
+        id: 'mcts-no-rng',
+        name: 'Monte (no rng))',
+        description: 'Uses Monte Carlo Tree Search simulation without randomization',
+        implementation: MCTSPlayer,
+        defaultConfig: {
+            randomize: false,
+            simulationCount: 2000
+        }
+    },
+    'mcts-some-rng': {
+        id: 'mcts-some-rng',
+        name: 'Monte (some rng))',
         description: 'Uses Monte Carlo Tree Search simulation with randomization',
         implementation: MCTSPlayer,
         defaultConfig: {
