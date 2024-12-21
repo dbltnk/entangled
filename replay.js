@@ -1,3 +1,5 @@
+import { EntangledGame } from './gameplay.js';
+
 class GameReplay {
     constructor() {
         this.currentMoveIndex = 0;
@@ -8,12 +10,60 @@ class GameReplay {
     }
 
     initialize(data) {
-        this.history = data.history;
         this.matchInfo = data.matchInfo;
         this.boardSize = data.boardSize;
 
+        // Handle both full state history and move-only history
+        if (data.history && Array.isArray(data.history) && data.history[0].board1) {
+            // Full state history from live tournament
+            this.history = data.history;
+        } else if (data.moves || (data.history && Array.isArray(data.history) && typeof data.history[0] === 'string')) {
+            // Move-only history from saved tournament, reconstruct states
+            this.reconstructHistory({
+                moves: data.moves || data.history,
+                board1Layout: data.board1Layout,
+                board2Layout: data.board2Layout,
+                initialConfig: data.initialConfig
+            });
+        }
+
         this.initializeUI();
         this.renderState(0);
+    }
+
+    reconstructHistory(data) {
+        const game = new EntangledGame(data.board1Layout, data.board2Layout, data.initialConfig);
+
+        // Initialize history with starting state
+        this.history = [{
+            move: null,
+            board1: game.getBoard1(),
+            board2: game.getBoard2(),
+            currentPlayer: game.getCurrentPlayer(),
+            blackScore: game.getScore('BLACK'),
+            whiteScore: game.getScore('WHITE'),
+            largestClusters: game.getGameState().largestClusters,
+            board1Layout: data.board1Layout,
+            board2Layout: data.board2Layout
+        }];
+
+        // Replay each move and record state
+        for (const move of data.moves) {
+            game.makeMove(move);
+            const state = game.getGameState();
+
+            this.history.push({
+                move,
+                board1: game.getBoard1(),
+                board2: game.getBoard2(),
+                currentPlayer: state.currentPlayer,
+                blackScore: game.getScore('BLACK'),
+                whiteScore: game.getScore('WHITE'),
+                largestClusters: state.largestClusters,
+                board1Layout: data.board1Layout,
+                board2Layout: data.board2Layout
+            });
+        }
     }
 
     initializeUI() {

@@ -7,7 +7,11 @@ class ResultsViewer {
         this.currentTournament = null;
         this.tournamentFiles = [];
         this.setupEventListeners();
-        this.initializeFileSystem();
+
+        // Add click handler for the load button
+        document.getElementById('load-directory').addEventListener('click', () => {
+            this.initializeFileSystem();
+        });
     }
 
     async initializeFileSystem() {
@@ -414,7 +418,10 @@ class ResultsViewer {
             matchupDiv.querySelectorAll('.replay-button').forEach((button, index) => {
                 button.addEventListener('click', () => {
                     const gameData = {
-                        history: result.games[index].moves,
+                        moves: result.games[index].moves,
+                        initialConfig: this.currentTournament.metadata.startingConfig,
+                        board1Layout: BOARD_LAYOUTS[this.currentTournament.metadata.boards.board1].grid,
+                        board2Layout: BOARD_LAYOUTS[this.currentTournament.metadata.boards.board2].grid,
                         matchInfo: {
                             black: AI_PLAYERS[result.black].name,
                             white: AI_PLAYERS[result.white].name,
