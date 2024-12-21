@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Tournament Results</title>
+    <link rel="stylesheet" href="tournament.css">
+    <style>
+        .tournament-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .tournament-item {
+            padding: 1rem;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .tournament-item:hover {
+            background: #f5f5f5;
+        }
+
+        .tournament-item.selected {
+            background: #e0e0e0;
+            border-color: #999;
+        }
+
+        .tournament-item h3 {
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+            color: #333;
+        }
+
+        .tournament-info {
+            font-size: 0.8rem;
+            color: #666;
+        }
+
+        .tournament-info div {
+            margin-bottom: 0.25rem;
+        }
+
+        .setup-panel {
+            overflow-y: auto;
+        }
+    </style>
+</head>
+
+<body class="tournament-body">
+    <main class="tournament-container">
+        <aside class="setup-panel panel">
+            <h1>Tournament Results</h1>
+            <div id="tournament-list" class="tournament-list">
+                <!-- Tournament items will be populated here -->
+            </div>
+        </aside>
+
+        <section class="results-panel panel">
+            <div id="current-config">
+                <h2>Current Tournament Configuration</h2>
+                <div class="config-details">
+                    <p><strong>Board 1:</strong><br>
+                        <span id="board1-name"></span>
+                    </p>
+                    <p><strong>Board 2:</strong><br>
+                        <span id="board2-name"></span>
+                    </p>
+                    <p><strong>Starting Position</strong><br>
+                        <span id="config-preview"></span>
+                    </p>
+                    <p><strong>Players:</strong><br>
+                        <span id="players-preview"></span>
+                    </p>
+                </div>
+            </div>
+
+            <div id="results-container">
+                <div class="results-tabs">
+                    <button class="tab-button active" data-tab="overview">Overview</button>
+                    <button class="tab-button" data-tab="matchups">Matchups</button>
+                    <button class="tab-button" data-tab="player-stats">Player Stats</button>
+                    <button class="tab-button" data-tab="details">Details</button>
+                </div>
+
+                <div class="tab-content">
+                    <div id="overview-tab" class="tab-pane active">
+                        <div class="overview-section">
+                            <h3>Other-Play Performance</h3>
+                            <table id="overview-table" class="overview-table">
+                                <thead>
+                                    <tr>
+                                        <th colspan="2"></th>
+                                        <th colspan="4">AS WHITE</th>
+                                        <th colspan="4">AS BLACK</th>
+                                    </tr>
+                                    <tr>
+                                        <th>Player</th>
+                                        <th>ELO</th>
+                                        <th>Score avg<br>min-max</th>
+                                        <th>Win %</th>
+                                        <th>Loss %</th>
+                                        <th>Draw %</th>
+                                        <th>Score avg<br>min-max</th>
+                                        <th>Win %</th>
+                                        <th>Loss %</th>
+                                        <th>Draw %</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+
+                        <div class="overview-section">
+                            <h3>Self-Play Performance</h3>
+                            <table id="self-play-table" class="overview-table">
+                                <thead>
+                                    <tr>
+                                        <th colspan="2"></th>
+                                        <th colspan="4">AS WHITE</th>
+                                        <th colspan="4">AS BLACK</th>
+                                    </tr>
+                                    <tr>
+                                        <th>Player</th>
+                                        <th>ELO</th>
+                                        <th>Score avg<br>min-max</th>
+                                        <th>Win %</th>
+                                        <th>Loss %</th>
+                                        <th>Draw %</th>
+                                        <th>Score avg<br>min-max</th>
+                                        <th>Win %</th>
+                                        <th>Loss %</th>
+                                        <th>Draw %</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div id="matchups-tab" class="tab-pane">
+                        <table id="matchups-table" class="results-table">
+                            <thead>
+                                <tr>
+                                    <th>AI 1</th>
+                                    <th>AI 2</th>
+                                    <th>Games</th>
+                                    <th>As Black (W/L/D)</th>
+                                    <th>As White (W/L/D)</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+
+                    <div id="player-stats-tab" class="tab-pane">
+                        <div id="player-stats-container"></div>
+                    </div>
+
+                    <div id="details-tab" class="tab-pane">
+                        <div id="details-container"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+    <script type="module" src="results.js"></script>
+</body>
+
+</html>
