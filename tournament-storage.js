@@ -6,9 +6,8 @@ class TournamentStorage {
         this.BATCH_SIZE = 128;
         this.stats = {
             metadata: null,
-            results: {},
-            playerStats: {},
-            matchups: []
+            elo: {},
+            results: {}
         };
         this.dirHandle = null;
     }
@@ -30,9 +29,9 @@ class TournamentStorage {
             const configString = JSON.stringify({
                 timestamp,
                 ais: selectedAIs,
-                board1: boardConfigs[0].board1Layout,
-                board2: boardConfigs[0].board2Layout,
-                startingConfig: startingConfig
+                board1: board1Name,
+                board2: board2Name,
+                startingConfig
             });
             const runId = await this.hashString(configString);
 
@@ -40,13 +39,12 @@ class TournamentStorage {
                 runId,
                 timestamp,
                 selectedAIs,
-                boardConfigs,
-                board1Name,
-                board2Name,
+                boards: {
+                    board1: board1Name,
+                    board2: board2Name
+                },
                 startingConfig,
-                boardSize: boardConfigs[0].board1Layout.length,
-                totalGamesPlanned: this.calculateTotalGames(selectedAIs),
-                eloInitial: 1500, // Store initial ELO for future reference
+                totalGames: this.calculateTotalGames(selectedAIs)
             };
 
             await this.saveStats();
@@ -65,8 +63,8 @@ class TournamentStorage {
 
     generateFilename(type) {
         const metadata = this.stats.metadata;
-        const board1Short = metadata.board1Name.replace(/[^a-zA-Z0-9]/g, '').slice(0, 10);
-        const board2Short = metadata.board2Name.replace(/[^a-zA-Z0-9]/g, '').slice(0, 10);
+        const board1Short = metadata.boards.board1.replace(/[^a-zA-Z0-9]/g, '').slice(0, 10);
+        const board2Short = metadata.boards.board2.replace(/[^a-zA-Z0-9]/g, '').slice(0, 10);
         const configShort = metadata.startingConfig.replace(/[^a-zA-Z0-9]/g, '').slice(0, 10);
         return `${metadata.runId}-${board1Short}-${board2Short}-${configShort}-${type}.json`;
     }
@@ -76,18 +74,13 @@ class TournamentStorage {
         const fileHandle = await this.dirHandle.getFileHandle(filename, { create: true });
         const writable = await fileHandle.createWritable();
 
-        // Enhance stats with full ELO history and player performance data
-        const enhancedStats = {
-            ...this.stats,
-            gameProgress: {
-                completed: this.gamesBuffer.length,
-                total: this.stats.metadata.totalGamesPlanned,
-            },
-            eloHistory: {}, // Store ELO progression for each player
-            playerPerformance: {}, // Store detailed player stats
+        const compactStats = {
+            metadata: this.stats.metadata,
+            elo: this.stats.elo,
+            results: this.stats.results
         };
 
-        await writable.write(JSON.stringify(enhancedStats, null, 2));
+        await writable.write(JSON.stringify(compactStats, null, 2));
         await writable.close();
     }
 
@@ -96,43 +89,32 @@ class TournamentStorage {
         const fileHandle = await this.dirHandle.getFileHandle(filename, { create: true });
         const writable = await fileHandle.createWritable();
 
-        // Enhance replay data with full context
-        const enhancedReplays = {
-            metadata: this.stats.metadata,
-            games: this.gamesBuffer.map(game => ({
-                ...game,
-                boardConfigs: {
-                    board1Name: this.stats.metadata.board1Name,
-                    board2Name: this.stats.metadata.board2Name,
-                    startingConfig: this.stats.metadata.startingConfig,
-                    boardSize: this.stats.metadata.boardSize
+        const replayData = {
+            metadata: {
+                ...this.stats.metadata,
+                timestamp: new Date().toISOString()
+            },
+            games: this.gamesBuffer.map(({ matchup, result }) => ({
+                matchup: {
+                    black: matchup.black,
+                    white: matchup.white
+                },
+                result: {
+                    winner: result.winner === 'TIE' ? 'draw' : result.winner.toLowerCase(),
+                    black: result.blackScore,
+                    white: result.whiteScore,
+                    history: result.history
                 }
             }))
         };
 
-        await writable.write(JSON.stringify(enhancedReplays, null, 2));
+        await writable.write(JSON.stringify(replayData, null, 2));
         await writable.close();
     }
 
     async addGameResult(gameData) {
-        const enhancedGameData = {
-            ...gameData,
-            timestamp: new Date().toISOString(),
-            gameNumber: this.gamesBuffer.length + 1,
-            matchupConfig: {
-                black: {
-                    id: gameData.matchup.black,
-                    name: AI_PLAYERS[gameData.matchup.black].name
-                },
-                white: {
-                    id: gameData.matchup.white,
-                    name: AI_PLAYERS[gameData.matchup.white].name
-                }
-            }
-        };
-
-        this.gamesBuffer.push(enhancedGameData);
-        this.updateStats(enhancedGameData);
+        this.gamesBuffer.push(gameData);
+        this.updateStats(gameData);
 
         if (this.gamesBuffer.length >= this.BATCH_SIZE) {
             await this.flushBuffers();
@@ -143,46 +125,25 @@ class TournamentStorage {
         const matchupKey = `${gameData.matchup.black}-${gameData.matchup.white}`;
         if (!this.stats.results[matchupKey]) {
             this.stats.results[matchupKey] = {
-                black: {
-                    id: gameData.matchup.black,
-                    name: AI_PLAYERS[gameData.matchup.black].name
-                },
-                white: {
-                    id: gameData.matchup.white,
-                    name: AI_PLAYERS[gameData.matchup.white].name
-                },
-                games: [],
-                blackWins: 0,
-                whiteWins: 0,
-                draws: 0,
-                totalBlackScore: 0,
-                totalWhiteScore: 0,
-                blackScores: [],
-                whiteScores: [],
-                timestamps: [],
-                eloDelta: []
+                black: gameData.matchup.black,
+                white: gameData.matchup.white,
+                games: []
             };
         }
 
         const result = this.stats.results[matchupKey];
         result.games.push({
-            winner: gameData.result.winner,
-            blackScore: gameData.result.blackScore,
-            whiteScore: gameData.result.whiteScore,
-            gameNumber: gameData.gameNumber,
-            timestamp: gameData.timestamp
+            winner: gameData.result.winner === 'TIE' ? 'draw' : gameData.result.winner.toLowerCase(),
+            black: gameData.result.blackScore,
+            white: gameData.result.whiteScore
         });
+    }
 
-        result.blackScores.push(gameData.result.blackScore);
-        result.whiteScores.push(gameData.result.whiteScore);
-        result.timestamps.push(gameData.timestamp);
-
-        if (gameData.result.winner === 'BLACK') result.blackWins++;
-        else if (gameData.result.winner === 'WHITE') result.whiteWins++;
-        else result.draws++;
-
-        result.totalBlackScore += gameData.result.blackScore;
-        result.totalWhiteScore += gameData.result.whiteScore;
+    updateELO(playerId, rating, confidence) {
+        this.stats.elo[playerId] = {
+            rating,
+            confidence
+        };
     }
 
     async hashString(str) {

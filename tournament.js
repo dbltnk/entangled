@@ -294,6 +294,15 @@ class TournamentManager {
             result.winner === PLAYERS.WHITE ? 'loss' : 'draw';
 
         this.elo.updateRating(matchup.black, 'black', matchup.white, 'white', gameResult);
+
+        this.storage.updateELO(matchup.black,
+            this.elo.getRating(matchup.black),
+            this.elo.getConfidenceInterval(matchup.black)
+        );
+        this.storage.updateELO(matchup.white,
+            this.elo.getRating(matchup.white),
+            this.elo.getConfidenceInterval(matchup.white)
+        );
     }
 
     updateProgress() {
