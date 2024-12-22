@@ -8,9 +8,13 @@ class ResultsViewer {
         this.tournamentFiles = [];
         this.setupEventListeners();
 
-        // Add click handler for the load button
+        // Add click handlers for both loading methods
         document.getElementById('load-directory').addEventListener('click', () => {
             this.initializeFileSystem();
+        });
+
+        document.getElementById('load-web').addEventListener('click', () => {
+            this.loadFromWeb();
         });
     }
 
@@ -24,6 +28,124 @@ class ResultsViewer {
             await this.loadTournamentList();
         } catch (error) {
             console.error('Failed to initialize file system:', error);
+            alert('Failed to access local directory. Make sure you granted the necessary permissions.');
+        }
+    }
+
+    async loadFromWeb() {
+        try {
+            // First fetch the index file
+            const indexResponse = await fetch('/tournaments.json');
+            if (!indexResponse.ok) {
+                throw new Error('Failed to fetch tournament index');
+            }
+            const tournamentFiles = await indexResponse.json();
+
+            const tournamentListElement = document.getElementById('tournament-list');
+            tournamentListElement.innerHTML = '';
+
+            for (const filename of tournamentFiles) {
+                try {
+                    const response = await fetch(`/${filename}`);
+                    if (!response.ok) {
+                        console.error(`Failed to load tournament file: ${filename}`);
+                        continue;
+                    }
+                    const data = await response.json();
+
+                    const playerNames = data.metadata.selectedAIs
+                        .map(id => AI_PLAYERS[id].name)
+                        .join(', ');
+
+                    const item = document.createElement('div');
+                    item.className = 'tournament-item';
+                    item.innerHTML = `
+                        <h3>Tournament ${data.metadata.runId}</h3>
+                        <div class="tournament-info">
+                            <div><strong>Players:</strong> ${playerNames}</div>
+                            <div><strong>Games:</strong> ${data.metadata.totalGames}</div>
+                            <div><strong>Boards:</strong> ${data.metadata.boards.board1} vs ${data.metadata.boards.board2}</div>
+                            <div><strong>Start:</strong> ${data.metadata.startingConfig || 'None'}</div>
+                        </div>
+                    `;
+
+                    item.addEventListener('click', () => this.loadWebTournament(filename));
+                    tournamentListElement.appendChild(item);
+                } catch (error) {
+                    console.error(`Error processing tournament ${filename}:`, error);
+                }
+            }
+
+            if (tournamentFiles.length === 0) {
+                tournamentListElement.innerHTML = '<div class="tournament-item">No tournament files found</div>';
+            }
+
+        } catch (error) {
+            console.error('Failed to load tournaments from web:', error);
+            alert('Failed to load tournaments from web. Please check if the JSON files exist in the web root.');
+        }
+    }
+
+    async loadWebTournamentList(tournamentList) {
+        const tournamentListElement = document.getElementById('tournament-list');
+        tournamentListElement.innerHTML = '';
+
+        for (const tournament of tournamentList) {
+            try {
+                const response = await fetch(`/${tournament}`);
+                if (!response.ok) {
+                    console.error(`Failed to load tournament file: ${tournament}`);
+                    continue;
+                }
+                const data = await response.json();
+
+                const playerNames = data.metadata.selectedAIs
+                    .map(id => AI_PLAYERS[id].name)
+                    .join(', ');
+
+                const item = document.createElement('div');
+                item.className = 'tournament-item';
+                item.innerHTML = `
+                    <h3>Tournament ${data.metadata.runId}</h3>
+                    <div class="tournament-info">
+                        <div><strong>Players:</strong> ${playerNames}</div>
+                        <div><strong>Games:</strong> ${data.metadata.totalGames}</div>
+                        <div><strong>Boards:</strong> ${data.metadata.boards.board1} vs ${data.metadata.boards.board2}</div>
+                        <div><strong>Start:</strong> ${data.metadata.startingConfig || 'None'}</div>
+                    </div>
+                `;
+
+                item.addEventListener('click', () => this.loadWebTournament(tournament));
+                tournamentListElement.appendChild(item);
+            } catch (error) {
+                console.error(`Error processing tournament ${tournament}:`, error);
+            }
+        }
+    }
+
+    async loadWebTournament(filename) {
+        try {
+            const response = await fetch(`/${filename}`);
+            if (!response.ok) {
+                throw new Error('Failed to fetch tournament data');
+            }
+            const data = await response.json();
+
+            // Update selected state in list
+            const items = document.querySelectorAll('.tournament-item');
+            items.forEach(item => item.classList.remove('selected'));
+            const selectedItem = Array.from(items)
+                .find(item => item.querySelector('h3').textContent.includes(filename));
+            if (selectedItem) {
+                selectedItem.classList.add('selected');
+            }
+
+            this.currentTournament = data;
+            this.displayTournamentConfig();
+            this.updateResults();
+        } catch (error) {
+            console.error('Failed to load tournament data:', error);
+            alert('Failed to load tournament data. Please try again.');
         }
     }
 
@@ -300,7 +422,6 @@ class ResultsViewer {
 
         return row;
     }
-
     updateMatchupsTab() {
         const tbody = document.querySelector('#matchups-table tbody');
         tbody.innerHTML = '';
@@ -311,12 +432,12 @@ class ResultsViewer {
 
             const row = tbody.insertRow();
             row.innerHTML = `
-                <td style="white-space: normal;">${AI_PLAYERS[result.black].name}</td>
-                <td style="white-space: normal;">${AI_PLAYERS[result.white].name}</td>
-                <td>${result.games.length}</td>
-                <td>${result.games.filter(g => g.winner === 'black').length}-${result.games.filter(g => g.winner === 'white').length}-${result.games.filter(g => g.winner === 'draw').length}</td>
-                <td>${reverseResult ? `${reverseResult.games.filter(g => g.winner === 'white').length}-${reverseResult.games.filter(g => g.winner === 'black').length}-${reverseResult.games.filter(g => g.winner === 'draw').length}` : 'N/A'}</td>
-            `;
+                            <td style="white-space: normal;">${AI_PLAYERS[result.black].name}</td>
+                            <td style="white-space: normal;">${AI_PLAYERS[result.white].name}</td>
+                            <td>${result.games.length}</td>
+                            <td>${result.games.filter(g => g.winner === 'black').length}-${result.games.filter(g => g.winner === 'white').length}-${result.games.filter(g => g.winner === 'draw').length}</td>
+                            <td>${reverseResult ? `${reverseResult.games.filter(g => g.winner === 'white').length}-${reverseResult.games.filter(g => g.winner === 'black').length}-${reverseResult.games.filter(g => g.winner === 'draw').length}` : 'N/A'}</td>
+                        `;
         });
     }
 
@@ -336,17 +457,17 @@ class ResultsViewer {
             const card = document.createElement('div');
             card.className = 'player-card';
             card.innerHTML = `
-                <h3>${AI_PLAYERS[playerId].name}</h3>
-                <div class="player-ratings">
-                    <div><strong>ELO Rating:</strong> ${elos[playerId].rating} ±${elos[playerId].confidence}</div>
-                </div>
-                <div class="player-performance">
-                    <h4>Performance</h4>
-                    <div>Win Rate: ${playerStats.winRate}%</div>
-                    <div>Games Played: ${playerStats.totalGames}</div>
-                    <div>Average Score: ${playerStats.averageScore.toFixed(1)}</div>
-                </div>
-            `;
+                            <h3>${AI_PLAYERS[playerId].name}</h3>
+                            <div class="player-ratings">
+                                <div><strong>ELO Rating:</strong> ${elos[playerId].rating} ±${elos[playerId].confidence}</div>
+                            </div>
+                            <div class="player-performance">
+                                <h4>Performance</h4>
+                                <div>Win Rate: ${playerStats.winRate}%</div>
+                                <div>Games Played: ${playerStats.totalGames}</div>
+                                <div>Average Score: ${playerStats.averageScore.toFixed(1)}</div>
+                            </div>
+                        `;
             container.appendChild(card);
         });
     }
@@ -397,23 +518,23 @@ class ResultsViewer {
             matchupDiv.className = 'game-detail';
 
             const gamesHtml = result.games.map((game, index) => `
-                <div class="game-result">
-                    <div>
-                        <span class="game-number"><strong>Game ${index + 1}:</strong></span>
-                        <span class="winner-${game.winner}" style="margin-left:5px;">
-                            ${game.winner === 'draw' ? 'Draw' : game.winner + ' wins'}
-                        </span>
-                        <span style="margin-left:5px;">(Black: ${game.black} - White: ${game.white})</span>
-                    </div>
-                    <button class="replay-button" data-game-index="${index}">Replay</button>
-                </div>
-            `).join('');
+                            <div class="game-result">
+                                <div>
+                                    <span class="game-number"><strong>Game ${index + 1}:</strong></span>
+                                    <span class="winner-${game.winner}" style="margin-left:5px;">
+                                        ${game.winner === 'draw' ? 'Draw' : game.winner + ' wins'}
+                                    </span>
+                                    <span style="margin-left:5px;">(Black: ${game.black} - White: ${game.white})</span>
+                                </div>
+                                <button class="replay-button" data-game-index="${index}">Replay</button>
+                            </div>
+                        `).join('');
 
             matchupDiv.innerHTML = `
-                <h3>${AI_PLAYERS[result.black].name} (Black) vs ${AI_PLAYERS[result.white].name} (White)</h3>
-                <div style="margin-bottom:5px;">Results: <strong>${result.games.filter(g => g.winner === 'black').length}-${result.games.filter(g => g.winner === 'white').length}-${result.games.filter(g => g.winner === 'draw').length}</strong></div>
-                <div class="game-moves">${gamesHtml}</div>
-            `;
+                            <h3>${AI_PLAYERS[result.black].name} (Black) vs ${AI_PLAYERS[result.white].name} (White)</h3>
+                            <div style="margin-bottom:5px;">Results: <strong>${result.games.filter(g => g.winner === 'black').length}-${result.games.filter(g => g.winner === 'white').length}-${result.games.filter(g => g.winner === 'draw').length}</strong></div>
+                            <div class="game-moves">${gamesHtml}</div>
+                        `;
 
             matchupDiv.querySelectorAll('.replay-button').forEach((button, index) => {
                 button.addEventListener('click', () => {
@@ -446,4 +567,4 @@ class ResultsViewer {
 
 window.addEventListener('load', () => {
     new ResultsViewer();
-});
+}); 

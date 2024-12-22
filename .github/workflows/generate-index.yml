@@ -1,0 +1,41 @@
+name: Generate Tournament Index
+
+on:
+  push:
+    paths:
+      - '**.json'
+    branches:
+      - main  # or your default branch name
+  workflow_dispatch:  # allows manual trigger
+
+jobs:
+  generate-index:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Generate index of tournament files
+        run: |
+          # Find all JSON files in root directory, exclude tournaments.json itself
+          echo "[" > tournaments.json
+          first=true
+          for file in *.json; do
+            if [ "$file" != "tournaments.json" ]; then
+              if [ "$first" = true ]; then
+                first=false
+              else
+                echo "," >> tournaments.json
+              fi
+              echo "\"$file\"" >> tournaments.json
+            fi
+          done
+          echo "]" >> tournaments.json
+
+      - name: Commit and push if changed
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add tournaments.json
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Update tournaments index" && git push)
