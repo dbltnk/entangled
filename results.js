@@ -33,23 +33,30 @@ class ResultsViewer {
     }
 
     async loadFromWeb() {
+        const tournamentListElement = document.getElementById('tournament-list');
+        tournamentListElement.innerHTML = '';
+
         try {
             // First fetch the index file
-            const indexResponse = await fetch('/tournaments.json');
+            console.log('Fetching tournaments.json...');
+            const baseUrl = 'https://dbltnk.github.io/entangled/';
+            const indexResponse = await fetch(baseUrl + 'tournaments.json');
             if (!indexResponse.ok) {
-                throw new Error('Failed to fetch tournament index');
+                throw new Error(`Failed to fetch tournament index: ${indexResponse.status} ${indexResponse.statusText}`);
             }
             const tournamentFiles = await indexResponse.json();
+            console.log('Found tournament files:', tournamentFiles);
 
-            const tournamentListElement = document.getElementById('tournament-list');
-            tournamentListElement.innerHTML = '';
+            let loadedCount = 0;
+            let errorCount = 0;
+            const errors = new Set();
 
             for (const filename of tournamentFiles) {
                 try {
-                    const response = await fetch(`/${filename}`);
+                    console.log(`Fetching ${filename}...`);
+                    const response = await fetch(baseUrl + filename);
                     if (!response.ok) {
-                        console.error(`Failed to load tournament file: ${filename}`);
-                        continue;
+                        throw new Error(`HTTP error: ${response.status} ${response.statusText}`);
                     }
                     const data = await response.json();
 
@@ -71,63 +78,51 @@ class ResultsViewer {
 
                     item.addEventListener('click', () => this.loadWebTournament(filename));
                     tournamentListElement.appendChild(item);
+                    loadedCount++;
                 } catch (error) {
                     console.error(`Error processing tournament ${filename}:`, error);
+                    errors.add(`${filename}: ${error.message}`);
+                    errorCount++;
                 }
             }
 
-            if (tournamentFiles.length === 0) {
+            // Show summary of load results
+            if (errorCount > 0) {
+                const errorSummary = document.createElement('div');
+                errorSummary.className = 'tournament-item error';
+                errorSummary.innerHTML = `
+                    <h3>Loading Summary</h3>
+                    <div>Successfully loaded: ${loadedCount} files</div>
+                    <div>Failed to load: ${errorCount} files</div>
+                    <details>
+                        <summary>Show Error Details</summary>
+                        <pre>${Array.from(errors).join('\n')}</pre>
+                    </details>
+                `;
+                tournamentListElement.insertBefore(errorSummary, tournamentListElement.firstChild);
+            }
+
+            if (loadedCount === 0) {
                 tournamentListElement.innerHTML = '<div class="tournament-item">No tournament files found</div>';
             }
 
         } catch (error) {
             console.error('Failed to load tournaments from web:', error);
-            alert('Failed to load tournaments from web. Please check if the JSON files exist in the web root.');
-        }
-    }
-
-    async loadWebTournamentList(tournamentList) {
-        const tournamentListElement = document.getElementById('tournament-list');
-        tournamentListElement.innerHTML = '';
-
-        for (const tournament of tournamentList) {
-            try {
-                const response = await fetch(`/${tournament}`);
-                if (!response.ok) {
-                    console.error(`Failed to load tournament file: ${tournament}`);
-                    continue;
-                }
-                const data = await response.json();
-
-                const playerNames = data.metadata.selectedAIs
-                    .map(id => AI_PLAYERS[id].name)
-                    .join(', ');
-
-                const item = document.createElement('div');
-                item.className = 'tournament-item';
-                item.innerHTML = `
-                    <h3>Tournament ${data.metadata.runId}</h3>
-                    <div class="tournament-info">
-                        <div><strong>Players:</strong> ${playerNames}</div>
-                        <div><strong>Games:</strong> ${data.metadata.totalGames}</div>
-                        <div><strong>Boards:</strong> ${data.metadata.boards.board1} vs ${data.metadata.boards.board2}</div>
-                        <div><strong>Start:</strong> ${data.metadata.startingConfig || 'None'}</div>
-                    </div>
-                `;
-
-                item.addEventListener('click', () => this.loadWebTournament(tournament));
-                tournamentListElement.appendChild(item);
-            } catch (error) {
-                console.error(`Error processing tournament ${tournament}:`, error);
-            }
+            tournamentListElement.innerHTML = `
+                <div class="tournament-item error">
+                    <h3>Failed to load tournaments</h3>
+                    <div>${error.message}</div>
+                    <div>Please check browser console for details.</div>
+                </div>`;
         }
     }
 
     async loadWebTournament(filename) {
         try {
-            const response = await fetch(`/${filename}`);
+            const baseUrl = 'https://dbltnk.github.io/entangled/';
+            const response = await fetch(baseUrl + filename);
             if (!response.ok) {
-                throw new Error('Failed to fetch tournament data');
+                throw new Error(`Failed to fetch tournament data: ${response.status} ${response.statusText}`);
             }
             const data = await response.json();
 
@@ -145,7 +140,7 @@ class ResultsViewer {
             this.updateResults();
         } catch (error) {
             console.error('Failed to load tournament data:', error);
-            alert('Failed to load tournament data. Please try again.');
+            alert(`Failed to load tournament data: ${error.message}`);
         }
     }
 
@@ -174,7 +169,7 @@ class ResultsViewer {
         try {
             for await (const entry of this.dirHandle.values()) {
                 if (entry.name.endsWith('.json')) {
-                    if (entry.name === 'tournaments.json') continue;
+                    if (entry.name === 'tournaments.json') continue; // Skip tournaments.json
                     try {
                         const file = await entry.getFile();
                         const content = await file.text();
@@ -478,6 +473,7 @@ class ResultsViewer {
 
         return row;
     }
+
     updateMatchupsTab() {
         const tbody = document.querySelector('#matchups-table tbody');
         tbody.innerHTML = '';
@@ -623,4 +619,6 @@ class ResultsViewer {
 
 window.addEventListener('load', () => {
     new ResultsViewer();
-}); 
+});
+
+export default ResultsViewer;
