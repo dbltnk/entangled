@@ -419,3 +419,29 @@
 .overview-table thead tr:first-child th:nth-child(2) {
     background: transparent;
 }
+
+.tournament-item.error {
+    background-color: #fff0f0;
+    border-color: #ffccd1;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.tournament-item.error h3 {
+    color: #cc0000;
+}
+
+.tournament-item.error details {
+    margin-top: 0.5rem;
+}
+
+.tournament-item.error pre {
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    background: #fff;
+    border: 1px solid #ffccd1;
+    border-radius: 4px;
+    white-space: pre-wrap;
+    font-family: monospace;
+    font-size: 12px;
+}

@@ -153,32 +153,88 @@ class ResultsViewer {
         const tournamentList = document.getElementById('tournament-list');
         tournamentList.innerHTML = '';
 
-        for await (const entry of this.dirHandle.values()) {
-            if (entry.name.endsWith('.json')) {
-                const file = await entry.getFile();
-                const content = await file.text();
-                const data = JSON.parse(content);
+        if (!this.dirHandle) {
+            tournamentList.innerHTML = '<div class="tournament-item error">No directory selected</div>';
+            return;
+        }
 
-                const playerNames = data.metadata.selectedAIs
-                    .map(id => AI_PLAYERS[id].name)
-                    .join(', ');
+        // Verify we still have read permission
+        try {
+            await this.dirHandle.requestPermission({ mode: 'read' });
+        } catch (error) {
+            console.error('Permission error:', error);
+            tournamentList.innerHTML = '<div class="tournament-item error">Directory permission denied. Please try selecting the directory again.</div>';
+            return;
+        }
 
-                const item = document.createElement('div');
-                item.className = 'tournament-item';
-                item.innerHTML = `
-                    <h3>Tournament ${data.metadata.runId}</h3>
-                    <div class="tournament-info">
-                        <div><strong>Players:</strong> ${playerNames}</div>
-                        <div><strong>Games:</strong> ${data.metadata.totalGames}</div>
-                        <div><strong>Boards:</strong> ${data.metadata.boards.board1} vs ${data.metadata.boards.board2}</div>
-                        <div><strong>Start:</strong> ${data.metadata.startingConfig || 'None'}</div>
-                    </div>
-                `;
+        let loadedCount = 0;
+        let errorCount = 0;
+        const errors = new Set();
 
-                item.addEventListener('click', () => this.loadTournament(entry));
-                tournamentList.appendChild(item);
-                this.tournamentFiles.push(entry);
+        try {
+            for await (const entry of this.dirHandle.values()) {
+                if (entry.name.endsWith('.json')) {
+                    if (entry.name === 'tournaments.json') continue;
+                    try {
+                        const file = await entry.getFile();
+                        const content = await file.text();
+                        const data = JSON.parse(content);
+
+                        // Validate expected data structure
+                        if (!data.metadata || !data.metadata.selectedAIs || !data.metadata.boards) {
+                            throw new Error('Invalid tournament file structure');
+                        }
+
+                        const playerNames = data.metadata.selectedAIs
+                            .map(id => AI_PLAYERS[id]?.name || 'Unknown AI')
+                            .join(', ');
+
+                        const item = document.createElement('div');
+                        item.className = 'tournament-item';
+                        item.innerHTML = `
+                            <h3>Tournament ${data.metadata.runId}</h3>
+                            <div class="tournament-info">
+                                <div><strong>Players:</strong> ${playerNames}</div>
+                                <div><strong>Games:</strong> ${data.metadata.totalGames}</div>
+                                <div><strong>Boards:</strong> ${data.metadata.boards.board1} vs ${data.metadata.boards.board2}</div>
+                                <div><strong>Start:</strong> ${data.metadata.startingConfig || 'None'}</div>
+                            </div>
+                        `;
+
+                        item.addEventListener('click', () => this.loadTournament(entry));
+                        tournamentList.appendChild(item);
+                        this.tournamentFiles.push(entry);
+                        loadedCount++;
+                    } catch (error) {
+                        console.error(`Error processing tournament file ${entry.name}:`, error);
+                        errors.add(`${entry.name}: ${error.message}`);
+                        errorCount++;
+                    }
+                }
             }
+
+            // Show summary of load results
+            if (errorCount > 0) {
+                const errorSummary = document.createElement('div');
+                errorSummary.className = 'tournament-item error';
+                errorSummary.innerHTML = `
+                    <h3>Loading Summary</h3>
+                    <div>Successfully loaded: ${loadedCount} files</div>
+                    <div>Failed to load: ${errorCount} files</div>
+                    <details>
+                        <summary>Show Error Details</summary>
+                        <pre>${Array.from(errors).join('\n')}</pre>
+                    </details>
+                `;
+                tournamentList.insertBefore(errorSummary, tournamentList.firstChild);
+            }
+
+            if (loadedCount === 0) {
+                tournamentList.innerHTML = '<div class="tournament-item">No tournament files found</div>';
+            }
+        } catch (error) {
+            console.error('Error reading directory:', error);
+            tournamentList.innerHTML = `<div class="tournament-item error">Failed to read directory: ${error.message}</div>`;
         }
     }
 
