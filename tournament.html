@@ -3,14 +3,14 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Entangled Tournament</title>
+    <title>Tournament Runner</title>
     <link rel="stylesheet" href="tournament.css">
 </head>
 
 <body class="tournament-body">
     <main class="tournament-container">
-        <aside class="setup-panel panel">
-            <h1>Tournament Setup</h1>
+        <div class="setup-panel panel">
+            <h1>Tournament Runner</h1>
 
             <div class="section">
                 <h2>Select AIs</h2>
@@ -18,30 +18,35 @@
             </div>
 
             <div class="section">
-                <h2>Board Configuration</h2>
-                <div class="board-setup">
-                    <div class="setup-row">
-                        <label>Board Size:</label>
-                        <select id="board-size">
-                            <option value="4">4×4</option>
-                            <option value="5" selected>5×5</option>
-                            <option value="6">6×6</option>
-                            <option value="7">7×7</option>
-                        </select>
-                    </div>
-                    <div class="setup-row">
-                        <label>Board 1:</label>
-                        <select id="tournament-board1-select"></select>
-                    </div>
-                    <div class="setup-row">
-                        <label>Board 2:</label>
-                        <select id="tournament-board2-select"></select>
-                    </div>
-                    <div class="setup-row">
-                        <label>Starting Position:</label>
-                        <input type="text" id="tournament-starting-config" placeholder="e.g., BE2,WK1" value="WB1,WB2">
+                <h2>Tournament Configurations</h2>
+                <div id="tournament-configs">
+                    <div class="board-setup tournament-config">
+                        <div class="setup-row">
+                            <label>Board Size:</label>
+                            <select class="board-size">
+                                <option value="4">4×4</option>
+                                <option value="5" selected>5×5</option>
+                                <option value="6">6×6</option>
+                                <option value="7">7×7</option>
+                            </select>
+                        </div>
+                        <div class="setup-row">
+                            <label>Board 1:</label>
+                            <select class="tournament-board1-select"></select>
+                        </div>
+                        <div class="setup-row">
+                            <label>Board 2:</label>
+                            <select class="tournament-board2-select"></select>
+                        </div>
+                        <div class="setup-row">
+                            <label>Starting Position:</label>
+                            <input type="text" class="tournament-starting-config" placeholder="e.g., BE2,WK1"
+                                value="WB1,WB2">
+                        </div>
                     </div>
                 </div>
+                <button id="add-config" class="tournament-button" style="margin-top: 1rem;">Add Board
+                    Configuration</button>
             </div>
 
             <div class="section">
@@ -59,133 +64,20 @@
             </div>
 
             <button id="start-tournament" class="tournament-button">Start Tournament</button>
-        </aside>
+        </div>
 
-        <section class="results-panel panel">
-            <h1>Tournament Results</h1>
+        <div class="progress-panel panel">
+            <h2>Tournament Progress</h2>
 
-            <div id="current-config" class="hidden">
-                <h2>Current Tournament Configuration</h2>
-                <div class="config-details">
-                    <div class="board-names">
-                        <div class="board-name">
-                            <h3>Board 1:</h3>
-                            <div id="board1-name"></div>
-                        </div>
-                        <div class="board-name">
-                            <h3>Board 2:</h3>
-                            <div id="board2-name"></div>
-                        </div>
-                    </div>
-                    <div class="starting-config">
-                        <h3>Starting Position</h3>
-                        <div id="config-preview"></div>
-                    </div>
-                </div>
+            <div id="tournament-cards">
+                <!-- Tournament cards will be added here -->
             </div>
+        </div>
 
-            <div id="progress-container" class="hidden">
-                <div class="progress-info">
-                    <span id="progress-text">Running matches: 0/0</span>
-                    <span id="eta-text"></span>
-                </div>
-                <div class="progress-bar">
-                    <div id="progress-fill"></div>
-                </div>
-            </div>
-
-            <div id="results-container">
-                <div class="results-tabs">
-                    <button class="tab-button active" data-tab="overview">Overview</button>
-                    <button class="tab-button" data-tab="matchups">Matchups</button>
-                    <button class="tab-button" data-tab="player-stats">Player Stats</button>
-                    <button class="tab-button" data-tab="details">Details</button>
-                </div>
-
-                <div class="tab-content">
-                    <div id="overview-tab" class="tab-pane active">
-                        <div class="overview-section">
-                            <h3>Other-Play Performance</h3>
-                            <table id="overview-table" class="overview-table">
-                                <thead>
-                                    <tr>
-                                        <th colspan="2"></th>
-                                        <th colspan="4">AS WHITE</th>
-                                        <th colspan="4">AS BLACK</th>
-                                    </tr>
-                                    <tr>
-                                        <th>Player</th>
-                                        <th>ELO</th>
-                                        <th>Score avg<br>min-max</th>
-                                        <th>Win %</th>
-                                        <th>Loss %</th>
-                                        <th>Draw %</th>
-                                        <th>Score avg<br>min-max</th>
-                                        <th>Win %</th>
-                                        <th>Loss %</th>
-                                        <th>Draw %</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <!-- Rows will be populated by JavaScript -->
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <div class="overview-section">
-                            <h3>Self-Play Performance</h3>
-                            <table id="self-play-table" class="overview-table">
-                                <thead>
-                                    <tr>
-                                        <th colspan="2"></th>
-                                        <th colspan="4">AS WHITE</th>
-                                        <th colspan="4">AS BLACK</th>
-                                    </tr>
-                                    <tr>
-                                        <th>Player</th>
-                                        <th>ELO</th>
-                                        <th>Score avg<br>min-max</th>
-                                        <th>Win %</th>
-                                        <th>Loss %</th>
-                                        <th>Draw %</th>
-                                        <th>Score avg<br>min-max</th>
-                                        <th>Win %</th>
-                                        <th>Loss %</th>
-                                        <th>Draw %</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <!-- Rows will be populated by JavaScript -->
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <div id="matchups-tab" class="tab-pane">
-                        <table id="matchups-table" class="results-table">
-                            <thead>
-                                <tr>
-                                    <th>AI 1</th>
-                                    <th>AI 2</th>
-                                    <th>Games</th>
-                                    <th>As Black (W/L/D)</th>
-                                    <th>As White (W/L/D)</th>
-                                </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
-                    </div>
-
-                    <div id="player-stats-tab" class="tab-pane">
-                        <div id="player-stats-container"></div>
-                    </div>
-
-                    <div id="details-tab" class="tab-pane">
-                        <div id="details-container"></div>
-                    </div>
-                </div>
-            </div>
-        </section>
+        <div id="completion-log">
+            <!-- Past tournament completions will be listed here -->
+        </div>
+        </div>
     </main>
     <script type="module" src="tournament.js"></script>
 </body>

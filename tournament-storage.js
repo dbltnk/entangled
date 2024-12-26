@@ -15,12 +15,13 @@ class TournamentStorage {
 
     async initializeStorage(selectedAIs, boardConfigs) {
         try {
-            alert("Please select the your entangled app folder to store tournament data");
-            this.dirHandle = await window.showDirectoryPicker({
-                id: 'tournaments',
-                mode: 'readwrite',
-                startIn: 'documents'
-            });
+            if (!this.dirHandle) {
+                this.dirHandle = await window.showDirectoryPicker({
+                    id: 'tournaments',
+                    mode: 'readwrite',
+                    startIn: 'documents'
+                });
+            }
 
             // Reset state for new tournament
             this.currentTournamentComplete = false;
@@ -32,9 +33,12 @@ class TournamentStorage {
             };
 
             const timestamp = new Date().toISOString();
-            const board1Id = document.getElementById('tournament-board1-select').value;
-            const board2Id = document.getElementById('tournament-board2-select').value;
-            const startingConfig = boardConfigs[0].startingConfig || 'empty';
+            const config = boardConfigs[0];
+
+            // Use board IDs from the config instead of layouts
+            const board1Id = config.board1Id;  // Add this to boardConfigs when creating it
+            const board2Id = config.board2Id;
+            const startingConfig = config.startingConfig || 'empty';
 
             const configString = JSON.stringify({
                 timestamp,
@@ -65,13 +69,14 @@ class TournamentStorage {
 
     calculateTotalGames(selectedAIs) {
         const n = selectedAIs.length;
-        return n * n * parseInt(document.getElementById('games-per-matchup').value);
+        const gamesPerMatchup = parseInt(document.getElementById('games-per-matchup').value);
+        return n * n * gamesPerMatchup;
     }
 
     generateFilename() {
         const metadata = this.stats.metadata;
-        const board1Short = metadata.boards.board1.replace(/[^a-zA-Z0-9]/g, '').slice(0, 10);
-        const board2Short = metadata.boards.board2.replace(/[^a-zA-Z0-9]/g, '').slice(0, 10);
+        const board1Short = metadata.boards.board1.slice(0, 10);
+        const board2Short = metadata.boards.board2.slice(0, 10);
         const configShort = metadata.startingConfig.replace(/[^a-zA-Z0-9]/g, '').slice(0, 10);
         return `${metadata.runId}-${board1Short}-${board2Short}-${configShort}.json`;
     }
@@ -141,12 +146,15 @@ class TournamentStorage {
     async flushBuffers() {
         if (this.gamesBuffer.length > 0) {
             await this.saveData();
+            this.gamesBuffer = [];  // Clear buffer after successful save
         }
     }
 
-    finishTournament() {
-        this.currentTournamentComplete = true;
-        return this.flushBuffers();
+    async finishTournament() {
+        if (!this.currentTournamentComplete) {
+            this.currentTournamentComplete = true;
+            await this.flushBuffers();
+        }
     }
 }
 
