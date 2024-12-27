@@ -1,5 +1,6 @@
 import { AI_PLAYERS } from './players.js';
 import BOARD_LAYOUTS from './boards.js';
+import ELOSystem from './elo.js';
 
 class ResultsViewer {
     constructor() {
@@ -141,6 +142,10 @@ class ResultsViewer {
             }
 
             this.currentTournament = data;
+            if (!this.currentTournament.elo || Object.keys(this.currentTournament.elo).length === 0) {
+                this.currentTournament.elo = this.calculateMissingELO();
+            }
+
             this.displayTournamentConfig();
             this.updateResults();
         } catch (error) {
@@ -156,6 +161,66 @@ class ResultsViewer {
             }
             alert(`Failed to load tournament data: ${error.message}`);
         }
+    }
+
+    calculateMissingELO() {
+        if (!this.currentTournament || !this.currentTournament.results) {
+            return;
+        }
+
+        // Initialize ELO system
+        const eloSystem = new ELOSystem({
+            K: 32,
+            initialRating: 1500
+        });
+
+        // Process all games chronologically
+        const allGames = [];
+        Object.entries(this.currentTournament.results).forEach(([key, result]) => {
+            result.games.forEach(game => {
+                allGames.push({
+                    black: result.black,
+                    white: result.white,
+                    winner: game.winner
+                });
+            });
+        });
+
+        // Sort games by move history length as a rough approximation of chronological order
+        allGames.sort((a, b) => a.moves?.length - b.moves?.length);
+
+        // Process each game to update ELO ratings
+        allGames.forEach(game => {
+            let gameResult;
+            if (game.winner === 'black') {
+                gameResult = 'win';
+            } else if (game.winner === 'white') {
+                gameResult = 'loss';
+            } else {
+                gameResult = 'draw';
+            }
+
+            // Update both players' ratings
+            eloSystem.updateRating(game.black, 'black', game.white, 'white', gameResult);
+            eloSystem.updateRating(game.white, 'white', game.black, 'black', gameResult === 'win' ? 'loss' : gameResult === 'loss' ? 'win' : 'draw');
+        });
+
+        // Store calculated ELO ratings
+        const elo = {};
+        const players = new Set();
+        Object.values(this.currentTournament.results).forEach(result => {
+            players.add(result.black);
+            players.add(result.white);
+        });
+
+        players.forEach(playerId => {
+            elo[playerId] = {
+                rating: Math.round(eloSystem.getRating(playerId)),
+                confidence: Math.round(eloSystem.getConfidenceInterval(playerId))
+            };
+        });
+
+        return elo;
     }
 
     async loadTournamentList() {
@@ -261,6 +326,10 @@ class ResultsViewer {
         const file = await fileEntry.getFile();
         const content = await file.text();
         this.currentTournament = JSON.parse(content);
+
+        if (!this.currentTournament.elo || Object.keys(this.currentTournament.elo).length === 0) {
+            this.currentTournament.elo = this.calculateMissingELO();
+        }
 
         // Update configuration display
         this.displayTournamentConfig();
