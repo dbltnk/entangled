@@ -126,6 +126,11 @@ class ResultsViewer {
             }
             const data = await response.json();
 
+            // Validate minimum required data structure
+            if (!data.metadata || !data.results) {
+                throw new Error('Invalid tournament data structure: missing required fields');
+            }
+
             // Update selected state in list
             const items = document.querySelectorAll('.tournament-item');
             items.forEach(item => item.classList.remove('selected'));
@@ -140,6 +145,15 @@ class ResultsViewer {
             this.updateResults();
         } catch (error) {
             console.error('Failed to load tournament data:', error);
+            // Show error in UI
+            const container = document.getElementById('player-stats-container');
+            if (container) {
+                container.innerHTML = `
+                    <div class="error-message">
+                        Failed to load tournament data: ${error.message}
+                    </div>
+                `;
+            }
             alert(`Failed to load tournament data: ${error.message}`);
         }
     }
@@ -312,8 +326,17 @@ class ResultsViewer {
         tbody.appendChild(avgRow);
 
         // Add individual AI rows
-        const sortedAIs = Object.keys(elos)
-            .sort((a, b) => elos[b].rating - elos[a].rating);
+        const uniqueAIs = new Set();
+        Object.values(results).forEach(result => {
+            uniqueAIs.add(result.black);
+            uniqueAIs.add(result.white);
+        });
+        const sortedAIs = Array.from(uniqueAIs).sort((a, b) => {
+            if (elos?.[a] && elos?.[b]) {
+                return (elos[b].rating || 0) - (elos[a].rating || 0);
+            }
+            return AI_PLAYERS[a].name.localeCompare(AI_PLAYERS[b].name);
+        });
 
         sortedAIs.forEach(ai => {
             const aiStats = this.calculateAIStats(ai, results, false);
@@ -474,52 +497,53 @@ class ResultsViewer {
         return row;
     }
 
-    updateMatchupsTab() {
-        const tbody = document.querySelector('#matchups-table tbody');
-        tbody.innerHTML = '';
-
-        Object.entries(this.currentTournament.results).forEach(([key, result]) => {
-            const reverseKey = `${result.white}-${result.black}`;
-            const reverseResult = this.currentTournament.results[reverseKey];
-
-            const row = tbody.insertRow();
-            row.innerHTML = `
-                            <td style="white-space: normal;">${AI_PLAYERS[result.black].name}</td>
-                            <td style="white-space: normal;">${AI_PLAYERS[result.white].name}</td>
-                            <td>${result.games.length}</td>
-                            <td>${result.games.filter(g => g.winner === 'black').length}-${result.games.filter(g => g.winner === 'white').length}-${result.games.filter(g => g.winner === 'draw').length}</td>
-                            <td>${reverseResult ? `${reverseResult.games.filter(g => g.winner === 'white').length}-${reverseResult.games.filter(g => g.winner === 'black').length}-${reverseResult.games.filter(g => g.winner === 'draw').length}` : 'N/A'}</td>
-                        `;
-        });
-    }
-
     updatePlayerStatsTab() {
         const container = document.getElementById('player-stats-container');
         container.innerHTML = '';
 
-        const elos = this.currentTournament.elo;
-        const results = this.currentTournament.results;
+        if (!this.currentTournament || !this.currentTournament.results) {
+            container.innerHTML = '<div class="error-message">No tournament data available</div>';
+            return;
+        }
 
-        const sortedPlayers = Object.keys(elos)
-            .sort((a, b) => elos[b].rating - elos[a].rating);
+        const elos = this.currentTournament.elo || {};
+        const results = this.currentTournament.results;
+        const players = new Set();
+
+        // Get unique players from results
+        Object.values(results).forEach(result => {
+            players.add(result.black);
+            players.add(result.white);
+        });
+
+        // Sort players by ELO if available, otherwise alphabetically by name
+        const sortedPlayers = Array.from(players).sort((a, b) => {
+            if (elos[a] && elos[b]) {
+                return elos[b].rating - elos[a].rating;
+            }
+            return AI_PLAYERS[a].name.localeCompare(AI_PLAYERS[b].name);
+        });
 
         sortedPlayers.forEach(playerId => {
             const playerStats = this.calculatePlayerStats(playerId, results);
+            const eloRating = elos[playerId] ?
+                `${elos[playerId].rating} ±${elos[playerId].confidence}` :
+                'n/a';
 
             const card = document.createElement('div');
             card.className = 'player-card';
             card.innerHTML = `
-                            <h3>${AI_PLAYERS[playerId].name}</h3>
-                            <div class="player-ratings">
-                                <div><strong>ELO Rating:</strong> ${elos[playerId].rating} ±${elos[playerId].confidence}</div>
-                            </div>
-                            <div class="player-performance">
-                                <h4>Performance</h4>
-                                <div>Win Rate: ${playerStats.winRate}%</div>
-                                <div>Games Played: ${playerStats.totalGames}</div>
-                                <div>Average Score: ${playerStats.averageScore.toFixed(1)}</div>
-                            </div>
-                        `;
+                <h3>${AI_PLAYERS[playerId].name}</h3>
+                <div class="player-ratings">
+                    <div><strong>ELO Rating:</strong> ${eloRating}</div>
+                </div>
+                <div class="player-performance">
+                    <h4>Performance</h4>
+                    <div>Win Rate: ${playerStats.winRate}%</div>
+                    <div>Games Played: ${playerStats.totalGames}</div>
+                    <div>Average Score: ${playerStats.averageScore.toFixed(1)}</div>
+                </div>
+            `;
             container.appendChild(card);
         });
     }
@@ -559,6 +583,25 @@ class ResultsViewer {
             winRate: ((stats.wins + stats.draws * 0.5) / stats.totalGames * 100).toFixed(1),
             averageScore: stats.totalGames > 0 ? stats.totalScore / stats.totalGames : 0
         };
+    }
+
+    updateMatchupsTab() {
+        const tbody = document.querySelector('#matchups-table tbody');
+        tbody.innerHTML = '';
+
+        Object.entries(this.currentTournament.results).forEach(([key, result]) => {
+            const reverseKey = `${result.white}-${result.black}`;
+            const reverseResult = this.currentTournament.results[reverseKey];
+
+            const row = tbody.insertRow();
+            row.innerHTML = `
+                            <td style="white-space: normal;">${AI_PLAYERS[result.black].name}</td>
+                            <td style="white-space: normal;">${AI_PLAYERS[result.white].name}</td>
+                            <td>${result.games.length}</td>
+                            <td>${result.games.filter(g => g.winner === 'black').length}-${result.games.filter(g => g.winner === 'white').length}-${result.games.filter(g => g.winner === 'draw').length}</td>
+                            <td>${reverseResult ? `${reverseResult.games.filter(g => g.winner === 'white').length}-${reverseResult.games.filter(g => g.winner === 'black').length}-${reverseResult.games.filter(g => g.winner === 'draw').length}` : 'N/A'}</td>
+                        `;
+        });
     }
 
     updateDetailsTab() {

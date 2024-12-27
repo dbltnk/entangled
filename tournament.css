@@ -654,3 +654,12 @@ overview-table {
 .overview-table thead tr:first-child th:nth-child(2) {
     background: transparent;
 }
+
+.error-message {
+    padding: var(--spacing-md);
+    background: #fff3f3;
+    border: 1px solid #ffcdd2;
+    border-radius: var(--border-radius);
+    color: #c62828;
+    margin-bottom: var(--spacing-md);
+}
