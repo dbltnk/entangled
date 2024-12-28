@@ -7,6 +7,7 @@ class ResultsViewer {
         this.dirHandle = null;
         this.currentTournament = null;
         this.tournamentFiles = [];
+        this.currentSelectionIndex = -1; // Track current selection
         this.setupEventListeners();
         this.populateFilterDropdowns();
 
@@ -18,6 +19,46 @@ class ResultsViewer {
         document.getElementById('load-web').addEventListener('click', () => {
             this.loadFromWeb();
         });
+
+        // Add keyboard navigation
+        document.addEventListener('keydown', (e) => this.handleKeyNavigation(e));
+    }
+
+    handleKeyNavigation(e) {
+        // Only handle navigation keys we're interested in
+        if (!['w', 'a', 's', 'd'].includes(e.key)) {
+            return;
+        }
+
+        // Prevent default scrolling behavior
+        e.preventDefault();
+
+        const visibleItems = Array.from(document.querySelectorAll('.tournament-item'))
+            .filter(item => item.style.display !== 'none' && !item.classList.contains('error'));
+
+        if (visibleItems.length === 0) return;
+
+        // Determine direction
+        const isUp = e.key === 'w' || e.key === 'a';
+
+        // Update selection index
+        if (this.currentSelectionIndex === -1) {
+            // If nothing selected, start at the beginning or end depending on direction
+            this.currentSelectionIndex = isUp ? visibleItems.length - 1 : 0;
+        } else {
+            // Move up or down
+            if (isUp) {
+                this.currentSelectionIndex = Math.max(0, this.currentSelectionIndex - 1);
+            } else {
+                this.currentSelectionIndex = Math.min(visibleItems.length - 1, this.currentSelectionIndex + 1);
+            }
+        }
+
+        // Trigger click on the selected item
+        const selectedItem = visibleItems[this.currentSelectionIndex];
+        if (selectedItem) {
+            selectedItem.click();
+        }
     }
 
     populateFilterDropdowns() {
@@ -40,6 +81,9 @@ class ResultsViewer {
         const board1Filter = document.getElementById('filter-board1').value;
         const board2Filter = document.getElementById('filter-board2').value;
         const startingFilter = document.getElementById('filter-starting').value.trim().toUpperCase();
+
+        // Reset selection when filters change
+        this.currentSelectionIndex = -1;
 
         const items = document.querySelectorAll('.tournament-item');
         items.forEach(item => {
@@ -83,7 +127,7 @@ class ResultsViewer {
         }
     }
 
-    selectAndMoveToTop(tournamentData) {
+    select(tournamentData) {
         const tournamentId = tournamentData.metadata.runId;
         const items = document.querySelectorAll('.tournament-item');
         items.forEach(item => item.classList.remove('selected'));
@@ -91,9 +135,6 @@ class ResultsViewer {
             .find(item => item.querySelector('h3').textContent.includes(`Tournament ${tournamentId}`));
         if (selectedItem) {
             selectedItem.classList.add('selected');
-            const list = document.getElementById('tournament-list');
-            selectedItem.remove();
-            list.insertBefore(selectedItem, list.firstChild);
         }
     }
 
@@ -209,7 +250,7 @@ class ResultsViewer {
                 this.currentTournament.elo = this.calculateMissingELO();
             }
 
-            this.selectAndMoveToTop(this.currentTournament);
+            this.select(this.currentTournament);
             this.updateResults();
         } catch (error) {
             console.error('Failed to load tournament data:', error);
@@ -376,7 +417,7 @@ class ResultsViewer {
             this.currentTournament.elo = this.calculateMissingELO();
         }
 
-        this.selectAndMoveToTop(this.currentTournament);
+        this.select(this.currentTournament);
         this.updateResults();
     }
 
