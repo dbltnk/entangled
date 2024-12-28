@@ -33,6 +33,20 @@ class ResultsViewer {
         }
     }
 
+    selectAndMoveToTop(tournamentData) {
+        const tournamentId = tournamentData.metadata.runId;
+        const items = document.querySelectorAll('.tournament-item');
+        items.forEach(item => item.classList.remove('selected'));
+        const selectedItem = Array.from(items)
+            .find(item => item.querySelector('h3').textContent.includes(`Tournament ${tournamentId}`));
+        if (selectedItem) {
+            selectedItem.classList.add('selected');
+            const list = document.getElementById('tournament-list');
+            selectedItem.remove();
+            list.insertBefore(selectedItem, list.firstChild);
+        }
+    }
+
     async loadFromWeb() {
         const tournamentListElement = document.getElementById('tournament-list');
         tournamentListElement.innerHTML = '';
@@ -132,25 +146,15 @@ class ResultsViewer {
                 throw new Error('Invalid tournament data structure: missing required fields');
             }
 
-            // Update selected state in list
-            const items = document.querySelectorAll('.tournament-item');
-            items.forEach(item => item.classList.remove('selected'));
-            const selectedItem = Array.from(items)
-                .find(item => item.querySelector('h3').textContent.includes(filename));
-            if (selectedItem) {
-                selectedItem.classList.add('selected');
-            }
-
             this.currentTournament = data;
             if (!this.currentTournament.elo || Object.keys(this.currentTournament.elo).length === 0) {
                 this.currentTournament.elo = this.calculateMissingELO();
             }
 
-            this.displayTournamentConfig();
+            this.selectAndMoveToTop(this.currentTournament);
             this.updateResults();
         } catch (error) {
             console.error('Failed to load tournament data:', error);
-            // Show error in UI
             const container = document.getElementById('player-stats-container');
             if (container) {
                 container.innerHTML = `
@@ -313,15 +317,6 @@ class ResultsViewer {
     }
 
     async loadTournament(fileEntry) {
-        // Update selected state in list
-        const items = document.querySelectorAll('.tournament-item');
-        items.forEach(item => item.classList.remove('selected'));
-        const selectedItem = Array.from(items)
-            .find(item => item.querySelector('h3').textContent.includes(fileEntry.name));
-        if (selectedItem) {
-            selectedItem.classList.add('selected');
-        }
-
         // Load and parse tournament data
         const file = await fileEntry.getFile();
         const content = await file.text();
@@ -331,10 +326,7 @@ class ResultsViewer {
             this.currentTournament.elo = this.calculateMissingELO();
         }
 
-        // Update configuration display
-        this.displayTournamentConfig();
-
-        // Update all result tabs
+        this.selectAndMoveToTop(this.currentTournament);
         this.updateResults();
     }
 
