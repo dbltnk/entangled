@@ -45,14 +45,19 @@ class ResultsViewer {
         items.forEach(item => {
             let show = true;
 
-            // Filter by board1
-            if (board1Filter && !item.textContent.includes(`board1: ${board1Filter}`)) {
-                show = false;
-            }
+            // Extract the board IDs from the text content using regex
+            const boardTextMatch = item.textContent.match(/board1: (\w+) vs board2: (\w+)/);
+            if (boardTextMatch) {
+                const [, board1Id, board2Id] = boardTextMatch;
 
-            // Filter by board2
-            if (board2Filter && !item.textContent.includes(`board2: ${board2Filter}`)) {
-                show = false;
+                // Compare exact board IDs
+                if (board1Filter && board1Filter !== board1Id) {
+                    show = false;
+                }
+
+                if (board2Filter && board2Filter !== board2Id) {
+                    show = false;
+                }
             }
 
             // Filter by starting position
