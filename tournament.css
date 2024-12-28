@@ -478,7 +478,7 @@
 
 .overview-section h3 {
     margin-bottom: var(--spacing-md);
-    font-size: var(--font-size-base);
+    font-size: var(--font-size-lg);
     font-weight: 600;
 }
 
@@ -688,7 +688,6 @@ overview-table {
 .avg-score {
     font-weight: 600;
     color: #1f2937;
-    font-size: 15px;
 }
 
 .score-range {
@@ -697,12 +696,14 @@ overview-table {
 }
 
 .win-percent {
-    font-weight: 600;
+    font-weight: 800;
     color: #059669;
+    font-size: 16px;
 }
 
 .loss-percent {
     color: #dc2626;
+    font-size: 16px;
 }
 
 .draw-percent {

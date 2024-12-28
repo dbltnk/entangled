@@ -382,7 +382,7 @@ class ResultsViewer {
             elo: null,
             white: aggregatedStats.white,
             black: aggregatedStats.black
-        });
+        }, true);  // other-play table
         tbody.appendChild(avgRow);
 
         // Add individual AI rows
@@ -401,8 +401,7 @@ class ResultsViewer {
         sortedAIs.forEach(ai => {
             const aiStats = this.calculateAIStats(ai, results, false);
             aiStats.elo = elos[ai];
-
-            const row = this.createStatsRow(AI_PLAYERS[ai].name, aiStats);
+            const row = this.createStatsRow(AI_PLAYERS[ai].name, aiStats, true);  // other-play table
             tbody.appendChild(row);
         });
 
@@ -418,15 +417,14 @@ class ResultsViewer {
             elo: null,
             white: selfPlayStats.white,
             black: selfPlayStats.black
-        });
+        }, false);  // self-play table
         selfPlayTbody.appendChild(selfPlayAvgRow);
 
         // Add individual AI rows for self-play
         sortedAIs.forEach(ai => {
             const aiStats = this.calculateAIStats(ai, results, true);
             aiStats.elo = elos[ai];
-
-            const row = this.createStatsRow(AI_PLAYERS[ai].name, aiStats);
+            const row = this.createStatsRow(AI_PLAYERS[ai].name, aiStats, false);  // self-play table
             selfPlayTbody.appendChild(row);
         });
     }
@@ -497,7 +495,7 @@ class ResultsViewer {
         return stats;
     }
 
-    createStatsRow(name, stats) {
+    createStatsRow(name, stats, isOtherPlay = true) {
         const row = document.createElement('tr');
 
         const getPercent = (value, total) => ((value / (total || 1)) * 100).toFixed(1);
@@ -523,36 +521,61 @@ class ResultsViewer {
         const whiteStats = createColorStats(stats.white);
         const blackStats = createColorStats(stats.black);
 
-        row.innerHTML = `
-            <td class="player-name">
-                ${name}
-                <div class="games-count" style="font-size: 12px; color: #666;">${stats.white.games + (stats.black?.games || 0)} games</div>
-            </td>            
-            <td class="elo-rating">
-                ${stats.elo ? `
-                    <span class="rating-value">${stats.elo.rating}</span>
-                    <span class="confidence">±${stats.elo.confidence}</span>
-                ` : '---'}
-            </td>
-            <td class="color-stats white-stats">
-                <div class="score-stats">
-                    <span class="avg-score">${whiteStats.scores.avg}</span>
-                    <span class="score-range">${whiteStats.scores.min}-${whiteStats.scores.max}</span>
-                </div>
-            </td>
-            <td class="win-percent">${whiteStats.winPercent}%</td>
-            <td class="loss-percent">${whiteStats.lossPercent}%</td>
-            <td class="draw-percent">${whiteStats.drawPercent}%</td>
-            <td class="color-stats black-stats">
-                <div class="score-stats">
-                    <span class="avg-score">${blackStats.scores.avg}</span>
-                    <span class="score-range">${blackStats.scores.min}-${blackStats.scores.max}</span>
-                </div>
-            </td>
-            <td class="win-percent">${blackStats.winPercent}%</td>
-            <td class="loss-percent">${blackStats.lossPercent}%</td>
-            <td class="draw-percent">${blackStats.drawPercent}%</td>
-        `;
+        if (isOtherPlay) {
+            row.innerHTML = `
+                <td class="player-name">
+                    ${name}
+                    <div class="games-count" style="font-size: 12px; color: #666;">${stats.white.games + (stats.black?.games || 0)} games</div>
+                </td>            
+                <td class="elo-rating">
+                    ${stats.elo ? `
+                        <span class="rating-value">${stats.elo.rating}</span>
+                        <span class="confidence">±${stats.elo.confidence}</span>
+                    ` : '---'}
+                </td>
+                <td class="color-stats white-stats">
+                    <div class="score-stats">
+                        <span class="avg-score">${whiteStats.scores.avg}</span>
+                        <span class="score-range">${whiteStats.scores.min}-${whiteStats.scores.max}</span>
+                    </div>
+                </td>
+                <td class="win-percent">${whiteStats.winPercent}%</td>
+                <td class="loss-percent">${whiteStats.lossPercent}%</td>
+                <td class="draw-percent">${whiteStats.drawPercent}%</td>
+                <td class="color-stats black-stats">
+                    <div class="score-stats">
+                        <span class="avg-score">${blackStats.scores.avg}</span>
+                        <span class="score-range">${blackStats.scores.min}-${blackStats.scores.max}</span>
+                    </div>
+                </td>
+                <td class="win-percent">${blackStats.winPercent}%</td>
+                <td class="loss-percent">${blackStats.lossPercent}%</td>
+                <td class="draw-percent">${blackStats.drawPercent}%</td>
+            `;
+        } else {
+            // Self-play table has fewer columns
+            row.innerHTML = `
+                <td class="player-name">
+                    ${name}
+                    <div class="games-count" style="font-size: 12px; color: #666;">${stats.white.games + (stats.black?.games || 0)} games</div>
+                </td>            
+                <td class="color-stats white-stats">
+                    <div class="score-stats">
+                        <span class="avg-score">${whiteStats.scores.avg}</span>
+                        <span class="score-range">${whiteStats.scores.min}-${whiteStats.scores.max}</span>
+                    </div>
+                </td>
+                <td class="win-percent">${whiteStats.winPercent}%</td>
+                <td class="color-stats black-stats">
+                    <div class="score-stats">
+                        <span class="avg-score">${blackStats.scores.avg}</span>
+                        <span class="score-range">${blackStats.scores.min}-${blackStats.scores.max}</span>
+                    </div>
+                </td>
+                <td class="win-percent">${blackStats.winPercent}%</td>
+                <td class="draw-percent">${((parseFloat(whiteStats.drawPercent) + parseFloat(blackStats.drawPercent)) / 2).toFixed(1)}%</td>
+            `;
+        }
 
         return row;
     }
