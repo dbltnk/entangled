@@ -59,6 +59,24 @@
             <button id="load-directory" class="tournament-button" style="margin-bottom: 1rem;">Load From Local
                 Directory</button>
             <button id="load-web" class="tournament-button" style="margin-bottom: 1rem;">Load From Web Root</button>
+            <div class="filter-panel" style="margin-top: 1rem;">
+                <div class="setup-row">
+                    <label>Filter Board 1:</label>
+                    <select id="filter-board1" class="filter-select">
+                        <option value="">No filter</option>
+                    </select>
+                </div>
+                <div class="setup-row">
+                    <label>Filter Board 2:</label>
+                    <select id="filter-board2" class="filter-select">
+                        <option value="">No filter</option>
+                    </select>
+                </div>
+                <div class="setup-row">
+                    <label>Starting Position:</label>
+                    <input type="text" id="filter-starting" class="filter-input" placeholder="e.g., WB1,WB2">
+                </div>
+            </div>
             <div id="tournament-list" class="tournament-list">
                 <!-- Tournament items will be populated here -->
             </div>

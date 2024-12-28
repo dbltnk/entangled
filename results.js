@@ -8,6 +8,7 @@ class ResultsViewer {
         this.currentTournament = null;
         this.tournamentFiles = [];
         this.setupEventListeners();
+        this.populateFilterDropdowns();
 
         // Add click handlers for both loading methods
         document.getElementById('load-directory').addEventListener('click', () => {
@@ -16,6 +17,50 @@ class ResultsViewer {
 
         document.getElementById('load-web').addEventListener('click', () => {
             this.loadFromWeb();
+        });
+    }
+
+    populateFilterDropdowns() {
+        const board1Filter = document.getElementById('filter-board1');
+        const board2Filter = document.getElementById('filter-board2');
+
+        Object.entries(BOARD_LAYOUTS).forEach(([id, layout]) => {
+            const option = new Option(layout.name, id);
+            board1Filter.add(option.cloneNode(true));
+            board2Filter.add(option.cloneNode(true));
+        });
+
+        // Add filter change handlers
+        board1Filter.addEventListener('change', () => this.applyFilters());
+        board2Filter.addEventListener('change', () => this.applyFilters());
+        document.getElementById('filter-starting').addEventListener('input', () => this.applyFilters());
+    }
+
+    applyFilters() {
+        const board1Filter = document.getElementById('filter-board1').value;
+        const board2Filter = document.getElementById('filter-board2').value;
+        const startingFilter = document.getElementById('filter-starting').value.trim().toUpperCase();
+
+        const items = document.querySelectorAll('.tournament-item');
+        items.forEach(item => {
+            let show = true;
+
+            // Filter by board1
+            if (board1Filter && !item.textContent.includes(`board1: ${board1Filter}`)) {
+                show = false;
+            }
+
+            // Filter by board2
+            if (board2Filter && !item.textContent.includes(`board2: ${board2Filter}`)) {
+                show = false;
+            }
+
+            // Filter by starting position
+            if (startingFilter && !item.textContent.includes(startingFilter)) {
+                show = false;
+            }
+
+            item.style.display = show ? '' : 'none';
         });
     }
 
@@ -45,6 +90,22 @@ class ResultsViewer {
             selectedItem.remove();
             list.insertBefore(selectedItem, list.firstChild);
         }
+    }
+
+    createTournamentItemHTML(data) {
+        const playerNames = data.metadata.selectedAIs
+            .map(id => AI_PLAYERS[id]?.name || 'Unknown AI')
+            .join(', ');
+
+        return `
+            <h3>Tournament ${data.metadata.runId}</h3>
+            <div class="tournament-info">
+                <div><strong>Players:</strong> ${playerNames}</div>
+                <div><strong>Games:</strong> ${data.metadata.totalGames}</div>
+                <div><strong>Boards:</strong> board1: ${data.metadata.boards.board1} vs board2: ${data.metadata.boards.board2}</div>
+                <div><strong>Start:</strong> ${data.metadata.startingConfig || 'None'}</div>
+            </div>
+        `;
     }
 
     async loadFromWeb() {
@@ -81,15 +142,7 @@ class ResultsViewer {
 
                     const item = document.createElement('div');
                     item.className = 'tournament-item';
-                    item.innerHTML = `
-                        <h3>Tournament ${data.metadata.runId}</h3>
-                        <div class="tournament-info">
-                            <div><strong>Players:</strong> ${playerNames}</div>
-                            <div><strong>Games:</strong> ${data.metadata.totalGames}</div>
-                            <div><strong>Boards:</strong> ${data.metadata.boards.board1} vs ${data.metadata.boards.board2}</div>
-                            <div><strong>Start:</strong> ${data.metadata.startingConfig || 'None'}</div>
-                        </div>
-                    `;
+                    item.innerHTML = this.createTournamentItemHTML(data);
 
                     item.addEventListener('click', () => this.loadWebTournament(filename));
                     tournamentListElement.appendChild(item);
@@ -134,7 +187,7 @@ class ResultsViewer {
 
     async loadWebTournament(filename) {
         try {
-            const baseUrl = 'https://dbltnk.github.io/entangled/';
+            const baseUrl = 'https://dbltnk.github.io/entangled/tournaments/';
             const response = await fetch(baseUrl + filename);
             if (!response.ok) {
                 throw new Error(`Failed to fetch tournament data: ${response.status} ${response.statusText}`);
@@ -269,15 +322,7 @@ class ResultsViewer {
 
                         const item = document.createElement('div');
                         item.className = 'tournament-item';
-                        item.innerHTML = `
-                            <h3>Tournament ${data.metadata.runId}</h3>
-                            <div class="tournament-info">
-                                <div><strong>Players:</strong> ${playerNames}</div>
-                                <div><strong>Games:</strong> ${data.metadata.totalGames}</div>
-                                <div><strong>Boards:</strong> ${data.metadata.boards.board1} vs ${data.metadata.boards.board2}</div>
-                                <div><strong>Start:</strong> ${data.metadata.startingConfig || 'None'}</div>
-                            </div>
-                        `;
+                        item.innerHTML = this.createTournamentItemHTML(data);
 
                         item.addEventListener('click', () => this.loadTournament(entry));
                         tournamentList.appendChild(item);
