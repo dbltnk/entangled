@@ -362,7 +362,6 @@ class ResultsViewer {
 
     updateResults() {
         this.updateOverviewTab();
-        this.updatePlayerStatsTab();
         this.updateMatchupsTab();
         this.updateDetailsTab();
     }
@@ -556,94 +555,6 @@ class ResultsViewer {
         `;
 
         return row;
-    }
-
-    updatePlayerStatsTab() {
-        const container = document.getElementById('player-stats-container');
-        container.innerHTML = '';
-
-        if (!this.currentTournament || !this.currentTournament.results) {
-            container.innerHTML = '<div class="error-message">No tournament data available</div>';
-            return;
-        }
-
-        const elos = this.currentTournament.elo || {};
-        const results = this.currentTournament.results;
-        const players = new Set();
-
-        // Get unique players from results
-        Object.values(results).forEach(result => {
-            players.add(result.black);
-            players.add(result.white);
-        });
-
-        // Sort players by ELO if available, otherwise alphabetically by name
-        const sortedPlayers = Array.from(players).sort((a, b) => {
-            if (elos[a] && elos[b]) {
-                return elos[b].rating - elos[a].rating;
-            }
-            return AI_PLAYERS[a].name.localeCompare(AI_PLAYERS[b].name);
-        });
-
-        sortedPlayers.forEach(playerId => {
-            const playerStats = this.calculatePlayerStats(playerId, results);
-            const eloRating = elos[playerId] ?
-                `${elos[playerId].rating} ±${elos[playerId].confidence}` :
-                'n/a';
-
-            const card = document.createElement('div');
-            card.className = 'player-card';
-            card.innerHTML = `
-                <h3>${AI_PLAYERS[playerId].name}</h3>
-                <div class="player-ratings">
-                    <div><strong>ELO Rating:</strong> ${eloRating}</div>
-                </div>
-                <div class="player-performance">
-                    <h4>Performance</h4>
-                    <div>Win Rate: ${playerStats.winRate}%</div>
-                    <div>Games Played: ${playerStats.totalGames}</div>
-                    <div>Average Score: ${playerStats.averageScore.toFixed(1)}</div>
-                </div>
-            `;
-            container.appendChild(card);
-        });
-    }
-
-    calculatePlayerStats(playerId, results) {
-        const stats = {
-            wins: 0,
-            losses: 0,
-            draws: 0,
-            totalGames: 0,
-            totalScore: 0
-        };
-
-        Object.values(results).forEach(result => {
-            if (result.black === playerId) {
-                result.games.forEach(game => {
-                    stats.totalGames++;
-                    stats.totalScore += game.black;
-                    if (game.winner === 'black') stats.wins++;
-                    else if (game.winner === 'white') stats.losses++;
-                    else stats.draws++;
-                });
-            }
-            if (result.white === playerId) {
-                result.games.forEach(game => {
-                    stats.totalGames++;
-                    stats.totalScore += game.white;
-                    if (game.winner === 'white') stats.wins++;
-                    else if (game.winner === 'black') stats.losses++;
-                    else stats.draws++;
-                });
-            }
-        });
-
-        return {
-            ...stats,
-            winRate: ((stats.wins + stats.draws * 0.5) / stats.totalGames * 100).toFixed(1),
-            averageScore: stats.totalGames > 0 ? stats.totalScore / stats.totalGames : 0
-        };
     }
 
     updateMatchupsTab() {
