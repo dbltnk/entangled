@@ -54,7 +54,7 @@ class ResultsViewer {
         try {
             // First fetch the index file
             console.log('Fetching tournaments.json...');
-            const baseUrl = 'https://dbltnk.github.io/entangled/';
+            const baseUrl = 'https://dbltnk.github.io/entangled/tournaments/';
             const indexResponse = await fetch(baseUrl + 'tournaments.json');
             if (!indexResponse.ok) {
                 throw new Error(`Failed to fetch tournament index: ${indexResponse.status} ${indexResponse.statusText}`);

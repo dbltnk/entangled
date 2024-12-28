@@ -3,7 +3,7 @@ name: Generate Tournament Index
 on:
   push:
     paths:
-      - '**.json'
+      - 'tournaments/**.json'
     branches:
       - main  # or your default branch name
   workflow_dispatch:  # allows manual trigger
@@ -18,7 +18,8 @@ jobs:
       
       - name: Generate index of tournament files
         run: |
-          # Find all JSON files in root directory, exclude tournaments.json itself
+          # Find all JSON files in tournaments directory, exclude tournaments.json itself
+          cd tournaments
           echo "[" > tournaments.json
           first=true
           for file in *.json; do
@@ -37,5 +38,5 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add tournaments.json
+          git add tournaments/tournaments.json
           git diff --quiet && git diff --staged --quiet || (git commit -m "Update tournaments index" && git push)
