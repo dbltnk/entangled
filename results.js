@@ -585,23 +585,27 @@ class ResultsViewer {
             matchupDiv.className = 'game-detail';
 
             const gamesHtml = result.games.map((game, index) => `
-                            <div class="game-result">
-                                <div>
-                                    <span class="game-number"><strong>Game ${index + 1}:</strong></span>
-                                    <span class="winner-${game.winner}" style="margin-left:5px;">
-                                        ${game.winner === 'draw' ? 'Draw' : game.winner + ' wins'}
-                                    </span>
-                                    <span style="margin-left:5px;">(Black: ${game.black} - White: ${game.white})</span>
-                                </div>
-                                <button class="replay-button" data-game-index="${index}">Replay</button>
-                            </div>
-                        `).join('');
+                <div class="game-result">
+                    <div>
+                        <span class="game-number">Game ${index + 1}</span>
+                        <span class="winner-${game.winner}">
+                            ${game.winner === 'draw' ? 'Draw' : `${game.winner} wins`}
+                        </span>
+                        <span class="score">
+                            (⚫ ${game.black} - ⚪ ${game.white})
+                        </span>
+                    </div>
+                    <button class="replay-button">Replay</button>
+                </div>
+            `).join('');
 
             matchupDiv.innerHTML = `
-                            <h3>${AI_PLAYERS[result.black].name} (Black) vs ${AI_PLAYERS[result.white].name} (White)</h3>
-                            <div style="margin-bottom:5px;">Results: <strong>${result.games.filter(g => g.winner === 'black').length}-${result.games.filter(g => g.winner === 'white').length}-${result.games.filter(g => g.winner === 'draw').length}</strong></div>
-                            <div class="game-moves">${gamesHtml}</div>
-                        `;
+                <h3>⚫ ${AI_PLAYERS[result.black].name} vs ⚪ ${AI_PLAYERS[result.white].name}</h3>
+                <div style="margin-bottom:var(--spacing-sm);">
+                    Results: <strong>${result.games.filter(g => g.winner === 'black').length}-${result.games.filter(g => g.winner === 'white').length}-${result.games.filter(g => g.winner === 'draw').length}</strong>
+                </div>
+                <div class="game-moves">${gamesHtml}</div>
+            `;
 
             matchupDiv.querySelectorAll('.replay-button').forEach((button, index) => {
                 button.addEventListener('click', () => {
