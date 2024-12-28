@@ -106,6 +106,8 @@ function populatePlayerDropdowns() {
         blackSelect.add(option.cloneNode(true));
         whiteSelect.add(option.cloneNode(true));
     });
+
+    whiteSelect.value = 'defensive-some-rng';
 }
 
 function getBoardSize(boardId) {
@@ -133,14 +135,14 @@ function populateBoardsBySize(size) {
     // Set default selections for the current size
     const defaultBoards = {
         4: ['board4x4', 'random4x4'],
-        5: ['board1', 'board4'],
+        5: ['board1', 'board7'],
         6: ['board6x6', 'random6x6'],
         7: ['board7x7', 'centeredRandom7x7']
     };
 
     const defaultConfigs = {
         4: '',
-        5: 'WQ1,WQ2',
+        5: 'WD1,WD2',
         6: '',
         7: 'WY1,WY2'  // Center stones for 7x7 boards
     };
@@ -622,6 +624,7 @@ function init() {
     });
 
     initializeBoards();
+    document.getElementById('start-game').click();
 }
 
 window.addEventListener('load', init);
