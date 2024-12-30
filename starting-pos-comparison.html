@@ -281,8 +281,11 @@
                     maintainAspectRatio: false,
                     plugins: {
                         title: {
-                            display: true,
+                            display: false,
                             text: `${board1Name} vs ${board2Name} (lower is better)`
+                        },
+                        legend: {
+                            display: false
                         },
                         tooltip: {
                             callbacks: {
@@ -443,6 +446,7 @@
                 const metricsDiv = document.createElement('div');
                 metricsDiv.className = 'metrics';
                 metricsDiv.innerHTML = `
+                    <h4>${board1.name} vs ${board2.name}</h4>
                     <div class="metric-row">
                         <span>Fairness Score (lower = better):</span>
                         <span class="metric-value better-lower">${metrics.fairnessScore.toFixed(3)}</span>
