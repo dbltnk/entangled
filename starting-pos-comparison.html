@@ -2,7 +2,7 @@
 <html>
 
 <head>
-    <title>Board Staring Position Analysis</title>
+    <title>Board Starting Position Analysis</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
     <style>
         body {
@@ -128,10 +128,33 @@
     <h1>Board Starting Position Analysis</h1>
 
     <div class="info-box">
-        Scoring is based on Manhattan distance from board center. Lower scores are better.<br>
-        • There are many viable opening options (high viable moves count)
-        • Multiple opening moves are similarly valuable (low standard deviation)<br>
-        • No single move is significantly better than others (best worst ratio)<br>
+        <p>
+            The scoring system evaluates each tile based on its proximity to all other tiles on the board. The score for
+            a tile is calculated as the sum of the inverses of Manhattan distances to all other tiles. This means that
+            closer tiles contribute more to the score, and farther tiles contribute less. A higher score indicates a
+            better position, where a tile is more favorably placed relative to others.
+        </p>
+        <p><strong>Metrics Explanation:</strong></p>
+        <ul>
+            <li>
+                <strong>Viable Moves:</strong> This metric counts how many tiles have a score close to the best score
+                (highest). Higher values indicate more options for opening moves with similarly strong positions.
+            </li>
+            <li>
+                <strong>Standard Deviation:</strong> This measures the variation in tile scores. A lower standard
+                deviation means that scores are more balanced, and no single position is overwhelmingly better than
+                others.
+            </li>
+            <li>
+                <strong>Best/Worst Ratio:</strong> This is the ratio of the highest score (best position) to the lowest
+                score (worst position). A lower ratio indicates a more balanced board, where no single position
+                dominates.
+            </li>
+        </ul>
+        <p>
+            By analyzing these metrics, you can evaluate board setups to identify balanced starting positions and
+            optimal opening strategies.
+        </p>
     </div>
 
     <div class="controls">
@@ -158,18 +181,16 @@
     <script type="module">
         import BOARD_LAYOUTS from './boards.js';
 
-        function getCenterDistance(row, col, boardSize) {
-            const isEven = boardSize % 2 === 0;
-            if (isEven) {
-                const centerLow = boardSize / 2 - 1;
-                const centerHigh = boardSize / 2;
-                const distToLowCenter = Math.abs(row - centerLow) + Math.abs(col - centerLow);
-                const distToHighCenter = Math.abs(row - centerHigh) + Math.abs(col - centerHigh);
-                return (distToLowCenter + distToHighCenter) / 2; // Average the two distances
-            } else {
-                const center = Math.floor(boardSize / 2);
-                return Math.abs(row - center) + Math.abs(col - center);
+        function getTileScore(row, col, boardSize) {
+            let score = 0;
+            for (let r = 0; r < boardSize; r++) {
+                for (let c = 0; c < boardSize; c++) {
+                    if (r === row && c === col) continue; // Skip the tile itself
+                    const distance = Math.abs(row - r) + Math.abs(col - c);
+                    score += 1 / distance;
+                }
             }
+            return score;
         }
 
         function findSymbolPosition(symbol, grid) {
@@ -182,17 +203,18 @@
         }
 
         function calculateBoardMetrics(scores) {
-            scores.sort((a, b) => a.score - b.score); // Lower is better now
-            const best = scores[0].score;
-            const second = scores[1].score;
+            scores.sort((a, b) => b.score - a.score); // Higher is better
+            const best = scores[0].score; // Strictly highest score
             const worst = scores[scores.length - 1].score;
 
             const mean = scores.reduce((sum, s) => sum + s.score, 0) / scores.length;
             const variance = scores.reduce((sum, s) => sum + Math.pow(s.score - mean, 2), 0) / scores.length;
             const stdDev = Math.sqrt(variance);
 
-            const threshold = best * 1.1; // Within 10% of best (lowest) score
-            const viableMoves = scores.filter(s => s.score <= threshold).length;
+            // Use a small epsilon to account for floating-point precision issues
+            const epsilon = 1e-10;
+            const viableMoves = scores.filter(s => Math.abs(s.score - best) < epsilon).length;
+
             const bestWorstRatio = worst / best;
 
             return {
@@ -206,7 +228,7 @@
         }
 
         function getScoreColor(score, minScore, maxScore) {
-            const ratio = (score - minScore) / (maxScore - minScore);
+            const ratio = (score - maxScore) / (minScore - maxScore);
             return `rgba(33, 150, 243, ${ratio * 0.9})`; // Light to dark blue
         }
 
@@ -236,8 +258,8 @@
             const canvas = document.createElement('canvas');
             container.appendChild(canvas);
 
-            // Sort scores for display (lower is better)
-            scores.sort((a, b) => a.score - b.score);
+            // Sort scores for display (higher is better)
+            scores.sort((a, b) => b.score - a.score);
 
             const ctx = canvas.getContext('2d');
             new Chart(ctx, {
@@ -262,7 +284,7 @@
                     plugins: {
                         title: {
                             display: false,
-                            text: `${board1Name} vs ${board2Name} (lower is better)`
+                            text: `${board1Name} vs ${board2Name} (higher is better)`,
                         },
                         legend: {
                             display: false
@@ -287,7 +309,7 @@
                         y: {
                             title: {
                                 display: true,
-                                text: 'Distance Score (lower = better)'
+                                text: 'Distance Score (higher = better)',
                             }
                         },
                         x: {
@@ -334,8 +356,8 @@
                 for (let col = 0; col < size; col++) {
                     const symbol = board1.grid[row][col];
                     const board2Pos = findSymbolPosition(symbol, board2.grid);
-                    const score1 = getCenterDistance(row, col, size);
-                    const score2 = getCenterDistance(board2Pos.row, board2Pos.col, size);
+                    const score1 = getTileScore(row, col, size);
+                    const score2 = getTileScore(board2Pos.row, board2Pos.col, size);
 
                     scores.push({
                         symbol,
@@ -404,7 +426,7 @@
                     return { board1, board2, scores, metrics };
                 })
                 .filter(analysis => analysis !== null) // Remove null entries
-                .sort((a, b) => b.metrics.viableMoves - a.metrics.viableMoves); // Sort descending by viableMoves
+                .sort((a, b) => b.metrics.viableMoves - a.metrics.viableMoves); // Sort descending
 
             // Display sorted analyses
             analyses.forEach(({ board1, board2, scores, metrics }) => {
