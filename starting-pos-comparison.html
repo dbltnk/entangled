@@ -47,6 +47,24 @@
             flex-direction: column;
         }
 
+        .section-header {
+            margin-bottom: 1rem;
+            padding: 1rem;
+            background: #f8f8f8;
+            border-radius: 4px;
+        }
+
+        .section-header h3 {
+            margin: 0 0 0.5rem 0;
+            color: #333;
+        }
+
+        .section-header p {
+            margin: 0;
+            font-size: 0.9rem;
+            color: #666;
+        }
+
         .board-section-title {
             text-align: center;
             margin-bottom: 0.5rem;
@@ -149,7 +167,8 @@
             line-height: 1.5;
         }
 
-        .score-plot {
+        .score-plot,
+        .frequency-plot {
             height: 300px;
             margin-top: 1rem;
         }
@@ -170,6 +189,11 @@
         .no-data-icon {
             font-size: 2rem;
             margin-bottom: 1rem;
+        }
+
+        .plot-container {
+            position: relative;
+            width: 100%;
         }
     </style>
 </head>
@@ -384,6 +408,69 @@
             return container;
         }
 
+        function createFrequencyPlot(container, moveFrequencies, board1Name, board2Name) {
+            const canvas = document.createElement('canvas');
+            container.appendChild(canvas);
+
+            if (!moveFrequencies) return;
+
+            const data = Object.entries(moveFrequencies)
+                .map(([symbol, data]) => ({
+                    symbol,
+                    percentage: data.percentage
+                }))
+                .sort((a, b) => b.percentage - a.percentage);
+
+            const ctx = canvas.getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.map(d => d.symbol),
+                    datasets: [{
+                        data: data.map(d => d.percentage),
+                        backgroundColor: 'rgba(211, 47, 47, 0.6)',
+                        borderColor: 'rgba(211, 47, 47, 0.8)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: false,
+                            text: `Move Selection Frequency`
+                        },
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => {
+                                    return `Selected ${context.formattedValue}% of games`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Selection Frequency (%)'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Symbol'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
         function createScatterPlot(container, scores, board1Name, board2Name) {
             const canvas = document.createElement('canvas');
             container.appendChild(canvas);
@@ -538,6 +625,9 @@
                 .forEach(({ board1, board2, id1, id2, scores, metrics, moveFrequencies }) => {
                     const card = document.createElement('div');
                     card.className = 'combo-card';
+                    card.innerHTML = `
+                        <h2>${board1.name} vs ${board2.name}</h2>
+                    `;
 
                     // Create the analysis container
                     const analysisContainer = document.createElement('div');
@@ -547,11 +637,19 @@
                     const scoreSection = document.createElement('div');
                     scoreSection.className = 'board-section';
 
+                    // Add title section for scores
+                    const scoreHeader = document.createElement('div');
+                    scoreHeader.className = 'section-header';
+                    scoreHeader.innerHTML = `
+                        <h3>Position Analysis</h3>
+                        <p>Blue intensity shows positional strength based on connectivity to other positions.</p>
+                    `;
+                    scoreSection.appendChild(scoreHeader);
+
                     // Add metrics to score section
                     const metricsDiv = document.createElement('div');
                     metricsDiv.className = 'metrics';
                     metricsDiv.innerHTML = `
-                        <h4>${board1.name} vs ${board2.name}</h4>
                         <div class="metric-row">
                             <span>Viable Moves (higher = more good options):</span>
                             <span class="metric-value better-higher">${metrics.viableMoves}</span>
@@ -584,12 +682,43 @@
                     const frequencySection = document.createElement('div');
                     frequencySection.className = 'board-section';
 
+                    // Add title section for frequencies
+                    const frequencyHeader = document.createElement('div');
+                    frequencyHeader.className = 'section-header';
+                    frequencyHeader.innerHTML = `
+                        <h3>Tournament Play Analysis</h3>
+                        <p>Red intensity shows how often each position is selected as the first move.</p>
+                    `;
+                    frequencySection.appendChild(frequencyHeader);
+
+                    // Add metrics to score section
+                    const metricsPlaceholder = document.createElement('div');
+                    metricsPlaceholder.className = 'metrics';
+                    metricsPlaceholder.innerHTML = `
+                        <div class="metric-row">
+                            <span>[no metrics available yet]</span>
+                        </div>
+                        <div class="metric-row">
+                            <span>[no metrics available yet]</span>
+                        </div>
+                        <div class="metric-row">
+                            <span>[no metrics available yet]</span>
+                        </div>
+                    `;
+                    frequencySection.appendChild(metricsPlaceholder);
+
                     if (moveFrequencies && Object.keys(moveFrequencies).length > 0) {
                         const frequencyBoardDisplay = document.createElement('div');
                         frequencyBoardDisplay.className = 'board-display';
                         frequencyBoardDisplay.appendChild(createFrequencyBoard(board1, moveFrequencies));
                         frequencyBoardDisplay.appendChild(createFrequencyBoard(board2, moveFrequencies));
                         frequencySection.appendChild(frequencyBoardDisplay);
+
+                        // Add frequency plot
+                        const frequencyPlot = document.createElement('div');
+                        frequencyPlot.className = 'frequency-plot';
+                        frequencySection.appendChild(frequencyPlot);
+                        createFrequencyPlot(frequencyPlot, moveFrequencies, board1.name, board2.name);
                     } else {
                         const noDataDiv = document.createElement('div');
                         noDataDiv.className = 'no-data';
