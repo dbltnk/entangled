@@ -2,7 +2,7 @@
 <html>
 
 <head>
-    <title>Board Fairness Analysis</title>
+    <title>Board Staring Position Analysis</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
     <style>
         body {
@@ -125,14 +125,13 @@
 </head>
 
 <body>
-    <h1>Board Fairness Analysis</h1>
+    <h1>Board Starting Position Analysis</h1>
 
     <div class="info-box">
         Scoring is based on Manhattan distance from board center. Lower scores are better.<br>
-        Fairness metrics try to identify board combinations where:<br>
-        • Multiple opening moves are similarly valuable (low standard deviation)<br>
-        • No single move is significantly better than others (low top gap)<br>
         • There are many viable opening options (high viable moves count)
+        • Multiple opening moves are similarly valuable (low standard deviation)<br>
+        • No single move is significantly better than others (best worst ratio)<br>
     </div>
 
     <div class="controls">
@@ -152,14 +151,6 @@
         <div class="control-group">
             <label>Board 2:</label>
             <select id="board2Filter"></select>
-        </div>
-        <div class="control-group">
-            <label>Min Fairness:</label>
-            <input type="number" id="minFairness" step="0.001" value="0">
-        </div>
-        <div class="control-group">
-            <label>Max Fairness:</label>
-            <input type="number" id="maxFairness" step="0.001" value="1">
         </div>
     </div>
     <div class="analysis-grid" id="analysisGrid"></div>
@@ -200,25 +191,14 @@
             const variance = scores.reduce((sum, s) => sum + Math.pow(s.score - mean, 2), 0) / scores.length;
             const stdDev = Math.sqrt(variance);
 
-            const topGapRatio = (second - best) / (worst - best);
             const threshold = best * 1.1; // Within 10% of best (lowest) score
             const viableMoves = scores.filter(s => s.score <= threshold).length;
             const bestWorstRatio = worst / best;
 
-            // Lower score is better now
-            const fairnessScore = (
-                (stdDev / mean) * 0.3 +
-                topGapRatio * 0.3 +
-                (1 - viableMoves / scores.length) * 0.2 +
-                (bestWorstRatio - 1) * 0.2
-            );
-
             return {
                 stdDev,
-                topGapRatio,
                 viableMoves,
                 bestWorstRatio,
-                fairnessScore,
                 mean,
                 best,
                 worst
@@ -373,8 +353,6 @@
             const size = parseInt(document.getElementById('sizeFilter').value);
             const board1Id = document.getElementById('board1Filter').value;
             const board2Id = document.getElementById('board2Filter').value;
-            const minFairness = parseFloat(document.getElementById('minFairness').value);
-            const maxFairness = parseFloat(document.getElementById('maxFairness').value);
 
             const grid = document.getElementById('analysisGrid');
             grid.innerHTML = '';
@@ -412,31 +390,21 @@
                     validBoards.map(board2 => [board1, board2])
                 );
 
-            // Analyze and sort by fairness score
-            const analyses = boardPairs.map(([[id1, board1], [id2, board2]]) => {
-                if (!board1 || !board2) {
-                    console.log(`Skipping invalid pair: ${id1}, ${id2}`);
-                    return null;
-                }
+            // Analyze and sort by number of options
+            const analyses = boardPairs
+                .map(([[id1, board1], [id2, board2]]) => {
+                    if (!board1 || !board2) {
+                        console.log(`Skipping invalid pair: ${id1}, ${id2}`);
+                        return null;
+                    }
 
-                const scores = analyzeBoards(board1, board2);
-                const metrics = calculateBoardMetrics(scores);
+                    const scores = analyzeBoards(board1, board2);
+                    const metrics = calculateBoardMetrics(scores);
 
-                // Include special cases like Infinity or NaN in results
-                if (!isFinite(metrics.fairnessScore)) {
-                    console.warn(`Including special-case metrics for ${board1.name} vs ${board2.name}.`, metrics);
-                }
-
-                return { board1, board2, scores, metrics };
-            }).filter(Boolean).filter(analysis => {
-                const fairnessScore = analysis.metrics.fairnessScore;
-
-                // Treat Infinity, -Infinity, and NaN as within range
-                if (!isFinite(fairnessScore) || isNaN(fairnessScore)) return true;
-
-                // Apply the usual range filter for finite scores
-                return fairnessScore >= minFairness && fairnessScore <= maxFairness;
-            });
+                    return { board1, board2, scores, metrics };
+                })
+                .filter(analysis => analysis !== null) // Remove null entries
+                .sort((a, b) => b.metrics.viableMoves - a.metrics.viableMoves); // Sort descending by viableMoves
 
             // Display sorted analyses
             analyses.forEach(({ board1, board2, scores, metrics }) => {
@@ -448,22 +416,14 @@
                 metricsDiv.innerHTML = `
                     <h4>${board1.name} vs ${board2.name}</h4>
                     <div class="metric-row">
-                        <span>Fairness Score (lower = better):</span>
-                        <span class="metric-value better-lower">${metrics.fairnessScore.toFixed(3)}</span>
+                        <span>Viable Moves (higher = more good options):</span>
+                        <span class="metric-value better-higher">${metrics.viableMoves}</span>
                     </div>
                     <div class="metric-row">
                         <span>Standard Deviation (lower = more balanced):</span>
                         <span class="metric-value better-lower">${metrics.stdDev.toFixed(2)}</span>
                     </div>
-                    <div class="metric-row">
-                        <span>Top Gap Ratio (lower = more equal top moves):</span>
-                        <span class="metric-value better-lower">${metrics.topGapRatio.toFixed(3)}</span>
-                    </div>
-                    <div class="metric-row">
-                        <span>Viable Moves (higher = more good options):</span>
-                        <span class="metric-value better-higher">${metrics.viableMoves}</span>
-                    </div>
-                    <div class="metric-row">
+                   <div class="metric-row">
                         <span>Best/Worst Ratio (lower = more balanced):</span>
                         <span class="metric-value better-lower">${metrics.bestWorstRatio.toFixed(2)}</span>
                     </div>
@@ -489,8 +449,6 @@
         document.getElementById('sizeFilter').addEventListener('change', updateDisplay);
         document.getElementById('board1Filter').addEventListener('change', updateDisplay);
         document.getElementById('board2Filter').addEventListener('change', updateDisplay);
-        document.getElementById('minFairness').addEventListener('input', updateDisplay);
-        document.getElementById('maxFairness').addEventListener('input', updateDisplay);
 
         // Initial display
         updateDisplay();
