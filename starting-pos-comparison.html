@@ -126,6 +126,7 @@
 
 <body>
     <h1>Board Fairness Analysis</h1>
+
     <div class="info-box">
         Scoring is based on Manhattan distance from board center. Lower scores are better.<br>
         Fairness metrics try to identify board combinations where:<br>
@@ -133,6 +134,7 @@
         • No single move is significantly better than others (low top gap)<br>
         • There are many viable opening options (high viable moves count)
     </div>
+
     <div class="controls">
         <div class="control-group">
             <label>Board Size:</label>
@@ -161,8 +163,10 @@
         </div>
     </div>
     <div class="analysis-grid" id="analysisGrid"></div>
+
     <script type="module">
         import BOARD_LAYOUTS from './boards.js';
+
         function getCenterDistance(row, col, boardSize) {
             const isEven = boardSize % 2 === 0;
             if (isEven) {
@@ -176,6 +180,7 @@
                 return Math.abs(row - center) + Math.abs(col - center);
             }
         }
+
         function findSymbolPosition(symbol, grid) {
             for (let row = 0; row < grid.length; row++) {
                 for (let col = 0; col < grid.length; col++) {
@@ -184,24 +189,30 @@
             }
             return null;
         }
+
         function calculateBoardMetrics(scores) {
-            scores.sort((a, b) => a.score - b.score);
+            scores.sort((a, b) => a.score - b.score); // Lower is better now
             const best = scores[0].score;
             const second = scores[1].score;
             const worst = scores[scores.length - 1].score;
+
             const mean = scores.reduce((sum, s) => sum + s.score, 0) / scores.length;
             const variance = scores.reduce((sum, s) => sum + Math.pow(s.score - mean, 2), 0) / scores.length;
             const stdDev = Math.sqrt(variance);
+
             const topGapRatio = (second - best) / (worst - best);
-            const threshold = best * 1.1;
+            const threshold = best * 1.1; // Within 10% of best (lowest) score
             const viableMoves = scores.filter(s => s.score <= threshold).length;
             const bestWorstRatio = worst / best;
+
+            // Lower score is better now
             const fairnessScore = (
                 (stdDev / mean) * 0.3 +
                 topGapRatio * 0.3 +
                 (1 - viableMoves / scores.length) * 0.2 +
                 (bestWorstRatio - 1) * 0.2
             );
+
             return {
                 stdDev,
                 topGapRatio,
@@ -213,15 +224,18 @@
                 worst
             };
         }
+
         function getScoreColor(score, minScore, maxScore) {
             const ratio = (score - minScore) / (maxScore - minScore);
-            return `rgba(33, 150, 243, ${ratio * 0.9})`;
+            return `rgba(33, 150, 243, ${ratio * 0.9})`; // Light to dark blue
         }
+
         function createBoardDisplay(board, scores, minScore, maxScore) {
             const size = board.grid.length;
             const container = document.createElement('div');
             container.className = 'board';
             container.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
+
             for (let row = 0; row < size; row++) {
                 for (let col = 0; col < size; col++) {
                     const cell = document.createElement('div');
@@ -231,16 +245,20 @@
                     cell.style.backgroundColor = getScoreColor(score, minScore, maxScore);
                     cell.style.color = score > (minScore + maxScore) / 2 ? '#fff' : '#000';
                     cell.innerHTML = `${symbol}<span class="score">${score.toFixed(1)}</span>`;
-                    cell.style.width = `40px`;
+                    cell.style.width = `${40}px`;
                     container.appendChild(cell);
                 }
             }
             return container;
         }
+
         function createScatterPlot(container, scores, board1Name, board2Name) {
             const canvas = document.createElement('canvas');
             container.appendChild(canvas);
+
+            // Sort scores for display (lower is better)
             scores.sort((a, b) => a.score - b.score);
+
             const ctx = canvas.getContext('2d');
             new Chart(ctx, {
                 type: 'scatter',
@@ -277,6 +295,9 @@
                                     ];
                                 }
                             }
+                        },
+                        customSymbolLabels: {
+                            display: true
                         }
                     },
                     scales: {
@@ -298,18 +319,41 @@
                             }
                         }
                     }
-                }
+                },
+                plugins: [{
+                    id: 'customSymbolLabels',
+                    afterDatasetsDraw: (chart) => {
+                        const ctx = chart.ctx;
+                        const dataset = chart.data.datasets[0];
+                        const meta = chart.getDatasetMeta(0);
+
+                        meta.data.forEach((point, index) => {
+                            const symbol = dataset.data[index].symbol;
+                            const x = point.x;
+                            const y = point.y;
+                            const textY = y < chart.scales.y.min ? y + 10 : y - 10;
+
+                            ctx.font = '12px Arial';
+                            ctx.fillStyle = 'black';
+                            ctx.textAlign = 'center';
+                            ctx.fillText(symbol, x, textY);
+                        });
+                    }
+                }]
             });
         }
+
         function analyzeBoards(board1, board2) {
             const size = board1.grid.length;
             const scores = [];
+
             for (let row = 0; row < size; row++) {
                 for (let col = 0; col < size; col++) {
                     const symbol = board1.grid[row][col];
                     const board2Pos = findSymbolPosition(symbol, board2.grid);
                     const score1 = getCenterDistance(row, col, size);
                     const score2 = getCenterDistance(board2Pos.row, board2Pos.col, size);
+
                     scores.push({
                         symbol,
                         board1Pos: `${row},${col}`,
@@ -318,40 +362,54 @@
                     });
                 }
             }
+
             return scores;
         }
+
         function updateDisplay() {
             const size = parseInt(document.getElementById('sizeFilter').value);
+            const board1Id = document.getElementById('board1Filter').value;
+            const board2Id = document.getElementById('board2Filter').value;
             const minFairness = parseFloat(document.getElementById('minFairness').value);
             const maxFairness = parseFloat(document.getElementById('maxFairness').value);
+
             const grid = document.getElementById('analysisGrid');
             grid.innerHTML = '';
+
             const validBoards = Object.entries(BOARD_LAYOUTS).filter(([id, layout]) =>
                 layout.grid.length === size && !id.includes('random') && !id.includes('Random'));
+
+            // Update board filters
             const board1Filter = document.getElementById('board1Filter');
             const board2Filter = document.getElementById('board2Filter');
-            const savedBoard1 = board1Filter.value;
-            const savedBoard2 = board2Filter.value;
-            const options = '<option value="all">All</option>' + validBoards.map(([id, board]) =>
-                `<option value="${id}">${board.name}</option>`).join('');
+            const currentBoard1 = board1Filter.value;
+            const currentBoard2 = board2Filter.value;
+
+            const options = '<option value="all">All</option>' +
+                validBoards.map(([id, board]) =>
+                    `<option value="${id}">${board.name}</option>`).join('');
             board1Filter.innerHTML = options;
             board2Filter.innerHTML = options;
-            if (validBoards.some(([id]) => id === savedBoard1)) {
-                board1Filter.value = savedBoard1;
+
+            // Restore selections if they're still valid for this size
+            if (validBoards.some(([id]) => id === currentBoard1)) {
+                board1Filter.value = currentBoard1;
             }
-            if (validBoards.some(([id]) => id === savedBoard2)) {
-                board2Filter.value = savedBoard2;
+            if (validBoards.some(([id]) => id === currentBoard2)) {
+                board2Filter.value = currentBoard2;
             }
-            const board1Id = board1Filter.value;
-            const board2Id = board2Filter.value;
-            let boardPairs = (board1Id !== 'all' && board2Id !== 'all') ?
+
+            // Generate board pairs
+            let boardPairs = (board1Id && board2Id && board1Id !== 'all' && board2Id !== 'all') ?
                 [[
                     validBoards.find(([id]) => id === board1Id),
                     validBoards.find(([id]) => id === board2Id)
                 ]] :
-                validBoards.flatMap(boardA =>
-                    validBoards.map(boardB => [boardA, boardB])
+                validBoards.flatMap(board1 =>
+                    validBoards.map(board2 => [board1, board2])
                 );
+
+            // Analyze and sort by fairness score
             const analyses = boardPairs.map(([[id1, board1], [id2, board2]]) => {
                 const scores = analyzeBoards(board1, board2);
                 const metrics = calculateBoardMetrics(scores);
@@ -360,9 +418,12 @@
                 analysis.metrics.fairnessScore >= minFairness &&
                 analysis.metrics.fairnessScore <= maxFairness
             ).sort((a, b) => a.metrics.fairnessScore - b.metrics.fairnessScore);
+
+            // Display sorted analyses
             analyses.forEach(({ board1, board2, scores, metrics }) => {
                 const card = document.createElement('div');
                 card.className = 'combo-card';
+
                 const metricsDiv = document.createElement('div');
                 metricsDiv.className = 'metrics';
                 metricsDiv.innerHTML = `
@@ -388,23 +449,30 @@
                     </div>
                 `;
                 card.appendChild(metricsDiv);
+
                 const boardDisplay = document.createElement('div');
                 boardDisplay.className = 'board-display';
                 boardDisplay.appendChild(createBoardDisplay(board1, scores, metrics.best, metrics.worst));
                 boardDisplay.appendChild(createBoardDisplay(board2, scores, metrics.best, metrics.worst));
                 card.appendChild(boardDisplay);
+
                 const plotContainer = document.createElement('div');
                 plotContainer.style.height = '300px';
                 card.appendChild(plotContainer);
                 createScatterPlot(plotContainer, scores, board1.name, board2.name);
+
                 grid.appendChild(card);
             });
         }
+
+        // Event listeners
         document.getElementById('sizeFilter').addEventListener('change', updateDisplay);
         document.getElementById('board1Filter').addEventListener('change', updateDisplay);
         document.getElementById('board2Filter').addEventListener('change', updateDisplay);
         document.getElementById('minFairness').addEventListener('input', updateDisplay);
         document.getElementById('maxFairness').addEventListener('input', updateDisplay);
+
+        // Initial display
         updateDisplay();
     </script>
 </body>
