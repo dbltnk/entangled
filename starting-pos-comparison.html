@@ -411,13 +411,29 @@
 
             // Analyze and sort by fairness score
             const analyses = boardPairs.map(([[id1, board1], [id2, board2]]) => {
+                if (!board1 || !board2) {
+                    console.log(`Skipping invalid pair: ${id1}, ${id2}`);
+                    return null;
+                }
+
                 const scores = analyzeBoards(board1, board2);
                 const metrics = calculateBoardMetrics(scores);
+
+                // Include special cases like Infinity or NaN in results
+                if (!isFinite(metrics.fairnessScore)) {
+                    console.warn(`Including special-case metrics for ${board1.name} vs ${board2.name}.`, metrics);
+                }
+
                 return { board1, board2, scores, metrics };
-            }).filter(analysis =>
-                analysis.metrics.fairnessScore >= minFairness &&
-                analysis.metrics.fairnessScore <= maxFairness
-            ).sort((a, b) => a.metrics.fairnessScore - b.metrics.fairnessScore);
+            }).filter(Boolean).filter(analysis => {
+                const fairnessScore = analysis.metrics.fairnessScore;
+
+                // Treat Infinity, -Infinity, and NaN as within range
+                if (!isFinite(fairnessScore) || isNaN(fairnessScore)) return true;
+
+                // Apply the usual range filter for finite scores
+                return fairnessScore >= minFairness && fairnessScore <= maxFairness;
+            });
 
             // Display sorted analyses
             analyses.forEach(({ board1, board2, scores, metrics }) => {
