@@ -165,7 +165,7 @@
                 const centerHigh = boardSize / 2;
                 const distToLowCenter = Math.abs(row - centerLow) + Math.abs(col - centerLow);
                 const distToHighCenter = Math.abs(row - centerHigh) + Math.abs(col - centerHigh);
-                return Math.min(distToLowCenter, distToHighCenter);
+                return (distToLowCenter + distToHighCenter) / 2; // Average the two distances
             } else {
                 const center = Math.floor(boardSize / 2);
                 return Math.abs(row - center) + Math.abs(col - center);
