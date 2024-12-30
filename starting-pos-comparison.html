@@ -25,7 +25,7 @@
 
         .analysis-grid {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
+            grid-template-columns: repeat(1, 1fr);
             gap: 1rem;
         }
 
@@ -34,6 +34,24 @@
             padding: 1rem;
             border-radius: 4px;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .analysis-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .board-section {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .board-section-title {
+            text-align: center;
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+            color: #666;
         }
 
         .board-display {
@@ -67,6 +85,15 @@
             right: 2px;
             font-size: 0.6rem;
             opacity: 0.7;
+        }
+
+        .board-cell .move-frequency {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            font-size: 0.6rem;
+            opacity: 0.7;
+            color: #d32f2f;
         }
 
         .metrics {
@@ -121,6 +148,29 @@
             font-size: 0.9rem;
             line-height: 1.5;
         }
+
+        .score-plot {
+            height: 300px;
+            margin-top: 1rem;
+        }
+
+        .no-data {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            background: #f5f5f5;
+            border-radius: 4px;
+            color: #666;
+            height: 100%;
+            text-align: center;
+        }
+
+        .no-data-icon {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
     </style>
 </head>
 
@@ -129,32 +179,31 @@
 
     <div class="info-box">
         <p>
-            The scoring system evaluates each tile based on its proximity to all other tiles on the board. The score for
-            a tile is calculated as the sum of the inverses of Manhattan distances to all other tiles. This means that
-            closer tiles contribute more to the score, and farther tiles contribute less. A higher score indicates a
-            better position, where a tile is more favorably placed relative to others.
+            Left boards show position scoring: The scoring system evaluates each tile based on its proximity to all
+            other tiles.
+            Blue intensity indicates better positions, calculated as the sum of inverse Manhattan distances to other
+            tiles.
+        </p>
+        <p>
+            Right boards show opening moves: Red intensity shows how frequently each position is chosen as the first
+            move in tournament play.
+            Percentages indicate the proportion of games where that position was the opening move.
         </p>
         <p><strong>Metrics Explanation:</strong></p>
         <ul>
             <li>
-                <strong>Viable Moves:</strong> This metric counts how many tiles have a score close to the best score
-                (highest). Higher values indicate more options for opening moves with similarly strong positions.
+                <strong>Viable Moves:</strong> Count of tiles with scores close to optimal.
+                Higher values indicate more good opening options.
             </li>
             <li>
-                <strong>Standard Deviation:</strong> This measures the variation in tile scores. A lower standard
-                deviation means that scores are more balanced, and no single position is overwhelmingly better than
-                others.
+                <strong>Standard Deviation:</strong> Variation in tile scores.
+                Lower values indicate more balanced positions.
             </li>
             <li>
-                <strong>Best/Worst Ratio:</strong> This is the ratio of the highest score (best position) to the lowest
-                score (worst position). A lower ratio indicates a more balanced board, where no single position
-                dominates.
+                <strong>Best/Worst Ratio:</strong> Ratio between highest and lowest scores.
+                Lower values indicate more balanced boards.
             </li>
         </ul>
-        <p>
-            By analyzing these metrics, you can evaluate board setups to identify balanced starting positions and
-            optimal opening strategies.
-        </p>
     </div>
 
     <div class="controls">
@@ -181,11 +230,48 @@
     <script type="module">
         import BOARD_LAYOUTS from './boards.js';
 
+        async function fetchTournamentData() {
+            try {
+                const baseUrl = 'https://dbltnk.github.io/entangled/tournaments/';
+                const indexResponse = await fetch(baseUrl + 'tournaments.json');
+                if (!indexResponse.ok) {
+                    throw new Error('Failed to fetch tournament index');
+                }
+                const tournamentFiles = await indexResponse.json();
+
+                let allFirstMoves = [];
+                for (const filename of tournamentFiles) {
+                    try {
+                        const response = await fetch(baseUrl + filename);
+                        if (!response.ok) continue;
+                        const data = await response.json();
+
+                        Object.values(data.results).forEach(result => {
+                            result.games.forEach(game => {
+                                if (game.moves && game.moves.length > 0) {
+                                    allFirstMoves.push({
+                                        move: game.moves[0],
+                                        boards: data.metadata.boards
+                                    });
+                                }
+                            });
+                        });
+                    } catch (error) {
+                        console.warn(`Error processing tournament file ${filename}:`, error);
+                    }
+                }
+                return allFirstMoves;
+            } catch (error) {
+                console.error('Error fetching tournament data:', error);
+                return [];
+            }
+        }
+
         function getTileScore(row, col, boardSize) {
             let score = 0;
             for (let r = 0; r < boardSize; r++) {
                 for (let c = 0; c < boardSize; c++) {
-                    if (r === row && c === col) continue; // Skip the tile itself
+                    if (r === row && c === col) continue;
                     const distance = Math.abs(row - r) + Math.abs(col - c);
                     score += 1 / distance;
                 }
@@ -203,36 +289,58 @@
         }
 
         function calculateBoardMetrics(scores) {
-            scores.sort((a, b) => b.score - a.score); // Higher is better
-            const best = scores[0].score; // Strictly highest score
+            scores.sort((a, b) => b.score - a.score);
+            const best = scores[0].score;
             const worst = scores[scores.length - 1].score;
 
             const mean = scores.reduce((sum, s) => sum + s.score, 0) / scores.length;
             const variance = scores.reduce((sum, s) => sum + Math.pow(s.score - mean, 2), 0) / scores.length;
             const stdDev = Math.sqrt(variance);
 
-            // Use a small epsilon to account for floating-point precision issues
             const epsilon = 1e-10;
             const viableMoves = scores.filter(s => Math.abs(s.score - best) < epsilon).length;
-
-            const bestWorstRatio = worst / best;
 
             return {
                 stdDev,
                 viableMoves,
-                bestWorstRatio,
+                bestWorstRatio: worst / best,
                 mean,
                 best,
                 worst
             };
         }
 
-        function getScoreColor(score, minScore, maxScore) {
-            const ratio = (score - maxScore) / (minScore - maxScore);
-            return `rgba(33, 150, 243, ${ratio * 0.9})`; // Light to dark blue
+        function calculateMoveFrequencies(moves, board1Id, board2Id) {
+            const filteredMoves = moves.filter(m =>
+                m.boards.board1 === board1Id && m.boards.board2 === board2Id
+            );
+
+            const frequencies = {};
+            filteredMoves.forEach(m => {
+                frequencies[m.move] = (frequencies[m.move] || 0) + 1;
+            });
+
+            const total = filteredMoves.length || 0;
+            if (total === 0) return null;
+
+            return Object.fromEntries(
+                Object.entries(frequencies).map(([move, count]) => [
+                    move,
+                    { count, percentage: (count / total) * 100 }
+                ])
+            );
         }
 
-        function createBoardDisplay(board, scores, minScore, maxScore) {
+        function getScoreColor(score, minScore, maxScore) {
+            const ratio = (score - minScore) / (maxScore - minScore);
+            return `rgba(33, 150, 243, ${ratio * 0.9})`;
+        }
+
+        function getFrequencyColor(percentage) {
+            return `rgba(211, 47, 47, ${percentage / 100 * 0.9})`;
+        }
+
+        function createScoreBoard(board, scores, minScore, maxScore) {
             const size = board.grid.length;
             const container = document.createElement('div');
             container.className = 'board';
@@ -254,11 +362,32 @@
             return container;
         }
 
+        function createFrequencyBoard(board, moveFrequencies) {
+            const size = board.grid.length;
+            const container = document.createElement('div');
+            container.className = 'board';
+            container.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
+
+            for (let row = 0; row < size; row++) {
+                for (let col = 0; col < size; col++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'board-cell';
+                    const symbol = board.grid[row][col];
+                    const frequency = moveFrequencies[symbol]?.percentage || 0;
+                    cell.style.backgroundColor = getFrequencyColor(frequency);
+                    cell.style.color = frequency > 50 ? '#fff' : '#000';
+                    cell.innerHTML = `${symbol}<span class="move-frequency">${frequency.toFixed(1)}%</span>`;
+                    cell.style.width = `${40}px`;
+                    container.appendChild(cell);
+                }
+            }
+            return container;
+        }
+
         function createScatterPlot(container, scores, board1Name, board2Name) {
             const canvas = document.createElement('canvas');
             container.appendChild(canvas);
 
-            // Sort scores for display (higher is better)
             scores.sort((a, b) => b.score - a.score);
 
             const ctx = canvas.getContext('2d');
@@ -309,7 +438,7 @@
                         y: {
                             title: {
                                 display: true,
-                                text: 'Distance Score (higher = better)',
+                                text: 'Position Score',
                             }
                         },
                         x: {
@@ -348,27 +477,11 @@
             });
         }
 
-        function analyzeBoards(board1, board2) {
-            const size = board1.grid.length;
-            const scores = [];
+        let globalFirstMoves = [];
 
-            for (let row = 0; row < size; row++) {
-                for (let col = 0; col < size; col++) {
-                    const symbol = board1.grid[row][col];
-                    const board2Pos = findSymbolPosition(symbol, board2.grid);
-                    const score1 = getTileScore(row, col, size);
-                    const score2 = getTileScore(board2Pos.row, board2Pos.col, size);
-
-                    scores.push({
-                        symbol,
-                        board1Pos: `${row},${col}`,
-                        board2Pos: `${board2Pos.row},${board2Pos.col}`,
-                        score: score1 + score2
-                    });
-                }
-            }
-
-            return scores;
+        async function initializeData() {
+            globalFirstMoves = await fetchTournamentData();
+            updateDisplay();
         }
 
         function updateDisplay() {
@@ -394,7 +507,6 @@
             board1Filter.innerHTML = options;
             board2Filter.innerHTML = options;
 
-            // Restore selections if they're still valid for this size
             if (validBoards.some(([id]) => id === currentBoard1)) {
                 board1Filter.value = currentBoard1;
             }
@@ -402,7 +514,6 @@
                 board2Filter.value = currentBoard2;
             }
 
-            // Generate board pairs
             let boardPairs = (board1Id && board2Id && board1Id !== 'all' && board2Id !== 'all') ?
                 [[
                     validBoards.find(([id]) => id === board1Id),
@@ -412,59 +523,112 @@
                     validBoards.map(board2 => [board1, board2])
                 );
 
-            // Analyze and sort by number of options
-            const analyses = boardPairs
+            boardPairs
                 .map(([[id1, board1], [id2, board2]]) => {
-                    if (!board1 || !board2) {
-                        console.log(`Skipping invalid pair: ${id1}, ${id2}`);
-                        return null;
-                    }
+                    if (!board1 || !board2) return null;
 
                     const scores = analyzeBoards(board1, board2);
                     const metrics = calculateBoardMetrics(scores);
+                    const moveFrequencies = calculateMoveFrequencies(globalFirstMoves, id1, id2);
 
-                    return { board1, board2, scores, metrics };
+                    return { board1, board2, id1, id2, scores, metrics, moveFrequencies };
                 })
-                .filter(analysis => analysis !== null) // Remove null entries
-                .sort((a, b) => b.metrics.viableMoves - a.metrics.viableMoves); // Sort descending
+                .filter(analysis => analysis !== null)
+                .sort((a, b) => b.metrics.viableMoves - a.metrics.viableMoves)
+                .forEach(({ board1, board2, id1, id2, scores, metrics, moveFrequencies }) => {
+                    const card = document.createElement('div');
+                    card.className = 'combo-card';
 
-            // Display sorted analyses
-            analyses.forEach(({ board1, board2, scores, metrics }) => {
-                const card = document.createElement('div');
-                card.className = 'combo-card';
+                    // Create the analysis container
+                    const analysisContainer = document.createElement('div');
+                    analysisContainer.className = 'analysis-container';
 
-                const metricsDiv = document.createElement('div');
-                metricsDiv.className = 'metrics';
-                metricsDiv.innerHTML = `
-                    <h4>${board1.name} vs ${board2.name}</h4>
-                    <div class="metric-row">
-                        <span>Viable Moves (higher = more good options):</span>
-                        <span class="metric-value better-higher">${metrics.viableMoves}</span>
-                    </div>
-                    <div class="metric-row">
-                        <span>Standard Deviation (lower = more balanced):</span>
-                        <span class="metric-value better-lower">${metrics.stdDev.toFixed(2)}</span>
-                    </div>
-                   <div class="metric-row">
-                        <span>Best/Worst Ratio (lower = more balanced):</span>
-                        <span class="metric-value better-lower">${metrics.bestWorstRatio.toFixed(2)}</span>
-                    </div>
-                `;
-                card.appendChild(metricsDiv);
+                    // Create left section (scores + metrics)
+                    const scoreSection = document.createElement('div');
+                    scoreSection.className = 'board-section';
 
-                const boardDisplay = document.createElement('div');
-                boardDisplay.className = 'board-display';
-                boardDisplay.appendChild(createBoardDisplay(board1, scores, metrics.best, metrics.worst));
-                boardDisplay.appendChild(createBoardDisplay(board2, scores, metrics.best, metrics.worst));
-                card.appendChild(boardDisplay);
+                    // Add metrics to score section
+                    const metricsDiv = document.createElement('div');
+                    metricsDiv.className = 'metrics';
+                    metricsDiv.innerHTML = `
+                        <h4>${board1.name} vs ${board2.name}</h4>
+                        <div class="metric-row">
+                            <span>Viable Moves (higher = more good options):</span>
+                            <span class="metric-value better-higher">${metrics.viableMoves}</span>
+                        </div>
+                        <div class="metric-row">
+                            <span>Standard Deviation (lower = more balanced):</span>
+                            <span class="metric-value better-lower">${metrics.stdDev.toFixed(2)}</span>
+                        </div>
+                        <div class="metric-row">
+                            <span>Best/Worst Ratio (lower = more balanced):</span>
+                            <span class="metric-value better-lower">${metrics.bestWorstRatio.toFixed(2)}</span>
+                        </div>
+                    `;
+                    scoreSection.appendChild(metricsDiv);
 
-                const plotContainer = document.createElement('div');
-                plotContainer.style.height = '300px';
-                card.appendChild(plotContainer);
-                createScatterPlot(plotContainer, scores, board1.name, board2.name);
+                    // Add score boards
+                    const scoreBoardDisplay = document.createElement('div');
+                    scoreBoardDisplay.className = 'board-display';
+                    scoreBoardDisplay.appendChild(createScoreBoard(board1, scores, metrics.worst, metrics.best));
+                    scoreBoardDisplay.appendChild(createScoreBoard(board2, scores, metrics.worst, metrics.best));
+                    scoreSection.appendChild(scoreBoardDisplay);
 
-                grid.appendChild(card);
-            });
+                    // Add score plot
+                    const scorePlot = document.createElement('div');
+                    scorePlot.className = 'score-plot';
+                    scoreSection.appendChild(scorePlot);
+                    createScatterPlot(scorePlot, scores, board1.name, board2.name);
+
+                    // Create right section (move frequencies)
+                    const frequencySection = document.createElement('div');
+                    frequencySection.className = 'board-section';
+
+                    if (moveFrequencies && Object.keys(moveFrequencies).length > 0) {
+                        const frequencyBoardDisplay = document.createElement('div');
+                        frequencyBoardDisplay.className = 'board-display';
+                        frequencyBoardDisplay.appendChild(createFrequencyBoard(board1, moveFrequencies));
+                        frequencyBoardDisplay.appendChild(createFrequencyBoard(board2, moveFrequencies));
+                        frequencySection.appendChild(frequencyBoardDisplay);
+                    } else {
+                        const noDataDiv = document.createElement('div');
+                        noDataDiv.className = 'no-data';
+                        noDataDiv.innerHTML = `
+                            <div class="no-data-icon">📊</div>
+                            <div>No tournament play data available for this board combination</div>
+                        `;
+                        frequencySection.appendChild(noDataDiv);
+                    }
+
+                    analysisContainer.appendChild(scoreSection);
+                    analysisContainer.appendChild(frequencySection);
+                    card.appendChild(analysisContainer);
+
+                    grid.appendChild(card);
+                });
+        }
+
+        function analyzeBoards(board1, board2) {
+            const size = board1.grid.length;
+            const scores = [];
+
+            for (let row = 0; row < size; row++) {
+                for (let col = 0; col < size; col++) {
+                    const symbol = board1.grid[row][col];
+                    const board2Pos = findSymbolPosition(symbol, board2.grid);
+                    const score1 = getTileScore(row, col, size);
+                    const score2 = getTileScore(board2Pos.row, board2Pos.col, size);
+
+                    scores.push({
+                        symbol,
+                        board1Pos: `${row},${col}`,
+                        board2Pos: `${board2Pos.row},${board2Pos.col}`,
+                        score: score1 + score2
+                    });
+                }
+            }
+
+            return scores;
         }
 
         // Event listeners
@@ -473,7 +637,7 @@
         document.getElementById('board2Filter').addEventListener('change', updateDisplay);
 
         // Initial display
-        updateDisplay();
+        initializeData();
     </script>
 </body>
 
