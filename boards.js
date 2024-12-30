@@ -211,6 +211,17 @@ const BOARD_LAYOUTS = {
             ['5', '6', '7', '8', '9', '0']
         ]
     },
+    board22: {
+        name: "6x6 board 1",
+        grid: [
+            ['V', 'O', 'J', 'Z', 'D', 'K'],
+            ['X', 'S', '6', 'B', '2', 'I'],
+            ['Q', 'E', '0', '5', 'M', 'L'],
+            ['8', '1', 'F', 'A', '7', '3'],
+            ['G', '4', 'N', 'W', 'L', 'P'],
+            ['C', 'U', '9', 'Y', 'H', 'R']
+        ]
+    },
     board7x7: {
         name: "Top left to bottom right (7x7)",
         grid: [
