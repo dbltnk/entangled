@@ -121,12 +121,18 @@
             border-radius: 4px;
             font-size: 0.9rem;
             line-height: 1.5;
+            height: 150px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
         }
 
         .metric-row {
             display: flex;
             justify-content: space-between;
             margin-bottom: 0.3rem;
+            padding: 0.3rem 0;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
         }
 
         .metric-value {
@@ -195,6 +201,28 @@
             position: relative;
             width: 100%;
         }
+
+        .ai-stat {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.2rem 0;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .ai-stat span:first-child {
+            text-transform: capitalize;
+        }
+
+        .ai-stat span:last-child {
+            font-weight: 500;
+        }
+
+        .total-games {
+            margin-top: 0.5rem;
+            padding-top: 0.5rem;
+            border-top: 2px solid rgba(0, 0, 0, 0.1);
+            font-weight: bold;
+        }
     </style>
 </head>
 
@@ -215,6 +243,10 @@
         </p>
         <p><strong>Metrics Explanation:</strong></p>
         <ul>
+            <li>
+                <strong>Combined Score:</strong> Viable moves - Standard deviation - Best/worst ratio.
+                Higher values indicate better overall board balance and playability.
+            </li>
             <li>
                 <strong>Viable Moves:</strong> Count of tiles with scores close to optimal.
                 Higher values indicate more good opening options.
@@ -326,11 +358,16 @@
 
             const epsilon = 1e-10;
             const viableMoves = scores.filter(s => Math.abs(s.score - best) < epsilon).length;
+            const bestWorstRatio = worst / best;
+
+            // Calculate combined score
+            const combinedScore = viableMoves - stdDev - bestWorstRatio;
 
             return {
                 stdDev,
                 viableMoves,
-                bestWorstRatio: worst / best,
+                bestWorstRatio,
+                combinedScore,
                 mean,
                 best,
                 worst
@@ -436,11 +473,11 @@
                         'minimax': 0,
                         'mcts': 0,
                         'hybrid': 0,
-                        'total': 0  // Add total count
+                        'total': 0
                     };
                 }
                 symbolData[symbol][aiType]++;
-                symbolData[symbol].total++;  // Increment total
+                symbolData[symbol].total++;
             });
 
             // Sort symbols by total count
@@ -639,7 +676,6 @@
             if (size === 5 && !board1Id) {
                 board1Id = 'board1';
                 board1Filter.value = board1Id;
-                // Trigger board2 changes
                 board2Filter.value = validBoards[0][0];
                 board2Filter.dispatchEvent(new Event('change'));
                 board2Filter.value = 'all';
@@ -651,30 +687,24 @@
                 board2Filter.value = currentBoard2;
             }
 
-            // Get current board2Id after potential changes
             const board2Id = board2Filter.value;
 
-            // Replace the boardPairs creation section in updateDisplay()
             let boardPairs = [];
             if (board1Id === 'all' && board2Id === 'all') {
-                // Show all combinations
                 boardPairs = validBoards.flatMap(board1 =>
                     validBoards.map(board2 => [board1, board2])
                 );
             } else if (board1Id === 'all') {
-                // Filter only board2
                 const board2 = validBoards.find(([id]) => id === board2Id);
                 if (board2) {
                     boardPairs = validBoards.map(board1 => [board1, board2]);
                 }
             } else if (board2Id === 'all') {
-                // Filter only board1
                 const board1 = validBoards.find(([id]) => id === board1Id);
                 if (board1) {
                     boardPairs = validBoards.map(board2 => [board1, board2]);
                 }
             } else {
-                // Filter both boards
                 const board1 = validBoards.find(([id]) => id === board1Id);
                 const board2 = validBoards.find(([id]) => id === board2Id);
                 if (board1 && board2) {
@@ -682,7 +712,6 @@
                 }
             }
 
-            // Ensure we have valid pairs before continuing
             if (boardPairs.length === 0) {
                 boardPairs = validBoards.flatMap(board1 =>
                     validBoards.map(board2 => [board1, board2])
@@ -700,7 +729,7 @@
                     return { board1, board2, id1, id2, scores, metrics, moveFrequencies };
                 })
                 .filter(analysis => analysis !== null)
-                .sort((a, b) => b.metrics.viableMoves - a.metrics.viableMoves)
+                .sort((a, b) => b.metrics.combinedScore - a.metrics.combinedScore)
                 .forEach(({ board1, board2, id1, id2, scores, metrics, moveFrequencies }) => {
                     const card = document.createElement('div');
                     card.className = 'combo-card';
@@ -708,15 +737,12 @@
                         <h2>${board1.name} vs ${board2.name}</h2>
                     `;
 
-                    // Create the analysis container
                     const analysisContainer = document.createElement('div');
                     analysisContainer.className = 'analysis-container';
 
-                    // Create left section (scores + metrics)
                     const scoreSection = document.createElement('div');
                     scoreSection.className = 'board-section';
 
-                    // Add title section for scores
                     const scoreHeader = document.createElement('div');
                     scoreHeader.className = 'section-header';
                     scoreHeader.innerHTML = `
@@ -725,43 +751,42 @@
                     `;
                     scoreSection.appendChild(scoreHeader);
 
-                    // Add metrics to score section
                     const metricsDiv = document.createElement('div');
                     metricsDiv.className = 'metrics';
                     metricsDiv.innerHTML = `
                         <div class="metric-row">
-                            <span>Viable Moves (higher = more good options):</span>
+                            <span>Combined Score:</span>
+                            <span class="metric-value better-higher">${metrics.combinedScore.toFixed(2)}</span>
+                        </div>
+                        <div class="metric-row">
+                            <span>Viable Moves:</span>
                             <span class="metric-value better-higher">${metrics.viableMoves}</span>
                         </div>
                         <div class="metric-row">
-                            <span>Standard Deviation (lower = more balanced):</span>
+                            <span>Standard Deviation:</span>
                             <span class="metric-value better-lower">${metrics.stdDev.toFixed(2)}</span>
                         </div>
                         <div class="metric-row">
-                            <span>Best/Worst Ratio (lower = more balanced):</span>
+                            <span>Best/Worst Ratio:</span>
                             <span class="metric-value better-lower">${metrics.bestWorstRatio.toFixed(2)}</span>
                         </div>
                     `;
                     scoreSection.appendChild(metricsDiv);
 
-                    // Add score boards
                     const scoreBoardDisplay = document.createElement('div');
                     scoreBoardDisplay.className = 'board-display';
                     scoreBoardDisplay.appendChild(createScoreBoard(board1, scores, metrics.worst, metrics.best));
                     scoreBoardDisplay.appendChild(createScoreBoard(board2, scores, metrics.worst, metrics.best));
                     scoreSection.appendChild(scoreBoardDisplay);
 
-                    // Add score plot
                     const scorePlot = document.createElement('div');
                     scorePlot.className = 'score-plot';
                     scoreSection.appendChild(scorePlot);
                     createScatterPlot(scorePlot, scores, board1.name, board2.name);
 
-                    // Create right section (move frequencies)
                     const frequencySection = document.createElement('div');
                     frequencySection.className = 'board-section';
 
-                    // Add title section for frequencies
                     const frequencyHeader = document.createElement('div');
                     frequencyHeader.className = 'section-header';
                     frequencyHeader.innerHTML = `
@@ -773,8 +798,8 @@
                     const moveFrequenciesData = calculateMoveFrequencies(globalFirstMoves, id1, id2);
                     const metricsPlayDiv = document.createElement('div');
                     metricsPlayDiv.className = 'metrics';
+
                     if (moveFrequenciesData) {
-                        // Count moves per AI
                         const aiCounts = {
                             'random': 0,
                             'deterministic': 0,
@@ -786,40 +811,36 @@
                         };
 
                         moveFrequenciesData.filteredMoves.forEach(move => {
-                            // Each move contributes 0.5 to each AI (black and white)
                             const blackBase = move.black.split('-')[0];
                             const whiteBase = move.white.split('-')[0];
                             if (aiCounts.hasOwnProperty(blackBase)) aiCounts[blackBase] += 0.5;
                             if (aiCounts.hasOwnProperty(whiteBase)) aiCounts[whiteBase] += 0.5;
                         });
 
-                        // Create stats string, only showing non-zero counts
-                        const statsStr = Object.entries(aiCounts)
+                        const aiStatsHtml = Object.entries(aiCounts)
                             .filter(([_, count]) => count > 0)
-                            .map(([ai, count]) => `${ai}: ${Math.round(count)}`)
-                            .join(', ');
+                            .map(([ai, count]) => `
+                                <div class="ai-stat">
+                                    <span>${ai}</span>
+                                    <span>${Math.round(count)} games</span>
+                                </div>
+                            `).join('');
 
                         metricsPlayDiv.innerHTML = `
-        <div class="metric-row">
-            <span>${statsStr || 'No games'}</span>
-        </div>
-        <div class="metric-row">
-            <span>Total games: ${moveFrequenciesData.total}</span>
-        </div>
-        <div class="metric-row" style="height: 1.5em">
-        </div>
-    `;
+                            ${aiStatsHtml}
+                            <div class="total-games">
+                                Total Games: ${moveFrequenciesData.total}
+                            </div>
+                        `;
                     } else {
                         metricsPlayDiv.innerHTML = `
-        <div class="metric-row">
-            <span>No games played</span>
-        </div>
-        <div class="metric-row">
-            <span>Total games: 0</span>
-        </div>
-        <div class="metric-row" style="height: 1.5em">
-        </div>
-    `;
+                            <div class="ai-stat">
+                                <span>No games played</span>
+                            </div>
+                           <div class="total-games">
+                                Total Games: 0
+                            </div>
+                        `;
                     }
                     frequencySection.appendChild(metricsPlayDiv);
 
@@ -830,7 +851,6 @@
                         frequencyBoardDisplay.appendChild(createFrequencyBoard(board2, moveFrequenciesData.frequencies));
                         frequencySection.appendChild(frequencyBoardDisplay);
 
-                        // Add frequency plot
                         const frequencyPlot = document.createElement('div');
                         frequencyPlot.className = 'frequency-plot';
                         frequencySection.appendChild(frequencyPlot);
@@ -839,9 +859,9 @@
                         const noDataDiv = document.createElement('div');
                         noDataDiv.className = 'no-data';
                         noDataDiv.innerHTML = `
-                    <div class="no-data-icon">📊</div>
-                    <div>No tournament play data available for this board combination</div>
-                `;
+                            <div class="no-data-icon">📊</div>
+                            <div>No tournament play data available for this board combination</div>
+                        `;
                         frequencySection.appendChild(noDataDiv);
                     }
 
