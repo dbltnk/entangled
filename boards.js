@@ -231,6 +231,26 @@ const BOARD_LAYOUTS = {
             ['D', 'V', 'N', 'X', 'F'],
         ]
     },
+    board3893435730left: {
+        name: "3893435730 left",
+        grid: [
+            ['G', 'B', 'H', 'O', 'U'],
+            ['P', 'D', 'X', 'F', 'C'],
+            ['T', 'S', 'W', 'R', 'Q'],
+            ['N', 'A', 'K', 'L', 'M'],
+            ['I', 'J', 'Y', 'V', 'E'],
+        ]
+    },
+    board3893435730right: {
+        name: "3893435730 right",
+        grid: [
+            ['F', 'D', 'J', 'T', 'L'],
+            ['S', 'I', 'C', 'B', 'K'],
+            ['P', 'M', 'E', 'O', 'Y'],
+            ['R', 'U', 'N', 'G', 'X'],
+            ['A', 'H', 'Q', 'V', 'W'],
+        ]
+    },
     board4x4: {
         name: "Top left to bottom right (4x4)",
         grid: [
