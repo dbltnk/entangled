@@ -201,7 +201,6 @@ const BOARD_LAYOUTS = {
             ['T', 'U', 'K', 'M', 'G'],
         ]
     },
-
     board40811314right: {
         name: "40811314 right",
         grid: [
@@ -210,6 +209,26 @@ const BOARD_LAYOUTS = {
             ['P', 'A', 'G', 'B', 'R'],
             ['Q', 'T', 'M', 'W', 'N'],
             ['X', 'H', 'D', 'L', 'O'],
+        ]
+    },
+    board3268380671left: {
+        name: "3268380671 left",
+        grid: [
+            ['S', 'A', 'O', 'I', 'B'],
+            ['W', 'P', 'L', 'D', 'H'],
+            ['R', 'M', 'F', 'T', 'K'],
+            ['Q', 'Y', 'V', 'N', 'J'],
+            ['E', 'X', 'C', 'U', 'G'],
+        ]
+    },
+    board3268380671right: {
+        name: "3268380671 right",
+        grid: [
+            ['P', 'O', 'Y', 'T', 'C'],
+            ['W', 'G', 'U', 'E', 'K'],
+            ['I', 'A', 'S', 'J', 'Q'],
+            ['L', 'B', 'H', 'R', 'M'],
+            ['D', 'V', 'N', 'X', 'F'],
         ]
     },
     board4x4: {

@@ -3,22 +3,45 @@
 
 <head>
     <meta charset="utf-8">
-    <title>Parallel Max Combined Score</title>
+    <title>Evolutionary Search With Valid Boards & Custom Output</title>
 </head>
 
-<body>
-    <div id="status" style="font-family: monospace; margin-bottom: 1rem;"></div>
-    <pre id="results" style="white-space: pre-wrap;"></pre>
-
+<body style="font-family: sans-serif; margin: 1rem;">
+    <button id="startBtn">Start</button>
+    <button id="stopBtn" disabled>Stop</button>
+    <div style="margin-top: 1rem;">
+        <div id="status" style="margin-bottom: 1rem; white-space: pre;"></div>
+        <pre id="results"></pre>
+    </div>
     <script>
+        const symbols = "ABCDEFGHIJKLMNOPQRSTUVWXY";
         const WORKER_COUNT = 16;
-        const TOTAL_ITERATIONS = 20000000;
-        const chunkIterations = Math.floor(TOTAL_ITERATIONS / WORKER_COUNT);
+        let populationSize = 100;
+        let running = false;
+        let globalBestScore = -Infinity;
+        let globalBestB1 = null;
+        let globalBestB2 = null;
+        let totalBoardsEvaluated = 0;
+        let workers = [];
+        let startTime = 0;
+
+        function cyrb53(str, seed = 0) {
+            let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed;
+            for (let i = 0, ch; i < str.length; i++) {
+                ch = str.charCodeAt(i);
+                h1 = Math.imul(h1 ^ ch, 2654435761);
+                h2 = Math.imul(h2 ^ ch, 1597334677);
+            }
+            h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^
+                Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+            h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^
+                Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+            return (4294967296 * (2097151 & h2) + (h1 >>> 0)) >>> 0;
+        }
 
         const workerScript = `
 const symbols = "ABCDEFGHIJKLMNOPQRSTUVWXY";
-const tileScoreCache = new Array(25);
-
+const tileScoreCache = new Float64Array(25);
 for (let i = 0; i < 25; i++) {
     let r = Math.floor(i / 5);
     let c = i % 5;
@@ -33,116 +56,270 @@ for (let i = 0; i < 25; i++) {
     tileScoreCache[i] = s;
 }
 
-function randomBoard() {
-    const arr = symbols.split("");
-    for (let i = arr.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random()*(i+1));
-        [arr[i], arr[j]] = [arr[j], arr[i]];
+function isValidBoard(board) {
+    if (!board || board.length !== 25) return false;
+    let used = new Uint8Array(25);
+    for (let i = 0; i < 25; i++) {
+        let idx = board[i].charCodeAt(0) - 65;
+        if (idx < 0 || idx >= 25) return false;
+        if (used[idx]) return false;
+        used[idx] = 1;
     }
-    return arr;
+    return true;
 }
 
 function evaluateBoards(board1, board2) {
-    const pos2 = {};
+    if (!isValidBoard(board1) || !isValidBoard(board2)) return -Infinity;
+    let pos2 = new Uint8Array(25);
     for (let i = 0; i < 25; i++) {
-        pos2[board2[i]] = i;
+        pos2[board2[i].charCodeAt(0) - 65] = i;
     }
     let best = -Infinity, worst = Infinity, sum = 0;
-    const scArray = new Array(25);
+    let scArray = new Float64Array(25);
     for (let i = 0; i < 25; i++) {
-        const sc = tileScoreCache[i] + tileScoreCache[pos2[board1[i]]];
+        let sc = tileScoreCache[i] + tileScoreCache[pos2[board1[i].charCodeAt(0) - 65]];
         scArray[i] = sc;
         sum += sc;
         if (sc > best) best = sc;
         if (sc < worst) worst = sc;
     }
-    const mean = sum / 25;
+    let mean = sum / 25;
     let variance = 0;
     for (let i = 0; i < 25; i++) {
-        const d = scArray[i] - mean;
+        let d = scArray[i] - mean;
         variance += d * d;
     }
     variance /= 25;
-    const std = Math.sqrt(variance);
-    const eps = 1e-10;
-    const bestCount = scArray.filter(x => Math.abs(x - best) < eps).length;
-    const ratio = worst / best;
+    let std = Math.sqrt(variance);
+    let eps = 1e-10;
+    let bestCount = 0;
+    for (let i = 0; i < 25; i++) {
+        if (Math.abs(scArray[i] - best) < eps) bestCount++;
+    }
+    let ratio = worst / best;
     return bestCount - std - ratio;
 }
 
-onmessage = function(e) {
-    const { iterations } = e.data;
-    let bestScore = -Infinity;
-    let bestB1 = null;
-    let bestB2 = null;
-    for (let i = 0; i < iterations; i++) {
-        const b1 = randomBoard();
-        const b2 = randomBoard();
-        const sc = evaluateBoards(b1, b2);
-        if (sc > bestScore) {
-            bestScore = sc;
-            bestB1 = b1;
-            bestB2 = b2;
+function randomBoard() {
+    const arr = symbols.split("");
+    for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+}
+
+function mutate(board) {
+    if (!isValidBoard(board)) return randomBoard();
+    const copy = board.slice();
+    const swaps = 2;
+    for (let i = 0; i < swaps; i++) {
+        const idx1 = Math.floor(Math.random() * 25);
+        const idx2 = Math.floor(Math.random() * 25);
+        [copy[idx1], copy[idx2]] = [copy[idx2], copy[idx1]];
+    }
+    return isValidBoard(copy) ? copy : randomBoard();
+}
+
+function crossover(b1, b2) {
+    if (!isValidBoard(b1) || !isValidBoard(b2)) return randomBoard();
+    const child = new Array(25).fill(null);
+    const half = 12;
+    for (let i = 0; i < half; i++) {
+        child[i] = b1[i];
+    }
+    let fillIndex = half;
+    for (let i = 0; i < 25; i++) {
+        const sym = b2[i];
+        if (!child.includes(sym)) {
+            child[fillIndex++] = sym;
+            if (fillIndex >= 25) break;
         }
     }
-    postMessage({ bestScore, bestB1, bestB2 });
+    if (child.includes(null)) {
+        const missing = symbols.split("").filter(letter => !child.includes(letter));
+        let idx = 0;
+        for (let i = 0; i < 25; i++) {
+            if (child[i] === null) child[i] = missing[idx++];
+        }
+    }
+    return isValidBoard(child) ? child : randomBoard();
+}
+
+function pick(pop) {
+    if (!pop || pop.length === 0) return randomBoard();
+    let totalScore = 0;
+    for (const item of pop) {
+        totalScore += (item.score + 50);
+    }
+    const rnd = Math.random() * totalScore;
+    let run = 0;
+    for (const item of pop) {
+        run += (item.score + 50);
+        if (run >= rnd) return item.board;
+    }
+    return pop[pop.length - 1].board;
+}
+
+let population = [];
+let evolving = false;
+let boardsEvaluated = 0;
+let bestScore = -Infinity;
+let bestB1 = null;
+let bestB2 = null;
+let popSize = 0;
+let generationChunks = 50;
+
+onmessage = function(e) {
+    const data = e.data;
+    if (data.msg === 'start') {
+        popSize = data.popSize;
+        generationChunks = data.generationChunks;
+        population = [];
+        for (let i = 0; i < popSize; i++) {
+            const b1 = randomBoard();
+            const b2 = randomBoard();
+            const sc = evaluateBoards(b1, b2);
+            population.push({ board1: b1, board2: b2, score: sc });
+        }
+        bestScore = -Infinity;
+        bestB1 = null;
+        bestB2 = null;
+        for (const p of population) {
+            if (p.score > bestScore) {
+                bestScore = p.score;
+                bestB1 = p.board1;
+                bestB2 = p.board2;
+            }
+        }
+        boardsEvaluated = popSize;
+        evolving = true;
+        runEvolution();
+    } else if (data.msg === 'stop') {
+        evolving = false;
+    }
 };
+
+function runEvolution() {
+    if (!evolving) return;
+    for (let g = 0; g < generationChunks; g++) {
+        const newPop = [];
+        for (let i = 0; i < popSize; i++) {
+            const parent1A = pick(population);
+            const parent1B = pick(population);
+            const child1 = crossover(parent1A, parent1B);
+            const mut1 = mutate(child1);
+
+            const parent2A = pick(population);
+            const parent2B = pick(population);
+            const child2 = crossover(parent2A, parent2B);
+            const mut2 = mutate(child2);
+
+            const sc = evaluateBoards(mut1, mut2);
+            newPop.push({ board1: mut1, board2: mut2, score: sc });
+            boardsEvaluated++;
+            if (sc > bestScore) {
+                bestScore = sc;
+                bestB1 = mut1;
+                bestB2 = mut2;
+            }
+        }
+        population = newPop;
+    }
+    postMessage({
+        msg: 'progress',
+        boardsEvaluated,
+        bestScore,
+        bestB1,
+        bestB2
+    });
+    if (evolving) setTimeout(runEvolution, 0);
+}
 `;
 
-        const blob = new Blob([workerScript], { type: 'text/javascript' });
+        const blob = new Blob([workerScript], { type: "text/javascript" });
         const workerURL = URL.createObjectURL(blob);
 
-        let globalBestScore = -Infinity;
-        let globalBestB1 = null;
-        let globalBestB2 = null;
-        let finishedWorkers = 0;
+        document.getElementById("startBtn").addEventListener("click", () => {
+            if (running) return;
+            running = true;
+            globalBestScore = -Infinity;
+            globalBestB1 = null;
+            globalBestB2 = null;
+            totalBoardsEvaluated = 0;
+            startTime = performance.now();
+            document.getElementById("results").textContent = "";
+            document.getElementById("status").textContent = "Starting...";
+            document.getElementById("stopBtn").disabled = false;
+            document.getElementById("startBtn").disabled = true;
+            workers = [];
+            for (let i = 0; i < WORKER_COUNT; i++) {
+                const w = new Worker(workerURL);
+                w.onmessage = evt => {
+                    const d = evt.data;
+                    if (d.msg === "progress") {
+                        totalBoardsEvaluated += (d.boardsEvaluated - totalBoardsEvaluated) / WORKER_COUNT;
+                        if (d.bestScore > globalBestScore) {
+                            globalBestScore = d.bestScore;
+                            globalBestB1 = d.bestB1;
+                            globalBestB2 = d.bestB2;
+                        }
+                        updateStatus();
+                    }
+                };
+                w.postMessage({ msg: "start", popSize: populationSize, generationChunks: 50 });
+                workers.push(w);
+            }
+        });
 
-        const workers = [];
-        for (let i = 0; i < WORKER_COUNT; i++) {
-            const w = new Worker(workerURL);
-            w.onmessage = msg => {
-                finishedWorkers++;
-                const { bestScore, bestB1, bestB2 } = msg.data;
-                if (bestScore > globalBestScore) {
-                    globalBestScore = bestScore;
-                    globalBestB1 = bestB1;
-                    globalBestB2 = bestB2;
-                }
-                document.getElementById("status").textContent =
-                    `Completed: ${finishedWorkers}/${WORKER_COUNT}   Best: ${globalBestScore.toFixed(4)}`;
-                if (finishedWorkers === WORKER_COUNT) {
-                    finalize();
-                }
-            };
-            workers.push(w);
+        document.getElementById("stopBtn").addEventListener("click", () => {
+            if (!running) return;
+            running = false;
+            for (const w of workers) {
+                w.postMessage({ msg: "stop" });
+            }
+            document.getElementById("stopBtn").disabled = true;
+            document.getElementById("startBtn").disabled = false;
+        });
+
+        function generateBoardOutput(b1, b2, sc) {
+            const inputStr = b1.join("") + b2.join("") + sc.toFixed(4);
+            const hashedId = cyrb53(inputStr).toString();
+            const leftName = hashedId + " left";
+            const rightName = hashedId + " right";
+            let out = "";
+            out += "board" + hashedId + "left: {\n";
+            out += "    name: \"" + leftName + "\",\n";
+            out += "    grid: [\n";
+            for (let r = 0; r < 5; r++) {
+                const rowSlice = b1.slice(r * 5, r * 5 + 5);
+                out += "        ['" + rowSlice.join("', '") + "'],\n";
+            }
+            out += "    ]\n},\n\n";
+            out += "board" + hashedId + "right: {\n";
+            out += "    name: \"" + rightName + "\",\n";
+            out += "    grid: [\n";
+            for (let r = 0; r < 5; r++) {
+                const rowSlice = b2.slice(r * 5, r * 5 + 5);
+                out += "        ['" + rowSlice.join("', '") + "'],\n";
+            }
+            out += "    ]\n},\n";
+            return out;
         }
 
-        // Start the workers
-        for (let i = 0; i < WORKER_COUNT; i++) {
-            workers[i].postMessage({ iterations: chunkIterations });
-        }
-
-        function finalize() {
-            const key = Math.random().toString().slice(2, 10); // random 8-digit key
-
-            let output = `board${key}left: {\n` +
-                `    name: "${key} left",\n` +
-                `    grid: [\n`;
-            for (let r = 0; r < 5; r++) {
-                const rowSlice = globalBestB1.slice(r * 5, r * 5 + 5);
-                output += `        ['${rowSlice.join("','")}'],\n`;
+        function updateStatus() {
+            const now = performance.now();
+            const elapsedSec = (now - startTime) / 1000;
+            const boardsPerSec = elapsedSec > 0 ? (totalBoardsEvaluated / elapsedSec) : 0;
+            let s = "Time Elapsed: " + elapsedSec.toFixed(2) + "s\n";
+            s += "Boards Evaluated (approx): " + Math.floor(totalBoardsEvaluated) + "\n";
+            s += "Avg Boards/sec: " + boardsPerSec.toFixed(2) + "\n";
+            s += "Global Best Score: " + globalBestScore.toFixed(4) + "\n\n";
+            if (globalBestB1 && globalBestB2) {
+                s += "\nPaste into boards.js:\n\n";
+                s += generateBoardOutput(globalBestB1, globalBestB2, globalBestScore);
             }
-            output += `    ]\n},\n\n`;
-            output += `board${key}right: {\n` +
-                `    name: "${key} right",\n` +
-                `    grid: [\n`;
-            for (let r = 0; r < 5; r++) {
-                const rowSlice = globalBestB2.slice(r * 5, r * 5 + 5);
-                output += `        ['${rowSlice.join("','")}'],\n`;
-            }
-            output += `    ]\n},\n`;
-
-            document.getElementById("results").textContent = output;
+            document.getElementById("status").textContent = s;
         }
     </script>
 </body>
