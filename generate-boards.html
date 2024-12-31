@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Parallel Max Combined Score</title>
+</head>
+
+<body>
+    <div id="status" style="font-family: monospace; margin-bottom: 1rem;"></div>
+    <pre id="results" style="white-space: pre-wrap;"></pre>
+
+    <script>
+        const WORKER_COUNT = 16;
+        const TOTAL_ITERATIONS = 20000000;
+        const chunkIterations = Math.floor(TOTAL_ITERATIONS / WORKER_COUNT);
+
+        const workerScript = `
+const symbols = "ABCDEFGHIJKLMNOPQRSTUVWXY";
+const tileScoreCache = new Array(25);
+
+for (let i = 0; i < 25; i++) {
+    let r = Math.floor(i / 5);
+    let c = i % 5;
+    let s = 0;
+    for (let rr = 0; rr < 5; rr++) {
+        for (let cc = 0; cc < 5; cc++) {
+            if (rr === r && cc === c) continue;
+            let dist = Math.abs(rr - r) + Math.abs(cc - c);
+            s += 1 / dist;
+        }
+    }
+    tileScoreCache[i] = s;
+}
+
+function randomBoard() {
+    const arr = symbols.split("");
+    for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random()*(i+1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+}
+
+function evaluateBoards(board1, board2) {
+    const pos2 = {};
+    for (let i = 0; i < 25; i++) {
+        pos2[board2[i]] = i;
+    }
+    let best = -Infinity, worst = Infinity, sum = 0;
+    const scArray = new Array(25);
+    for (let i = 0; i < 25; i++) {
+        const sc = tileScoreCache[i] + tileScoreCache[pos2[board1[i]]];
+        scArray[i] = sc;
+        sum += sc;
+        if (sc > best) best = sc;
+        if (sc < worst) worst = sc;
+    }
+    const mean = sum / 25;
+    let variance = 0;
+    for (let i = 0; i < 25; i++) {
+        const d = scArray[i] - mean;
+        variance += d * d;
+    }
+    variance /= 25;
+    const std = Math.sqrt(variance);
+    const eps = 1e-10;
+    const bestCount = scArray.filter(x => Math.abs(x - best) < eps).length;
+    const ratio = worst / best;
+    return bestCount - std - ratio;
+}
+
+onmessage = function(e) {
+    const { iterations } = e.data;
+    let bestScore = -Infinity;
+    let bestB1 = null;
+    let bestB2 = null;
+    for (let i = 0; i < iterations; i++) {
+        const b1 = randomBoard();
+        const b2 = randomBoard();
+        const sc = evaluateBoards(b1, b2);
+        if (sc > bestScore) {
+            bestScore = sc;
+            bestB1 = b1;
+            bestB2 = b2;
+        }
+    }
+    postMessage({ bestScore, bestB1, bestB2 });
+};
+`;
+
+        const blob = new Blob([workerScript], { type: 'text/javascript' });
+        const workerURL = URL.createObjectURL(blob);
+
+        let globalBestScore = -Infinity;
+        let globalBestB1 = null;
+        let globalBestB2 = null;
+        let finishedWorkers = 0;
+
+        const workers = [];
+        for (let i = 0; i < WORKER_COUNT; i++) {
+            const w = new Worker(workerURL);
+            w.onmessage = msg => {
+                finishedWorkers++;
+                const { bestScore, bestB1, bestB2 } = msg.data;
+                if (bestScore > globalBestScore) {
+                    globalBestScore = bestScore;
+                    globalBestB1 = bestB1;
+                    globalBestB2 = bestB2;
+                }
+                document.getElementById("status").textContent =
+                    `Completed: ${finishedWorkers}/${WORKER_COUNT}   Best: ${globalBestScore.toFixed(4)}`;
+                if (finishedWorkers === WORKER_COUNT) {
+                    finalize();
+                }
+            };
+            workers.push(w);
+        }
+
+        // Start the workers
+        for (let i = 0; i < WORKER_COUNT; i++) {
+            workers[i].postMessage({ iterations: chunkIterations });
+        }
+
+        function finalize() {
+            const key = Math.random().toString().slice(2, 10); // random 8-digit key
+
+            let output = `board${key}left: {\n` +
+                `    name: "${key} left",\n` +
+                `    grid: [\n`;
+            for (let r = 0; r < 5; r++) {
+                const rowSlice = globalBestB1.slice(r * 5, r * 5 + 5);
+                output += `        ['${rowSlice.join("','")}'],\n`;
+            }
+            output += `    ]\n},\n\n`;
+            output += `board${key}right: {\n` +
+                `    name: "${key} right",\n` +
+                `    grid: [\n`;
+            for (let r = 0; r < 5; r++) {
+                const rowSlice = globalBestB2.slice(r * 5, r * 5 + 5);
+                output += `        ['${rowSlice.join("','")}'],\n`;
+            }
+            output += `    ]\n},\n`;
+
+            document.getElementById("results").textContent = output;
+        }
+    </script>
+</body>
+
+</html>
