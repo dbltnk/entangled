@@ -573,9 +573,6 @@
 
         function updateDisplay() {
             const size = parseInt(document.getElementById('sizeFilter').value);
-            const board1Id = document.getElementById('board1Filter').value;
-            const board2Id = document.getElementById('board2Filter').value;
-
             const grid = document.getElementById('analysisGrid');
             grid.innerHTML = '';
 
@@ -594,15 +591,25 @@
             board1Filter.innerHTML = options;
             board2Filter.innerHTML = options;
 
-            // Change to set board1 as default for 5x5
-            if (size === 5 && !currentBoard1) {
-                board1Filter.value = 'board1';
+            // Set default board1Id for 5x5 boards on first load
+            let board1Id = currentBoard1;
+            if (size === 5 && !board1Id) {
+                board1Id = 'board1';
+                board1Filter.value = board1Id;
+                // Trigger board2 changes
+                board2Filter.value = validBoards[0][0];
+                board2Filter.dispatchEvent(new Event('change'));
+                board2Filter.value = 'all';
+                board2Filter.dispatchEvent(new Event('change'));
             } else if (validBoards.some(([id]) => id === currentBoard1)) {
                 board1Filter.value = currentBoard1;
             }
             if (validBoards.some(([id]) => id === currentBoard2)) {
                 board2Filter.value = currentBoard2;
             }
+
+            // Get current board2Id after potential changes
+            const board2Id = board2Filter.value;
 
             // Replace the boardPairs creation section in updateDisplay()
             let boardPairs = [];
@@ -655,8 +662,8 @@
                     const card = document.createElement('div');
                     card.className = 'combo-card';
                     card.innerHTML = `
-                        <h2>${board1.name} vs ${board2.name}</h2>
-                    `;
+                <h2>${board1.name} vs ${board2.name}</h2>
+            `;
 
                     // Create the analysis container
                     const analysisContainer = document.createElement('div');
@@ -670,28 +677,28 @@
                     const scoreHeader = document.createElement('div');
                     scoreHeader.className = 'section-header';
                     scoreHeader.innerHTML = `
-                        <h3>Position Analysis</h3>
-                        <p>Blue intensity shows positional strength based on connectivity to other positions.</p>
-                    `;
+                <h3>Position Analysis</h3>
+                <p>Blue intensity shows positional strength based on connectivity to other positions.</p>
+            `;
                     scoreSection.appendChild(scoreHeader);
 
                     // Add metrics to score section
                     const metricsDiv = document.createElement('div');
                     metricsDiv.className = 'metrics';
                     metricsDiv.innerHTML = `
-                        <div class="metric-row">
-                            <span>Viable Moves (higher = more good options):</span>
-                            <span class="metric-value better-higher">${metrics.viableMoves}</span>
-                        </div>
-                        <div class="metric-row">
-                            <span>Standard Deviation (lower = more balanced):</span>
-                            <span class="metric-value better-lower">${metrics.stdDev.toFixed(2)}</span>
-                        </div>
-                        <div class="metric-row">
-                            <span>Best/Worst Ratio (lower = more balanced):</span>
-                            <span class="metric-value better-lower">${metrics.bestWorstRatio.toFixed(2)}</span>
-                        </div>
-                    `;
+                <div class="metric-row">
+                    <span>Viable Moves (higher = more good options):</span>
+                    <span class="metric-value better-higher">${metrics.viableMoves}</span>
+                </div>
+                <div class="metric-row">
+                    <span>Standard Deviation (lower = more balanced):</span>
+                    <span class="metric-value better-lower">${metrics.stdDev.toFixed(2)}</span>
+                </div>
+                <div class="metric-row">
+                    <span>Best/Worst Ratio (lower = more balanced):</span>
+                    <span class="metric-value better-lower">${metrics.bestWorstRatio.toFixed(2)}</span>
+                </div>
+            `;
                     scoreSection.appendChild(metricsDiv);
 
                     // Add score boards
@@ -715,25 +722,25 @@
                     const frequencyHeader = document.createElement('div');
                     frequencyHeader.className = 'section-header';
                     frequencyHeader.innerHTML = `
-                        <h3>Tournament Play Analysis</h3>
-                        <p>Red intensity shows how often each position is selected as the first move.</p>
-                    `;
+                <h3>Tournament Play Analysis</h3>
+                <p>Red intensity shows how often each position is selected as the first move.</p>
+            `;
                     frequencySection.appendChild(frequencyHeader);
 
                     // Add metrics to score section
                     const metricsPlaceholder = document.createElement('div');
                     metricsPlaceholder.className = 'metrics';
                     metricsPlaceholder.innerHTML = `
-                        <div class="metric-row">
-                            <span>[no metrics available yet]</span>
-                        </div>
-                        <div class="metric-row">
-                            <span>[no metrics available yet]</span>
-                        </div>
-                        <div class="metric-row">
-                            <span>[no metrics available yet]</span>
-                        </div>
-                    `;
+                <div class="metric-row">
+                    <span>[no metrics available yet]</span>
+                </div>
+                <div class="metric-row">
+                    <span>[no metrics available yet]</span>
+                </div>
+                <div class="metric-row">
+                    <span>[no metrics available yet]</span>
+                </div>
+            `;
                     frequencySection.appendChild(metricsPlaceholder);
 
                     if (moveFrequencies && Object.keys(moveFrequencies).length > 0) {
@@ -752,9 +759,9 @@
                         const noDataDiv = document.createElement('div');
                         noDataDiv.className = 'no-data';
                         noDataDiv.innerHTML = `
-                            <div class="no-data-icon">📊</div>
-                            <div>No tournament play data available for this board combination</div>
-                        `;
+                    <div class="no-data-icon">📊</div>
+                    <div>No tournament play data available for this board combination</div>
+                `;
                         frequencySection.appendChild(noDataDiv);
                     }
 
