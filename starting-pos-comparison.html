@@ -401,11 +401,16 @@
 
         function getScoreColor(score, minScore, maxScore) {
             const ratio = (score - minScore) / (maxScore - minScore);
-            return `rgba(33, 150, 243, ${ratio * 0.9})`;
+            // Enhanced blue with more dramatic variation for the given value range
+            // Values around 22.0 will be very dark, 17.0 will be much lighter
+            return `hsla(210, 100%, ${85 - (ratio * 70)}%, ${0.4 + (ratio * 0.6)})`;
         }
 
         function getFrequencyColor(percentage) {
-            return `rgba(211, 47, 47, ${percentage / 100 * 0.9})`;
+            // Enhanced red with more dramatic variation
+            // Values around 15-17% will be very dark, 1% will be much lighter
+            const normalizedRatio = Math.min(percentage / 20, 1); // Cap at 20% for normalization
+            return `hsla(0, 100%, ${85 - (normalizedRatio * 70)}%, ${0.4 + (normalizedRatio * 0.6)})`;
         }
 
         function createScoreBoard(board, scores, minScore, maxScore) {
@@ -421,9 +426,17 @@
                     const symbol = board.grid[row][col];
                     const score = scores.find(s => s.symbol === symbol).score;
                     cell.style.backgroundColor = getScoreColor(score, minScore, maxScore);
-                    cell.style.color = score > (minScore + maxScore) / 2 ? '#fff' : '#000';
-                    cell.innerHTML = `${symbol}<span class="score">${score.toFixed(1)}</span>`;
+
+                    const ratio = (score - minScore) / (maxScore - minScore);
+                    cell.style.color = ratio > 0.5 ? '#fff' : '#000';
+
+                    cell.innerHTML = `
+                <div style="font-size: 1.2rem; font-weight: bold; margin-bottom: 2px;">${symbol}</div>
+                <div style="font-size: 0.75rem; font-weight: 500;">${score.toFixed(1)}</div>
+            `;
                     cell.style.width = `${40}px`;
+                    cell.style.padding = '4px';
+                    cell.style.textAlign = 'center';
                     container.appendChild(cell);
                 }
             }
@@ -443,9 +456,17 @@
                     const symbol = board.grid[row][col];
                     const frequency = moveFrequencies[symbol]?.percentage || 0;
                     cell.style.backgroundColor = getFrequencyColor(frequency);
-                    cell.style.color = frequency > 50 ? '#fff' : '#000';
-                    cell.innerHTML = `${symbol}<span class="move-frequency">${frequency.toFixed(1)}%</span>`;
+
+                    const normalizedRatio = Math.min(frequency / 20, 1);
+                    cell.style.color = normalizedRatio > 0.5 ? '#fff' : '#000';
+
+                    cell.innerHTML = `
+                <div style="font-size: 1.2rem; font-weight: bold; margin-bottom: 2px;">${symbol}</div>
+                <div style="font-size: 0.75rem; font-weight: 500;">${frequency.toFixed(1)}%</div>
+            `;
                     cell.style.width = `${40}px`;
+                    cell.style.padding = '4px';
+                    cell.style.textAlign = 'center';
                     container.appendChild(cell);
                 }
             }
@@ -485,16 +506,7 @@
                 .sort((a, b) => b[1].total - a[1].total)
                 .map(([symbol]) => symbol);
 
-            const aiColors = {
-                'random': 'rgb(141, 211, 199)',
-                'deterministic': 'rgb(255, 255, 179)',
-                'aggressive': 'rgb(190, 186, 218)',
-                'defensive': 'rgb(251, 128, 114)',
-                'minimax': 'rgb(128, 177, 211)',
-                'mcts': 'rgb(253, 180, 98)',
-                'hybrid': 'rgb(179, 222, 105)'
-            };
-
+            const aiColors = { 'random': '#1C9941', 'deterministic': '#88A02C', 'aggressive': '#DDDD22', 'defensive': '#FD8D3C', 'minimax': '#E6550D', 'mcts': '#DE2D26', 'hybrid': '#A50F15' };
             const datasets = Object.entries(aiColors).map(([aiType, color]) => ({
                 label: aiType,
                 data: sortedSymbols.map(symbol => symbolData[symbol][aiType]),
@@ -747,7 +759,7 @@
                     scoreHeader.className = 'section-header';
                     scoreHeader.innerHTML = `
                         <h3>Position Analysis</h3>
-                        <p>Blue intensity shows positional strength based on connectivity to other positions.</p>
+                        <p>Blue intensity shows strength based on connectivity to other cells.</p>
                     `;
                     scoreSection.appendChild(scoreHeader);
 
