@@ -594,21 +594,50 @@
             board1Filter.innerHTML = options;
             board2Filter.innerHTML = options;
 
-            if (validBoards.some(([id]) => id === currentBoard1)) {
+            // Change to set board1 as default for 5x5
+            if (size === 5 && !currentBoard1) {
+                board1Filter.value = 'board1';
+            } else if (validBoards.some(([id]) => id === currentBoard1)) {
                 board1Filter.value = currentBoard1;
             }
             if (validBoards.some(([id]) => id === currentBoard2)) {
                 board2Filter.value = currentBoard2;
             }
 
-            let boardPairs = (board1Id && board2Id && board1Id !== 'all' && board2Id !== 'all') ?
-                [[
-                    validBoards.find(([id]) => id === board1Id),
-                    validBoards.find(([id]) => id === board2Id)
-                ]] :
-                validBoards.flatMap(board1 =>
+            // Replace the boardPairs creation section in updateDisplay()
+            let boardPairs = [];
+            if (board1Id === 'all' && board2Id === 'all') {
+                // Show all combinations
+                boardPairs = validBoards.flatMap(board1 =>
                     validBoards.map(board2 => [board1, board2])
                 );
+            } else if (board1Id === 'all') {
+                // Filter only board2
+                const board2 = validBoards.find(([id]) => id === board2Id);
+                if (board2) {
+                    boardPairs = validBoards.map(board1 => [board1, board2]);
+                }
+            } else if (board2Id === 'all') {
+                // Filter only board1
+                const board1 = validBoards.find(([id]) => id === board1Id);
+                if (board1) {
+                    boardPairs = validBoards.map(board2 => [board1, board2]);
+                }
+            } else {
+                // Filter both boards
+                const board1 = validBoards.find(([id]) => id === board1Id);
+                const board2 = validBoards.find(([id]) => id === board2Id);
+                if (board1 && board2) {
+                    boardPairs = [[board1, board2]];
+                }
+            }
+
+            // Ensure we have valid pairs before continuing
+            if (boardPairs.length === 0) {
+                boardPairs = validBoards.flatMap(board1 =>
+                    validBoards.map(board2 => [board1, board2])
+                );
+            }
 
             boardPairs
                 .map(([[id1, board1], [id2, board2]]) => {
