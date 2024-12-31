@@ -89,6 +89,7 @@
         .board-cell {
             aspect-ratio: 1;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
             font-weight: bold;
@@ -431,9 +432,9 @@
                     cell.style.color = ratio > 0.5 ? '#fff' : '#000';
 
                     cell.innerHTML = `
-                <div style="font-size: 1.2rem; font-weight: bold; margin-bottom: 2px;">${symbol}</div>
-                <div style="font-size: 0.75rem; font-weight: 500;">${score.toFixed(1)}</div>
-            `;
+                        <div style="font-size: 1.2rem; font-weight: bold; margin-bottom: 2px;">${symbol}</div>
+                        <div style="font-size: 0.75rem; font-weight: 500;">${score.toFixed(1)}</div>
+                     `;
                     cell.style.width = `${40}px`;
                     cell.style.padding = '4px';
                     cell.style.textAlign = 'center';
@@ -461,9 +462,9 @@
                     cell.style.color = normalizedRatio > 0.5 ? '#fff' : '#000';
 
                     cell.innerHTML = `
-                <div style="font-size: 1.2rem; font-weight: bold; margin-bottom: 2px;">${symbol}</div>
-                <div style="font-size: 0.75rem; font-weight: 500;">${frequency.toFixed(1)}%</div>
-            `;
+                       <div style="font-size: 1.2rem; font-weight: bold; margin-bottom: 2px;">${symbol}</div>
+                        <div style="font-size: 0.75rem; font-weight: 500;">${frequency.toFixed(1)}%</div>
+                    `;
                     cell.style.width = `${40}px`;
                     cell.style.padding = '4px';
                     cell.style.textAlign = 'center';
