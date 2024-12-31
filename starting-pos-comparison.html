@@ -275,7 +275,10 @@
                                 if (game.moves && game.moves.length > 0) {
                                     allFirstMoves.push({
                                         move: game.moves[0],
-                                        boards: data.metadata.boards
+                                        boards: data.metadata.boards,
+                                        ais: data.metadata.selectedAIs,
+                                        black: result.black,
+                                        white: result.white
                                     });
                                 }
                             });
@@ -347,12 +350,16 @@
             const total = filteredMoves.length || 0;
             if (total === 0) return null;
 
-            return Object.fromEntries(
-                Object.entries(frequencies).map(([move, count]) => [
-                    move,
-                    { count, percentage: (count / total) * 100 }
-                ])
-            );
+            return {
+                frequencies: Object.fromEntries(
+                    Object.entries(frequencies).map(([move, count]) => [
+                        move,
+                        { count, percentage: (count / total) * 100 }
+                    ])
+                ),
+                filteredMoves: filteredMoves,
+                total: total
+            };
         }
 
         function getScoreColor(score, minScore, maxScore) {
@@ -662,8 +669,8 @@
                     const card = document.createElement('div');
                     card.className = 'combo-card';
                     card.innerHTML = `
-                <h2>${board1.name} vs ${board2.name}</h2>
-            `;
+                        <h2>${board1.name} vs ${board2.name}</h2>
+                    `;
 
                     // Create the analysis container
                     const analysisContainer = document.createElement('div');
@@ -677,28 +684,28 @@
                     const scoreHeader = document.createElement('div');
                     scoreHeader.className = 'section-header';
                     scoreHeader.innerHTML = `
-                <h3>Position Analysis</h3>
-                <p>Blue intensity shows positional strength based on connectivity to other positions.</p>
-            `;
+                        <h3>Position Analysis</h3>
+                        <p>Blue intensity shows positional strength based on connectivity to other positions.</p>
+                    `;
                     scoreSection.appendChild(scoreHeader);
 
                     // Add metrics to score section
                     const metricsDiv = document.createElement('div');
                     metricsDiv.className = 'metrics';
                     metricsDiv.innerHTML = `
-                <div class="metric-row">
-                    <span>Viable Moves (higher = more good options):</span>
-                    <span class="metric-value better-higher">${metrics.viableMoves}</span>
-                </div>
-                <div class="metric-row">
-                    <span>Standard Deviation (lower = more balanced):</span>
-                    <span class="metric-value better-lower">${metrics.stdDev.toFixed(2)}</span>
-                </div>
-                <div class="metric-row">
-                    <span>Best/Worst Ratio (lower = more balanced):</span>
-                    <span class="metric-value better-lower">${metrics.bestWorstRatio.toFixed(2)}</span>
-                </div>
-            `;
+                        <div class="metric-row">
+                            <span>Viable Moves (higher = more good options):</span>
+                            <span class="metric-value better-higher">${metrics.viableMoves}</span>
+                        </div>
+                        <div class="metric-row">
+                            <span>Standard Deviation (lower = more balanced):</span>
+                            <span class="metric-value better-lower">${metrics.stdDev.toFixed(2)}</span>
+                        </div>
+                        <div class="metric-row">
+                            <span>Best/Worst Ratio (lower = more balanced):</span>
+                            <span class="metric-value better-lower">${metrics.bestWorstRatio.toFixed(2)}</span>
+                        </div>
+                    `;
                     scoreSection.appendChild(metricsDiv);
 
                     // Add score boards
@@ -722,39 +729,76 @@
                     const frequencyHeader = document.createElement('div');
                     frequencyHeader.className = 'section-header';
                     frequencyHeader.innerHTML = `
-                <h3>Tournament Play Analysis</h3>
-                <p>Red intensity shows how often each position is selected as the first move.</p>
-            `;
+                        <h3>Tournament Play Analysis</h3>
+                        <p>Red intensity shows how often each position is selected as the first move.</p>
+                    `;
                     frequencySection.appendChild(frequencyHeader);
 
-                    // Add metrics to score section
-                    const metricsPlaceholder = document.createElement('div');
-                    metricsPlaceholder.className = 'metrics';
-                    metricsPlaceholder.innerHTML = `
-                <div class="metric-row">
-                    <span>[no metrics available yet]</span>
-                </div>
-                <div class="metric-row">
-                    <span>[no metrics available yet]</span>
-                </div>
-                <div class="metric-row">
-                    <span>[no metrics available yet]</span>
-                </div>
-            `;
-                    frequencySection.appendChild(metricsPlaceholder);
+                    const moveFrequenciesData = calculateMoveFrequencies(globalFirstMoves, id1, id2);
+                    const metricsPlayDiv = document.createElement('div');
+                    metricsPlayDiv.className = 'metrics';
+                    if (moveFrequenciesData) {
+                        // Count moves per AI
+                        const aiCounts = {
+                            'random': 0,
+                            'deterministic': 0,
+                            'aggressive': 0,
+                            'defensive': 0,
+                            'minimax': 0,
+                            'mcts': 0,
+                            'hybrid': 0
+                        };
 
-                    if (moveFrequencies && Object.keys(moveFrequencies).length > 0) {
+                        moveFrequenciesData.filteredMoves.forEach(move => {
+                            // Each move contributes 0.5 to each AI (black and white)
+                            const blackBase = move.black.split('-')[0];
+                            const whiteBase = move.white.split('-')[0];
+                            if (aiCounts.hasOwnProperty(blackBase)) aiCounts[blackBase] += 0.5;
+                            if (aiCounts.hasOwnProperty(whiteBase)) aiCounts[whiteBase] += 0.5;
+                        });
+
+                        // Create stats string, only showing non-zero counts
+                        const statsStr = Object.entries(aiCounts)
+                            .filter(([_, count]) => count > 0)
+                            .map(([ai, count]) => `${ai}: ${Math.round(count)}`)
+                            .join(', ');
+
+                        metricsPlayDiv.innerHTML = `
+        <div class="metric-row">
+            <span>${statsStr || 'No games'}</span>
+        </div>
+        <div class="metric-row">
+            <span>Total games: ${moveFrequenciesData.total}</span>
+        </div>
+        <div class="metric-row" style="height: 1.5em">
+        </div>
+    `;
+                    } else {
+                        metricsPlayDiv.innerHTML = `
+        <div class="metric-row">
+            <span>No games played</span>
+        </div>
+        <div class="metric-row">
+            <span>Total games: 0</span>
+        </div>
+        <div class="metric-row" style="height: 1.5em">
+        </div>
+    `;
+                    }
+                    frequencySection.appendChild(metricsPlayDiv);
+
+                    if (moveFrequenciesData && Object.keys(moveFrequenciesData.frequencies).length > 0) {
                         const frequencyBoardDisplay = document.createElement('div');
                         frequencyBoardDisplay.className = 'board-display';
-                        frequencyBoardDisplay.appendChild(createFrequencyBoard(board1, moveFrequencies));
-                        frequencyBoardDisplay.appendChild(createFrequencyBoard(board2, moveFrequencies));
+                        frequencyBoardDisplay.appendChild(createFrequencyBoard(board1, moveFrequenciesData.frequencies));
+                        frequencyBoardDisplay.appendChild(createFrequencyBoard(board2, moveFrequenciesData.frequencies));
                         frequencySection.appendChild(frequencyBoardDisplay);
 
                         // Add frequency plot
                         const frequencyPlot = document.createElement('div');
                         frequencyPlot.className = 'frequency-plot';
                         frequencySection.appendChild(frequencyPlot);
-                        createFrequencyPlot(frequencyPlot, moveFrequencies, board1.name, board2.name);
+                        createFrequencyPlot(frequencyPlot, moveFrequenciesData.frequencies, board1.name, board2.name);
                     } else {
                         const noDataDiv = document.createElement('div');
                         noDataDiv.className = 'no-data';
