@@ -415,30 +415,63 @@
             return container;
         }
 
-        function createFrequencyPlot(container, moveFrequencies, board1Name, board2Name) {
+        function createFrequencyPlot(container, moveFrequenciesData, board1Name, board2Name) {
             const canvas = document.createElement('canvas');
             container.appendChild(canvas);
 
-            if (!moveFrequencies) return;
+            if (!moveFrequenciesData || !moveFrequenciesData.filteredMoves) return;
 
-            const data = Object.entries(moveFrequencies)
-                .map(([symbol, data]) => ({
-                    symbol,
-                    percentage: data.percentage
-                }))
-                .sort((a, b) => b.percentage - a.percentage);
+            // First organize data by symbol and AI type
+            const symbolData = {};
+            moveFrequenciesData.filteredMoves.forEach(move => {
+                const symbol = move.move;
+                const aiType = move.black.split('-')[0];
+
+                if (!symbolData[symbol]) {
+                    symbolData[symbol] = {
+                        'random': 0,
+                        'deterministic': 0,
+                        'aggressive': 0,
+                        'defensive': 0,
+                        'minimax': 0,
+                        'mcts': 0,
+                        'hybrid': 0,
+                        'total': 0  // Add total count
+                    };
+                }
+                symbolData[symbol][aiType]++;
+                symbolData[symbol].total++;  // Increment total
+            });
+
+            // Sort symbols by total count
+            const sortedSymbols = Object.entries(symbolData)
+                .sort((a, b) => b[1].total - a[1].total)
+                .map(([symbol]) => symbol);
+
+            const aiColors = {
+                'random': 'rgb(141, 211, 199)',
+                'deterministic': 'rgb(255, 255, 179)',
+                'aggressive': 'rgb(190, 186, 218)',
+                'defensive': 'rgb(251, 128, 114)',
+                'minimax': 'rgb(128, 177, 211)',
+                'mcts': 'rgb(253, 180, 98)',
+                'hybrid': 'rgb(179, 222, 105)'
+            };
+
+            const datasets = Object.entries(aiColors).map(([aiType, color]) => ({
+                label: aiType,
+                data: sortedSymbols.map(symbol => symbolData[symbol][aiType]),
+                backgroundColor: color,
+                borderColor: color.replace('rgb', 'rgba').replace(')', ', 1)'),
+                borderWidth: 1
+            }));
 
             const ctx = canvas.getContext('2d');
             new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: data.map(d => d.symbol),
-                    datasets: [{
-                        data: data.map(d => d.percentage),
-                        backgroundColor: 'rgba(211, 47, 47, 0.6)',
-                        borderColor: 'rgba(211, 47, 47, 0.8)',
-                        borderWidth: 1
-                    }]
+                    labels: sortedSymbols,
+                    datasets: datasets
                 },
                 options: {
                     responsive: true,
@@ -446,31 +479,34 @@
                     plugins: {
                         title: {
                             display: false,
-                            text: `Move Selection Frequency`
+                            text: `First Move Selection by AI Type`
                         },
                         legend: {
-                            display: false
+                            display: true,
+                            position: 'top'
                         },
                         tooltip: {
                             callbacks: {
                                 label: (context) => {
-                                    return `Selected ${context.formattedValue}% of games`;
+                                    return `${context.dataset.label}: ${context.raw} moves`;
                                 }
                             }
                         }
                     },
                     scales: {
-                        y: {
-                            beginAtZero: true,
-                            title: {
-                                display: true,
-                                text: 'Selection Frequency (%)'
-                            }
-                        },
                         x: {
+                            stacked: true,
                             title: {
                                 display: true,
                                 text: 'Symbol'
+                            }
+                        },
+                        y: {
+                            stacked: true,
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Number of Selections'
                             }
                         }
                     }
@@ -798,7 +834,7 @@
                         const frequencyPlot = document.createElement('div');
                         frequencyPlot.className = 'frequency-plot';
                         frequencySection.appendChild(frequencyPlot);
-                        createFrequencyPlot(frequencyPlot, moveFrequenciesData.frequencies, board1.name, board2.name);
+                        createFrequencyPlot(frequencyPlot, moveFrequenciesData, board1.name, board2.name);
                     } else {
                         const noDataDiv = document.createElement('div');
                         noDataDiv.className = 'no-data';
