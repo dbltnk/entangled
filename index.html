@@ -44,9 +44,16 @@
         }
 
         .grid {
-            display: grid;
+            display: flex;
+            flex-direction: column;
             gap: 2rem;
             margin-bottom: 2rem;
+        }
+
+        .grid-row {
+            display: grid;
+            gap: 2rem;
+            grid-template-columns: repeat(2, 1fr);
         }
 
         .card {
@@ -59,6 +66,9 @@
             position: relative;
             z-index: 1;
             overflow: hidden;
+            min-height: 200px;
+            display: flex;
+            flex-direction: column;
         }
 
         .card:hover {
@@ -72,22 +82,22 @@
         }
 
         .card p {
-            margin: 0 0 1.5rem 0;
+            margin: 0;
             font-size: 1.1rem;
         }
 
         .main-card {
-            grid-column: 1 / -1;
             background: linear-gradient(45deg, #2196F3, #03A9F4);
             color: white;
         }
 
-        .main-card p {
-            max-width: 800px;
-        }
-
         .analysis-card {
             background: linear-gradient(45deg, #4CAF50, #8BC34A);
+            color: white;
+        }
+
+        .generator-card {
+            background: linear-gradient(45deg, #673AB7, #3F51B5);
             color: white;
         }
 
@@ -111,12 +121,6 @@
             opacity: 0.1;
             pointer-events: none;
         }
-
-        @media (min-width: 768px) {
-            .grid {
-                grid-template-columns: repeat(3, 1fr);
-            }
-        }
     </style>
 </head>
 
@@ -124,38 +128,47 @@
     <div class="container">
         <header>
             <h1>🌀 Entangled</h1>
-            <p class="subtitle">A light abstract strategy game inspired by quantum mechanics</p>
+            <p class="subtitle">Light abstract strategy game</p>
         </header>
 
         <div class="grid">
             <a href="play.html" target="_blank" class="card main-card">
-                <h2>🎮 Play Entangled</h2>
-                <p>Challenge AI opponents or play against a friend in this elegant abstract strategy game. Place stones
-                    on two parallel boards, build connected groups, and outsmart your opponent with clever tactical
-                    moves. Perfect for quick matches or deep strategic battles.</p>
+                <h2>🎮 Play</h2>
+                <p>Two 5x5 boards with corresponding positions. Players take turns placing stones, with each move
+                    mirrored on both boards. Score is the sum of your largest connected group on each board.</p>
                 <span class="emoji-bg">🎲</span>
             </a>
 
-            <a href="starting-pos-comparison.html" target="_blank" class="card analysis-card">
-                <h2>📊 Board Analysis</h2>
-                <p>Explore different board layouts, analyze opening positions, and discover strategic insights through
-                    detailed heatmaps and statistics.</p>
-                <span class="emoji-bg">📈</span>
-            </a>
+            <div class="grid-row">
+                <a href="generate-boards.html" target="_blank" class="card generator-card">
+                    <h2>🧬 Board Generator</h2>
+                    <p>Evolutionary algorithm to generate board layouts optimized for balanced play and strategic depth.
+                    </p>
+                    <span class="emoji-bg">🔄</span>
+                </a>
 
-            <a href="tournament.html" target="_blank" class="card tournament-card">
-                <h2>🏆 Tournament Runner</h2>
-                <p>Set up and run AI tournaments to test different strategies and board configurations. Compare how
-                    different AIs perform in various scenarios.</p>
-                <span class="emoji-bg">🤖</span>
-            </a>
+                <a href="starting-pos-comparison.html" target="_blank" class="card analysis-card">
+                    <h2>📊 Position Analysis</h2>
+                    <p>Statistical analysis of board layouts and opening moves, including connectivity metrics and
+                        tournament move frequencies.</p>
+                    <span class="emoji-bg">📈</span>
+                </a>
+            </div>
 
-            <a href="results.html" target="_blank" class="card results-card">
-                <h2>🔍 Tournament Results</h2>
-                <p>Review tournament outcomes, analyze AI performance statistics, and watch game replays to understand
-                    different strategies.</p>
-                <span class="emoji-bg">🔬</span>
-            </a>
+            <div class="grid-row">
+                <a href="tournament.html" target="_blank" class="card tournament-card">
+                    <h2>🏆 Tournament Runner</h2>
+                    <p>Configure and execute parallel AI matches across multiple board configurations with customizable
+                        parameters.</p>
+                    <span class="emoji-bg">🤖</span>
+                </a>
+
+                <a href="results.html" target="_blank" class="card results-card">
+                    <h2>🔍 Tournament Results</h2>
+                    <p>View tournament statistics, ELO ratings, and game replays with move-by-move analysis.</p>
+                    <span class="emoji-bg">🔬</span>
+                </a>
+            </div>
         </div>
     </div>
 </body>
