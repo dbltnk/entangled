@@ -191,48 +191,8 @@ const BOARD_LAYOUTS = {
             ['Y', 'A', 'I', 'M', 'Q']
         ]
     },
-    board40811314left: {
-        name: "40811314 left",
-        grid: [
-            ['V', 'O', 'I', 'R', 'P'],
-            ['L', 'C', 'E', 'S', 'B'],
-            ['H', 'J', 'Y', 'N', 'D'],
-            ['A', 'X', 'F', 'Q', 'W'],
-            ['T', 'U', 'K', 'M', 'G'],
-        ]
-    },
-    board40811314right: {
-        name: "40811314 right",
-        grid: [
-            ['Y', 'E', 'I', 'F', 'C'],
-            ['J', 'V', 'U', 'K', 'S'],
-            ['P', 'A', 'G', 'B', 'R'],
-            ['Q', 'T', 'M', 'W', 'N'],
-            ['X', 'H', 'D', 'L', 'O'],
-        ]
-    },
-    board3268380671left: {
-        name: "3268380671 left",
-        grid: [
-            ['S', 'A', 'O', 'I', 'B'],
-            ['W', 'P', 'L', 'D', 'H'],
-            ['R', 'M', 'F', 'T', 'K'],
-            ['Q', 'Y', 'V', 'N', 'J'],
-            ['E', 'X', 'C', 'U', 'G'],
-        ]
-    },
-    board3268380671right: {
-        name: "3268380671 right",
-        grid: [
-            ['P', 'O', 'Y', 'T', 'C'],
-            ['W', 'G', 'U', 'E', 'K'],
-            ['I', 'A', 'S', 'J', 'Q'],
-            ['L', 'B', 'H', 'R', 'M'],
-            ['D', 'V', 'N', 'X', 'F'],
-        ]
-    },
     board3893435730left: {
-        name: "3893435730 left",
+        name: "evolved left",
         grid: [
             ['G', 'B', 'H', 'O', 'U'],
             ['P', 'D', 'X', 'F', 'C'],
@@ -242,27 +202,7 @@ const BOARD_LAYOUTS = {
         ]
     },
     board3893435730right: {
-        name: "3893435730 right",
-        grid: [
-            ['F', 'D', 'J', 'T', 'L'],
-            ['S', 'I', 'C', 'B', 'K'],
-            ['P', 'M', 'E', 'O', 'Y'],
-            ['R', 'U', 'N', 'G', 'X'],
-            ['A', 'H', 'Q', 'V', 'W'],
-        ]
-    },
-    board3893435730left: {
-        name: "3893435730 left",
-        grid: [
-            ['G', 'B', 'H', 'O', 'U'],
-            ['P', 'D', 'X', 'F', 'C'],
-            ['T', 'S', 'W', 'R', 'Q'],
-            ['N', 'A', 'K', 'L', 'M'],
-            ['I', 'J', 'Y', 'V', 'E'],
-        ]
-    },
-    board3893435730right: {
-        name: "3893435730 right",
+        name: "evolved right",
         grid: [
             ['F', 'D', 'J', 'T', 'L'],
             ['S', 'I', 'C', 'B', 'K'],
