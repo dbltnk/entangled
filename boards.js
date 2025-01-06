@@ -211,6 +211,36 @@ const BOARD_LAYOUTS = {
             ['A', 'H', 'Q', 'V', 'W'],
         ]
     },
+    board23: {
+        name: "asymmetric +Z 1",
+        grid: [
+            ['Y', 'V', 'I', 'E', 'P'],
+            ['J', 'A', 'R', 'L', 'X'],
+            ['Q', 'N', 'Z', 'F', 'C'],
+            ['U', 'H', 'B', 'S', 'O'],
+            ['D', 'T', 'K', 'W', 'G']
+        ]
+    },
+    board24: {
+        name: "asymmetric +Z 2",
+        grid: [
+            ['G', 'V', 'I', 'E', 'P'],
+            ['J', 'A', 'R', 'L', 'X'],
+            ['Q', 'N', 'Z', 'F', 'C'],
+            ['U', 'H', 'B', 'S', 'O'],
+            ['D', 'T', 'K', 'W', 'Y']
+        ]
+    },
+    board25: {
+        name: "asymmetric +Z 3",
+        grid: [
+            ['J', 'A', 'N', 'W', 'Q'],
+            ['P', 'R', 'G', 'E', 'K'],
+            ['B', 'O', 'Z', 'S', 'H'],
+            ['X', 'I', 'C', 'L', 'Y'],
+            ['U', 'F', 'T', 'V', 'D']
+        ]
+    },
     board4x4: {
         name: "Top left to bottom right (4x4)",
         grid: [

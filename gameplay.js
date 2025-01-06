@@ -45,10 +45,6 @@ class EntangledGame {
             [PLAYERS.BLACK]: 0,
             [PLAYERS.WHITE]: 0
         };
-        this.remainingStones = {
-            [PLAYERS.BLACK]: this.stonesPerPlayer,
-            [PLAYERS.WHITE]: this.stonesPerPlayer
-        };
         this.gameOver = false;
 
         // Parse and place starting stones
@@ -114,12 +110,11 @@ class EntangledGame {
             if (boardState[row][col] !== null) continue;
 
             boardState[row][col] = player;
-            this.remainingStones[player]--;
         }
     }
 
     initializeSymbolMaps() {
-        // Create mappings from symbols to their positions on both boards
+        // First pass - add all symbols from board1
         for (let row = 0; row < this.boardSize; row++) {
             for (let col = 0; col < this.boardSize; col++) {
                 const symbol = this.board1Layout[row][col];
@@ -127,6 +122,19 @@ class EntangledGame {
                     board1: { row, col },
                     board2: this.findSymbolPosition(symbol, this.board2Layout)
                 });
+            }
+        }
+
+        // Second pass - add any symbols that only appear in board2
+        for (let row = 0; row < this.boardSize; row++) {
+            for (let col = 0; col < this.boardSize; col++) {
+                const symbol = this.board2Layout[row][col];
+                if (!this.symbolToPosition.has(symbol)) {
+                    this.symbolToPosition.set(symbol, {
+                        board1: null,
+                        board2: { row, col }
+                    });
+                }
             }
         }
     }
@@ -146,8 +154,15 @@ class EntangledGame {
         if (!this.symbolToPosition.has(symbol)) return false;
 
         const { board1, board2 } = this.symbolToPosition.get(symbol);
-        return this.board1[board1.row][board1.col] === null &&
-            this.board2[board2.row][board2.col] === null;
+        if (board1) {
+            if (this.board1[board1.row][board1.col] !== null) return false;
+        }
+
+        if (board2) {
+            if (this.board2[board2.row][board2.col] !== null) return false;
+        }
+
+        return true;
     }
 
     makeMove(symbol) {
@@ -161,14 +176,18 @@ class EntangledGame {
 
         const { board1, board2 } = this.symbolToPosition.get(symbol);
 
-        // Place stones on both boards
-        this.board1[board1.row][board1.col] = this.currentPlayer;
-        this.board2[board2.row][board2.col] = this.currentPlayer;
+        // Place stones on both boards, if possible
+        if (board1 !== null) {
+            this.board1[board1.row][board1.col] = this.currentPlayer;
+        }
+
+        if (board2 !== null) {
+            this.board2[board2.row][board2.col] = this.currentPlayer;
+        }
 
         this._lastMove = symbol;
 
         // Update game state
-        this.remainingStones[this.currentPlayer] -= 2;
         this.playerTurns[this.currentPlayer]++;
 
         let isBoardFull = true;
@@ -316,10 +335,6 @@ class EntangledGame {
         return this.playerTurns[this.currentPlayer] + 1;
     }
 
-    getRemainingStones(player) {
-        return this.remainingStones[player];
-    }
-
     isGameOver() {
         return this.gameOver;
     }
@@ -345,7 +360,6 @@ class EntangledGame {
             currentPlayer: this.currentPlayer,
             currentTurn: this.getCurrentTurn(),
             gameOver: this.gameOver,
-            remainingStones: { ...this.remainingStones },
             playerTurns: { ...this.playerTurns },
             validMoves: this.getValidMoves(),
             lastMove: this._lastMove,

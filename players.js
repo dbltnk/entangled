@@ -95,9 +95,9 @@ class EntangledPlayer {
         }
         simGame.currentPlayer = state.currentPlayer;
         simGame.playerTurns = { ...state.playerTurns };
-        simGame.remainingStones = { ...state.remainingStones };
         simGame.gameOver = state.gameOver;
         simGame.symbolToPosition = new Map(this.gameEngine.symbolToPosition);
+        simGame._lastMove = state.lastMove;
         return simGame;
     }
 
@@ -111,7 +111,7 @@ class EntangledPlayer {
 
     evaluateCenterControl(game) {
         let bonus = 0;
-        const center = 2;
+        const center = Math.floor(game.boardSize / 2);
         const centerArea = [
             { row: center, col: center },
             { row: center - 1, col: center },
@@ -121,8 +121,10 @@ class EntangledPlayer {
         ];
 
         for (const pos of centerArea) {
-            if (game.board1[pos.row][pos.col] === this.playerColor) bonus += 0.5;
-            if (game.board2[pos.row][pos.col] === this.playerColor) bonus += 0.5;
+            if (pos.row >= 0 && pos.row < game.boardSize && pos.col >= 0 && pos.col < game.boardSize) {
+                if (game.board1[pos.row][pos.col] === this.playerColor) bonus += 0.5;
+                if (game.board2[pos.row][pos.col] === this.playerColor) bonus += 0.5;
+            }
         }
 
         return bonus;
@@ -142,7 +144,7 @@ class EntangledPlayer {
                     const newRow = cluster.row + dr;
                     const newCol = cluster.col + dc;
 
-                    if (newRow >= 0 && newRow < 5 && newCol >= 0 && newCol < 5) {
+                    if (newRow >= 0 && newRow < game.boardSize && newCol >= 0 && newCol < game.boardSize) {
                         if (board[newRow][newCol] === null) {
                             emptyNeighbors++;
                         } else if (board[newRow][newCol] === this.playerColor) {
@@ -399,7 +401,7 @@ class EnhancedDefensivePlayer extends EntangledPlayer {
                         const newRow = cluster.row + dr;
                         const newCol = cluster.col + dc;
 
-                        if (newRow >= 0 && newRow < 5 && newCol >= 0 && newCol < 5) {
+                        if (newRow >= 0 && newRow < game.boardSize && newCol >= 0 && newCol < game.boardSize) {
                             if (board[newRow][newCol] === this.playerColor) {
                                 blockedDirections++;
                             } else if (board[newRow][newCol] === null) {
@@ -491,14 +493,12 @@ class MCTSPlayer extends EntangledPlayer {
         this.cacheMisses = 0;
     }
 
-    // Create a cache key from board state
     createBoardKey(board, player) {
         return board.map(row =>
             row.map(cell => cell === null ? '0' : cell === 'BLACK' ? '1' : '2').join('')
         ).join('') + player;
     }
 
-    // Get cached cluster size or calculate and cache it
     getCachedLargestCluster(simGame, board, player) {
         const boardKey = this.createBoardKey(board, player);
 
@@ -516,7 +516,6 @@ class MCTSPlayer extends EntangledPlayer {
     }
 
     chooseMove() {
-        // Reset cache for new move decision
         this.clusterCache.clear();
         this.cacheHits = 0;
         this.cacheMisses = 0;
@@ -553,19 +552,12 @@ class MCTSPlayer extends EntangledPlayer {
         const endTime = performance.now();
         const duration = endTime - startTime;
 
-        // Log cache performance
-        // console.log(`MCTS agent (${this.playerColor}) turn stats:
-        //     Duration: ${duration.toFixed(2)}ms
-        //     Cache hits: ${this.cacheHits}
-        //     Cache misses: ${this.cacheMisses}
-        //     Hit rate: ${(this.cacheHits / (this.cacheHits + this.cacheMisses) * 100).toFixed(1)}%`);
-
         return selectedMove;
     }
 
     playRandomGame(simGame) {
         const maxMoves = simGame.boardSize * simGame.boardSize;
-        const validMoves = new Array(Math.ceil(maxMoves / 2));
+        const validMoves = new Array(maxMoves);
         let moveCount = 0;
 
         while (!simGame.isGameOver() && moveCount < maxMoves) {
@@ -582,7 +574,6 @@ class MCTSPlayer extends EntangledPlayer {
             const randomMove = validMoves[Math.floor(Math.random() * validMoveCount)];
 
             try {
-                if (!simGame.isValidMove(randomMove)) break;
                 simGame.makeMove(randomMove);
                 moveCount++;
             } catch (error) {
@@ -590,7 +581,6 @@ class MCTSPlayer extends EntangledPlayer {
             }
         }
 
-        // Use cached cluster calculations for evaluation
         const blackScore =
             this.getCachedLargestCluster(simGame, simGame.board1, 'BLACK') +
             this.getCachedLargestCluster(simGame, simGame.board2, 'BLACK');
@@ -599,11 +589,9 @@ class MCTSPlayer extends EntangledPlayer {
             this.getCachedLargestCluster(simGame, simGame.board1, 'WHITE') +
             this.getCachedLargestCluster(simGame, simGame.board2, 'WHITE');
 
-        // Return score from our player's perspective
         return this.playerColor === 'BLACK' ? blackScore - whiteScore : whiteScore - blackScore;
     }
 
-    // Clean up cache when instance is destroyed
     destroy() {
         this.clusterCache.clear();
         this.clusterCache = null;
