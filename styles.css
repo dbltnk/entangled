@@ -215,11 +215,11 @@ body.rules-hidden .game-container {
 }
 
 .cell-highlight-black {
-    background-color: var(--color-cell-black);
+    background-color: var(--color-cell-black) !important;
 }
 
 .cell-highlight-white {
-    background-color: var(--color-cell-white);
+    background-color: var(--color-cell-white) !important;
 }
 
 /* Icon styles */
@@ -237,7 +237,7 @@ body.rules-hidden .game-container {
 }
 
 .cell.has-stone .cell-icon {
-    opacity: 0.3;
+    display: none;
 }
 
 .cell.symbols-hidden .cell-letter {
@@ -309,7 +309,7 @@ body.rules-hidden .game-container {
 /* Group size indicator */
 .group-size {
     position: absolute;
-    z-index: 3;
+    z-index: 5;
     font-weight: 700;
     font-size: var(--font-size-lg);
     pointer-events: none;

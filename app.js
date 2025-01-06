@@ -12,7 +12,7 @@ let gameSettings = {
     score: true,
     currentPlayer: true,
     icons: true,
-    symbols: true
+    symbols: false
 };
 
 let game = null;
