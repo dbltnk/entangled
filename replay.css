@@ -26,10 +26,12 @@
 
 .board-container {
     flex: 1;
+    position: relative;
 }
 
 .board {
     max-width: none;
+    background-color: var(--color-background);
 }
 
 #players-info,
@@ -66,12 +68,4 @@
 
 .stats {
     text-align: right;
-}
-
-.cell .cell-letter {
-    display: block;
-}
-
-.cell.has-stone .cell-letter {
-    display: none;
 }

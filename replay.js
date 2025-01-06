@@ -89,12 +89,23 @@ class GameReplay {
         board1.innerHTML = '';
         board2.innerHTML = '';
 
+        // Set grid templates
+        board1.style.gridTemplateRows = `repeat(${this.boardSize}, 1fr)`;
+        board1.style.gridTemplateColumns = `repeat(${this.boardSize}, 1fr)`;
+        board2.style.gridTemplateRows = `repeat(${this.boardSize}, 1fr)`;
+        board2.style.gridTemplateColumns = `repeat(${this.boardSize}, 1fr)`;
+
+        // Create cells (skipping dots)
         for (let i = 0; i < this.boardSize; i++) {
             for (let j = 0; j < this.boardSize; j++) {
-                const cell1 = this.createCell(1, i, j);
-                const cell2 = this.createCell(2, i, j);
-                board1.appendChild(cell1);
-                board2.appendChild(cell2);
+                if (this.history[0].board1Layout[i][j] !== '.') {
+                    const cell1 = this.createCell(1, i, j);
+                    board1.appendChild(cell1);
+                }
+                if (this.history[0].board2Layout[i][j] !== '.') {
+                    const cell2 = this.createCell(2, i, j);
+                    board2.appendChild(cell2);
+                }
             }
         }
     }
@@ -105,6 +116,8 @@ class GameReplay {
         cell.dataset.board = boardNum;
         cell.dataset.row = row;
         cell.dataset.col = col;
+        cell.style.setProperty('--grid-row', row + 1);
+        cell.style.setProperty('--grid-column', col + 1);
 
         const letter = document.createElement('div');
         letter.className = 'cell-letter';
@@ -147,7 +160,7 @@ class GameReplay {
         const cell = document.querySelector(
             `.cell[data-board="${boardNum}"][data-row="${row}"][data-col="${col}"]`
         );
-        if (!cell) return;
+        if (!cell) return;  // Skip if cell is a dot position
 
         const existingStone = cell.querySelector('.stone');
         if (existingStone) {
@@ -168,7 +181,7 @@ class GameReplay {
         const cell = document.querySelector(
             `.cell[data-board="${boardNum}"][data-row="${row}"][data-col="${col}"]`
         );
-        if (!cell) return;
+        if (!cell) return;  // Skip if cell is a dot position
 
         cell.classList.remove('cell-highlight-black', 'cell-highlight-white');
 
@@ -204,7 +217,9 @@ class GameReplay {
         const centralStone = this.findMostConnectedCell(cluster);
         if (!centralStone) return;
 
-        const cell = boardElement.children[centralStone.row * this.boardSize + centralStone.col];
+        const cell = boardElement.querySelector(
+            `.cell[data-board="${boardElement.id === 'board1' ? '1' : '2'}"][data-row="${centralStone.row}"][data-col="${centralStone.col}"]`
+        );
         if (!cell) return;
 
         const rect = cell.getBoundingClientRect();
@@ -254,10 +269,14 @@ class GameReplay {
         // Update boards
         for (let i = 0; i < this.boardSize; i++) {
             for (let j = 0; j < this.boardSize; j++) {
-                this.updateCell(1, i, j, state.board1[i][j]);
-                this.updateCell(2, i, j, state.board2[i][j]);
-                this.updateCellHighlights(1, i, j, state.largestClusters);
-                this.updateCellHighlights(2, i, j, state.largestClusters);
+                if (state.board1Layout[i][j] !== '.') {
+                    this.updateCell(1, i, j, state.board1[i][j]);
+                    this.updateCellHighlights(1, i, j, state.largestClusters);
+                }
+                if (state.board2Layout[i][j] !== '.') {
+                    this.updateCell(2, i, j, state.board2[i][j]);
+                    this.updateCellHighlights(2, i, j, state.largestClusters);
+                }
             }
         }
 

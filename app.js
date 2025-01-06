@@ -144,7 +144,7 @@ function populateBoardsBySize(size) {
         4: '',
         5: 'WD1,WD2',
         6: '',
-        7: 'WY1,WY2'  // Center stones for 7x7 boards
+        7: ''
     };
 
     board1Select.value = defaultBoards[size][0];
@@ -191,12 +191,16 @@ function assignRandomUniqueColor(letterElement) {
 }
 
 function createCell(symbol, boardNum, row, col) {
+    if (symbol === '.') return null;
+
     const cell = document.createElement('div');
     cell.className = 'cell';
     cell.dataset.symbol = symbol;
     cell.dataset.board = boardNum;
     cell.dataset.row = row;
     cell.dataset.col = col;
+    cell.style.gridColumn = (col + 1).toString();
+    cell.style.gridRow = (row + 1).toString();
 
     const letter = document.createElement('div');
     letter.className = 'cell-letter';
@@ -206,7 +210,7 @@ function createCell(symbol, boardNum, row, col) {
 
     if (gameSettings.hover) {
         cell.addEventListener('mouseenter', () => highlightCorrespondingCells(symbol));
-        cell.addEventListener('mouseleave', () => removeHighlights());
+        cell.addEventListener('mouseleave', removeHighlights);
     }
 
     cell.addEventListener('click', () => handleCellClick(symbol));
@@ -228,8 +232,12 @@ function calculateClusterPosition(cluster, boardElement) {
     const centralStone = game.findMostConnectedCell(cluster);
     if (!centralStone) return null;
 
-    const boardSize = game.boardSize;
-    const cell = boardElement.children[centralStone.row * boardSize + centralStone.col];
+    const cell = boardElement.querySelector(
+        `.cell[data-row="${centralStone.row}"][data-col="${centralStone.col}"]`
+    );
+
+    if (!cell) return null;  // Return null if cell isn't found (e.g., dot position)
+
     const rect = cell.getBoundingClientRect();
     const boardRect = boardElement.getBoundingClientRect();
 
@@ -243,6 +251,8 @@ function updateCellHighlights(boardNum, row, col, largestClusters) {
     const cell = document.querySelector(
         `.cell[data-board="${boardNum}"][data-row="${row}"][data-col="${col}"]`
     );
+
+    if (!cell) return;  // Skip if cell is a dot position
 
     cell.classList.remove('cell-highlight-black', 'cell-highlight-white');
 
@@ -330,18 +340,29 @@ function initializeBoards() {
     board1Element.className = `board board-${currentSize}`;
     board2Element.className = `board board-${currentSize}`;
 
+    // Keep grid template for full size but only create non-dot cells
+    board1Element.style.gridTemplateRows = `repeat(${currentSize}, 1fr)`;
+    board1Element.style.gridTemplateColumns = `repeat(${currentSize}, 1fr)`;
+    board2Element.style.gridTemplateRows = `repeat(${currentSize}, 1fr)`;
+    board2Element.style.gridTemplateColumns = `repeat(${currentSize}, 1fr)`;
+
     for (let i = 0; i < currentSize; i++) {
         for (let j = 0; j < currentSize; j++) {
             const cell1 = createCell(board1Layout[i][j], 1, i, j);
             const cell2 = createCell(board2Layout[i][j], 2, i, j);
 
-            if (!gameSettings.groups) {
-                cell1.classList.add('groups-hidden');
-                cell2.classList.add('groups-hidden');
+            if (cell1) {
+                if (!gameSettings.groups) {
+                    cell1.classList.add('groups-hidden');
+                }
+                board1Element.appendChild(cell1);
             }
-
-            board1Element.appendChild(cell1);
-            board2Element.appendChild(cell2);
+            if (cell2) {
+                if (!gameSettings.groups) {
+                    cell2.classList.add('groups-hidden');
+                }
+                board2Element.appendChild(cell2);
+            }
         }
     }
 }
@@ -354,7 +375,7 @@ function isHumanTurn() {
 }
 
 function highlightCorrespondingCells(symbol) {
-    if (!gameSettings.hover) return;
+    if (!gameSettings.hover || symbol === '.') return;
     const cells = document.querySelectorAll(`.cell[data-symbol="${symbol}"]`);
     const showHoverStones = isHumanTurn();
 
@@ -383,6 +404,8 @@ function updateCell(boardNum, row, col, player) {
     const cell = document.querySelector(
         `.cell[data-board="${boardNum}"][data-row="${row}"][data-col="${col}"]`
     );
+
+    if (!cell) return;  // Skip if cell is a dot position
 
     const existingStone = cell.querySelector('.stone');
     if (existingStone) {
@@ -479,7 +502,7 @@ function showWinner(winner) {
 }
 
 function handleCellClick(symbol) {
-    if (!game || game.isGameOver()) return;
+    if (!game || game.isGameOver() || symbol === '.') return;
 
     const currentPlayer = game.getCurrentPlayer();
     const playerType = document.getElementById(`${currentPlayer.toLowerCase()}-player`).value;

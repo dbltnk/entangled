@@ -25,8 +25,8 @@ class EntangledGame {
         this.board2Layout = board2Layout;
         this.boardSize = board1Layout.length;
 
-        // Calculate stones per player based on board size
-        this.stonesPerPlayer = Math.floor((this.boardSize * this.boardSize) / 2);
+        // Calculate stones per player excluding dot positions
+        this.stonesPerPlayer = this.calculatePlayablePositions() / 2;
         this.turnsPerPlayer = Math.floor(this.stonesPerPlayer / 2);
 
         // Create the game state
@@ -55,11 +55,24 @@ class EntangledGame {
         this._lastMove = null;
     }
 
+    calculatePlayablePositions() {
+        let count = 0;
+        for (let i = 0; i < this.boardSize; i++) {
+            for (let j = 0; j < this.boardSize; j++) {
+                if (this.board1Layout[i][j] !== '.' && this.board2Layout[i][j] !== '.') {
+                    count++;
+                }
+            }
+        }
+        return count;
+    }
+
     findMostConnectedCell(cluster) {
         if (!cluster || cluster.length === 0) return null;
         let bestCell = null;
-        let maxConnections = -1;
+        let maxScore = -1;
 
+        // First, find the cell with the most connections to other cells in cluster
         for (const cell of cluster) {
             let connections = 0;
             for (const [dRow, dCol] of DIRECTIONS) {
@@ -69,8 +82,22 @@ class EntangledGame {
                     connections++;
                 }
             }
-            if (connections > maxConnections) {
-                maxConnections = connections;
+
+            // Prefer cells not on the edges of the board or near dots
+            const positionPenalty =
+                (cell.row === 0 || cell.row === this.boardSize - 1 ||
+                    cell.col === 0 || cell.col === this.boardSize - 1) ? 0.5 : 0;
+
+            // Calculate score giving preference to center-most cells with most connections
+            const centerScore = this.boardSize - (
+                Math.abs(cell.row - Math.floor(this.boardSize / 2)) +
+                Math.abs(cell.col - Math.floor(this.boardSize / 2))
+            );
+
+            const score = connections + centerScore - positionPenalty;
+
+            if (score > maxScore) {
+                maxScore = score;
                 bestCell = cell;
             }
         }
@@ -106,8 +133,10 @@ class EntangledGame {
             if (!positions || !positions[`board${board}`]) continue;
 
             const { row, col } = positions[`board${board}`];
+            const layout = board === 1 ? this.board1Layout : this.board2Layout;
 
-            if (boardState[row][col] !== null) continue;
+            // Skip if position is a dot or already occupied
+            if (layout[row][col] === '.' || boardState[row][col] !== null) continue;
 
             boardState[row][col] = player;
         }
@@ -118,10 +147,12 @@ class EntangledGame {
         for (let row = 0; row < this.boardSize; row++) {
             for (let col = 0; col < this.boardSize; col++) {
                 const symbol = this.board1Layout[row][col];
-                this.symbolToPosition.set(symbol, {
-                    board1: { row, col },
-                    board2: this.findSymbolPosition(symbol, this.board2Layout)
-                });
+                if (symbol !== '.') {
+                    this.symbolToPosition.set(symbol, {
+                        board1: { row, col },
+                        board2: this.findSymbolPosition(symbol, this.board2Layout)
+                    });
+                }
             }
         }
 
@@ -129,7 +160,7 @@ class EntangledGame {
         for (let row = 0; row < this.boardSize; row++) {
             for (let col = 0; col < this.boardSize; col++) {
                 const symbol = this.board2Layout[row][col];
-                if (!this.symbolToPosition.has(symbol)) {
+                if (symbol !== '.' && !this.symbolToPosition.has(symbol)) {
                     this.symbolToPosition.set(symbol, {
                         board1: null,
                         board2: { row, col }
@@ -152,14 +183,17 @@ class EntangledGame {
 
     isValidMove(symbol) {
         if (!this.symbolToPosition.has(symbol)) return false;
+        if (symbol === '.') return false;
 
         const { board1, board2 } = this.symbolToPosition.get(symbol);
         if (board1) {
-            if (this.board1[board1.row][board1.col] !== null) return false;
+            if (this.board1Layout[board1.row][board1.col] === '.' ||
+                this.board1[board1.row][board1.col] !== null) return false;
         }
 
         if (board2) {
-            if (this.board2[board2.row][board2.col] !== null) return false;
+            if (this.board2Layout[board2.row][board2.col] === '.' ||
+                this.board2[board2.row][board2.col] !== null) return false;
         }
 
         return true;
@@ -177,11 +211,11 @@ class EntangledGame {
         const { board1, board2 } = this.symbolToPosition.get(symbol);
 
         // Place stones on both boards, if possible
-        if (board1 !== null) {
+        if (board1 !== null && this.board1Layout[board1.row][board1.col] !== '.') {
             this.board1[board1.row][board1.col] = this.currentPlayer;
         }
 
-        if (board2 !== null) {
+        if (board2 !== null && this.board2Layout[board2.row][board2.col] !== '.') {
             this.board2[board2.row][board2.col] = this.currentPlayer;
         }
 
@@ -190,10 +224,12 @@ class EntangledGame {
         // Update game state
         this.playerTurns[this.currentPlayer]++;
 
+        // Check if all non-dot positions are filled
         let isBoardFull = true;
         for (let i = 0; i < this.boardSize; i++) {
             for (let j = 0; j < this.boardSize; j++) {
-                if (this.board1[i][j] === null || this.board2[i][j] === null) {
+                if ((this.board1Layout[i][j] !== '.' && this.board1[i][j] === null) ||
+                    (this.board2Layout[i][j] !== '.' && this.board2[i][j] === null)) {
                     isBoardFull = false;
                     break;
                 }
@@ -238,8 +274,13 @@ class EntangledGame {
     }
 
     exploreCluster(board, row, col, player, visited) {
-        if (row < 0 || row >= this.boardSize || col < 0 || col >= this.boardSize ||
-            visited[row][col] || board[row][col] !== player) {
+        const layout = board === this.board1 ? this.board1Layout : this.board2Layout;
+
+        if (row < 0 || row >= this.boardSize ||
+            col < 0 || col >= this.boardSize ||
+            visited[row][col] ||
+            board[row][col] !== player ||
+            layout[row][col] === '.') {
             return 0;
         }
 
@@ -279,8 +320,13 @@ class EntangledGame {
     }
 
     exploreClusterCells(board, row, col, player, visited) {
-        if (row < 0 || row >= this.boardSize || col < 0 || col >= this.boardSize ||
-            visited[row][col] || board[row][col] !== player) {
+        const layout = board === this.board1 ? this.board1Layout : this.board2Layout;
+
+        if (row < 0 || row >= this.boardSize ||
+            col < 0 || col >= this.boardSize ||
+            visited[row][col] ||
+            board[row][col] !== player ||
+            layout[row][col] === '.') {
             return [];
         }
 

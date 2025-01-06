@@ -778,11 +778,11 @@ class ResultsViewer {
                         matchInfo: {
                             black: AI_PLAYERS[result.black].name,
                             white: AI_PLAYERS[result.white].name,
-                            board1Name: BOARD_LAYOUTS[this.currentTournament.metadata.boards.board1].name,
-                            board2Name: BOARD_LAYOUTS[this.currentTournament.metadata.boards.board2].name,
+                            board1Layout: BOARD_LAYOUTS[this.currentTournament.metadata.boards.board1]?.grid || [],
+                            board2Layout: BOARD_LAYOUTS[this.currentTournament.metadata.boards.board2]?.grid || [],
                             startingConfig: this.currentTournament.metadata.startingConfig
                         },
-                        boardSize: BOARD_LAYOUTS[this.currentTournament.metadata.boards.board1].grid.length
+                        boardSize: BOARD_LAYOUTS[this.currentTournament.metadata.boards.board1]?.grid.length || 0
                     };
 
                     const replayWindow = window.open('replay.html', '_blank');

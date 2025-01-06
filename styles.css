@@ -185,6 +185,8 @@ body.rules-hidden .game-container {
     position: relative;
     cursor: pointer;
     transition: background-color var(--transition-default);
+    grid-row: var(--grid-row);
+    grid-column: var(--grid-column);
 }
 
 .cell:hover {
@@ -482,4 +484,9 @@ button:disabled {
 
 .cell.groups-hidden:hover {
     background-color: var(--color-hover);
+}
+
+/* Board background for dot positions */
+.board {
+    background-color: var(--color-background);
 }
