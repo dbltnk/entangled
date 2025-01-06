@@ -10,13 +10,68 @@ let gameSettings = {
     groups: true,
     size: true,
     score: true,
-    currentPlayer: true
+    currentPlayer: true,
+    icons: true,
+    symbols: true
 };
 
 let game = null;
 let currentRandomBoards = {
     board1: null,
     board2: null
+};
+
+// Icon mappings for all possible symbols
+const ICON_MAPPINGS = {
+    'A': 'fa-atom',
+    'B': 'fa-bacteria',
+    'C': 'fa-flask-vial',
+    'D': 'fa-dna',
+    'E': 'fa-microscope',
+    'F': 'fa-flask',
+    'G': 'fa-gear',
+    'H': 'fa-brain',
+    'I': 'fa-infinity',
+    'J': 'fa-magnet',
+    'K': 'fa-virus',
+    'L': 'fa-laptop-code',
+    'M': 'fa-mortar-pestle',
+    'N': 'fa-network-wired',
+    'O': 'fa-satellite',
+    'P': 'fa-pills',
+    'Q': 'fa-radiation',
+    'R': 'fa-robot',
+    'S': 'fa-square-root-variable',
+    'T': 'fa-temperature-high',
+    'U': 'fa-user-astronaut',
+    'V': 'fa-vial',
+    'W': 'fa-wave-square',
+    'X': 'fa-circle-nodes',
+    'Y': 'fa-qrcode',
+    'Z': 'fa-filter',
+    '0': 'fa-meteor',
+    '1': 'fa-rocket',
+    '2': 'fa-satellite-dish',
+    '3': 'fa-server',
+    '4': 'fa-shield-virus',
+    '5': 'fa-star-of-life',
+    '6': 'fa-sun',
+    '7': 'fa-satellite-dish',
+    '8': 'fa-tornado',
+    '9': 'fa-wind',
+    '@': 'fa-microchip',
+    '#': 'fa-cube',
+    '$': 'fa-tachograph-digital',
+    '%': 'fa-disease',
+    '&': 'fa-bacterium',
+    '*': 'fa-burst',
+    '+': 'fa-compress',
+    '-': 'fa-staff-snake',
+    '=': 'fa-code-branch',
+    '/': 'fa-tower-broadcast',
+    '?': 'fa-biohazard',
+    '!': 'fa-explosion',
+    '~': 'fa-hurricane'
 };
 
 function loadSettings() {
@@ -42,14 +97,24 @@ function applySettings() {
     // Apply hover setting
     const cells = document.querySelectorAll('.cell');
     cells.forEach(cell => {
-        // Remove existing listeners first to avoid duplicates
         cell.removeEventListener('mouseenter', () => highlightCorrespondingCells(cell.dataset.symbol));
         cell.removeEventListener('mouseleave', removeHighlights);
 
-        // Add listeners if hover is enabled
         if (gameSettings.hover) {
             cell.addEventListener('mouseenter', () => highlightCorrespondingCells(cell.dataset.symbol));
             cell.addEventListener('mouseleave', removeHighlights);
+        }
+    });
+
+    // Apply icon and symbol settings
+    cells.forEach(cell => {
+        cell.classList.toggle('symbols-hidden', !gameSettings.symbols);
+        cell.classList.toggle('icons-hidden', !gameSettings.icons);
+
+        // When symbols are hidden but icons are enabled, use darker icons
+        if (!gameSettings.symbols && gameSettings.icons) {
+            const icon = cell.querySelector('.cell-icon');
+            if (icon) icon.style.opacity = '0.8';
         }
     });
 
@@ -123,7 +188,6 @@ function populateBoardsBySize(size) {
     board1Select.innerHTML = '';
     board2Select.innerHTML = '';
 
-    // Filter layouts by size and add options
     Object.entries(BOARD_LAYOUTS).forEach(([id, layout]) => {
         if (layout.grid.length === size) {
             const option = new Option(layout.name, id);
@@ -132,7 +196,6 @@ function populateBoardsBySize(size) {
         }
     });
 
-    // Set default selections for the current size
     const defaultBoards = {
         4: ['board4x4', 'random4x4'],
         5: ['board1', 'board7'],
@@ -167,27 +230,37 @@ function getSelectedBoardLayout(boardSelect) {
 
 const uniqueColors = {};
 
-function generateColorForLetter(index, total) {
-    const hue = (index / total) * 360;
+function generateColorForLetter(letter) {
+    const currentSize = parseInt(document.getElementById('board-size').value);
+    let totalSymbols;
+
+    // Determine how many symbols we need for this board size
+    switch (currentSize) {
+        case 4: totalSymbols = 16; break;  // A-P
+        case 5: totalSymbols = 25; break;  // A-Y
+        case 6: totalSymbols = 36; break;  // A-Z + 0-9
+        case 7: totalSymbols = 49; break;  // A-Z + 0-9 + special chars
+        default: totalSymbols = 25;
+    }
+
+    // Get position of letter in sequence for current board size
+    const sequence = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&*+-=/?!~";
+    const index = sequence.indexOf(letter);
+
+    // Always use full 360 degrees but space based on needed symbols
+    const hue = (index / totalSymbols) * 360;
     const saturation = 70;
     const lightness = 50;
+
     return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
 }
 
-function assignRandomUniqueColor(letterElement) {
-    const letter = letterElement.textContent.toUpperCase();
-    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&*+-=/?!~';
-
-    if (!uniqueColors[letter]) {
-        const index = alphabet.indexOf(letter);
-        if (index !== -1) {
-            uniqueColors[letter] = generateColorForLetter(index, alphabet.length);
-        } else {
-            uniqueColors[letter] = '#000000';
-        }
-    }
-
-    letterElement.style.color = uniqueColors[letter];
+function getBackgroundColor(letter) {
+    const color = generateColorForLetter(letter);
+    return {
+        background: color.replace('50%', '95%'),
+        icon: color.replace('50%', '35%')
+    };
 }
 
 function createCell(symbol, boardNum, row, col) {
@@ -202,10 +275,19 @@ function createCell(symbol, boardNum, row, col) {
     cell.style.gridColumn = (col + 1).toString();
     cell.style.gridRow = (row + 1).toString();
 
+    const colors = getBackgroundColor(symbol);
+    cell.style.backgroundColor = colors.background;
+
+    // Add icon
+    const icon = document.createElement('i');
+    icon.className = `cell-icon fa-solid ${ICON_MAPPINGS[symbol] || 'fa-circle'}`;
+    icon.style.color = colors.icon;
+    cell.appendChild(icon);
+
+    // Add letter
     const letter = document.createElement('div');
     letter.className = 'cell-letter';
     letter.textContent = symbol;
-    assignRandomUniqueColor(letter);
     cell.appendChild(letter);
 
     if (gameSettings.hover) {
@@ -214,6 +296,11 @@ function createCell(symbol, boardNum, row, col) {
     }
 
     cell.addEventListener('click', () => handleCellClick(symbol));
+
+    // Apply current settings
+    if (!gameSettings.symbols) cell.classList.add('symbols-hidden');
+    if (!gameSettings.icons) cell.classList.add('icons-hidden');
+    if (!gameSettings.groups) cell.classList.add('groups-hidden');
 
     return cell;
 }
@@ -236,7 +323,7 @@ function calculateClusterPosition(cluster, boardElement) {
         `.cell[data-row="${centralStone.row}"][data-col="${centralStone.col}"]`
     );
 
-    if (!cell) return null;  // Return null if cell isn't found (e.g., dot position)
+    if (!cell) return null;
 
     const rect = cell.getBoundingClientRect();
     const boardRect = boardElement.getBoundingClientRect();
@@ -252,7 +339,7 @@ function updateCellHighlights(boardNum, row, col, largestClusters) {
         `.cell[data-board="${boardNum}"][data-row="${row}"][data-col="${col}"]`
     );
 
-    if (!cell) return;  // Skip if cell is a dot position
+    if (!cell) return;
 
     cell.classList.remove('cell-highlight-black', 'cell-highlight-white');
 
@@ -340,7 +427,6 @@ function initializeBoards() {
     board1Element.className = `board board-${currentSize}`;
     board2Element.className = `board board-${currentSize}`;
 
-    // Keep grid template for full size but only create non-dot cells
     board1Element.style.gridTemplateRows = `repeat(${currentSize}, 1fr)`;
     board1Element.style.gridTemplateColumns = `repeat(${currentSize}, 1fr)`;
     board2Element.style.gridTemplateRows = `repeat(${currentSize}, 1fr)`;
@@ -351,18 +437,8 @@ function initializeBoards() {
             const cell1 = createCell(board1Layout[i][j], 1, i, j);
             const cell2 = createCell(board2Layout[i][j], 2, i, j);
 
-            if (cell1) {
-                if (!gameSettings.groups) {
-                    cell1.classList.add('groups-hidden');
-                }
-                board1Element.appendChild(cell1);
-            }
-            if (cell2) {
-                if (!gameSettings.groups) {
-                    cell2.classList.add('groups-hidden');
-                }
-                board2Element.appendChild(cell2);
-            }
+            if (cell1) board1Element.appendChild(cell1);
+            if (cell2) board2Element.appendChild(cell2);
         }
     }
 }
@@ -405,7 +481,7 @@ function updateCell(boardNum, row, col, player) {
         `.cell[data-board="${boardNum}"][data-row="${row}"][data-col="${col}"]`
     );
 
-    if (!cell) return;  // Skip if cell is a dot position
+    if (!cell) return;
 
     const existingStone = cell.querySelector('.stone');
     if (existingStone) {
@@ -457,11 +533,9 @@ function updateDisplay() {
             `Current player: ${state.currentPlayer === PLAYERS.BLACK ? '⚫ Black' : '⚪ White'}`;
     }
 
-    // Update hover state classes for empty cells
     const cells = document.querySelectorAll('.cell');
     cells.forEach(cell => {
         cell.classList.remove('black-turn', 'white-turn');
-        // Only add turn classes if it's a human player's turn
         if (!cell.classList.contains('has-stone') && isHumanTurn()) {
             if (state.currentPlayer === PLAYERS.BLACK) {
                 cell.classList.add('black-turn');
@@ -529,19 +603,18 @@ function makeAIMove() {
 
     if (playerType !== 'human') {
         setTimeout(() => {
-            // Check again in case game was stopped during timeout
             if (!game) return;
 
             const ai = createPlayer(playerType, game, currentPlayer);
             if (ai) {
                 const move = ai.chooseMove();
-                if (move && game) {  // Check game still exists
+                if (move && game) {
                     game.makeMove(move);
                     updateDisplay();
 
                     if (game && game.isGameOver()) {
                         showWinner(game.getWinner());
-                    } else if (game) {  // Check game still exists
+                    } else if (game) {
                         makeAIMove();
                     }
                 }
@@ -581,10 +654,8 @@ function initializeGame() {
 }
 
 function init() {
-    // Settings initialization
     loadSettings();
 
-    // Settings event listeners
     document.getElementById('toggle-settings').addEventListener('click', () => {
         const content = document.querySelector('.settings-content');
         const icon = document.querySelector('.toggle-icon');
@@ -592,8 +663,7 @@ function init() {
         icon.classList.toggle('rotated');
     });
 
-    // Settings checkboxes
-    ['hover', 'groups', 'size', 'score', 'currentPlayer'].forEach(setting => {
+    ['hover', 'groups', 'size', 'score', 'currentPlayer', 'icons', 'symbols'].forEach(setting => {
         const checkbox = document.getElementById(`setting-${setting}`);
         checkbox.addEventListener('change', (e) => {
             gameSettings[setting] = e.target.checked;
@@ -607,7 +677,6 @@ function init() {
 
     populatePlayerDropdowns();
 
-    // Set up board size change handler
     const boardSizeSelect = document.getElementById('board-size');
     boardSizeSelect.addEventListener('change', (e) => {
         stopGame();
@@ -617,16 +686,13 @@ function init() {
         initializeBoards();
     });
 
-    // Initial population of board dropdowns with default size (5)
     populateBoardsBySize(5);
 
-    // Start game button starts a new game with current settings
     document.getElementById('start-game').addEventListener('click', () => {
         stopGame();
         initializeGame();
     });
 
-    // Add change handlers for all settings
     const settingsElements = [
         'board1-select',
         'board2-select',

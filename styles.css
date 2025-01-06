@@ -10,7 +10,7 @@
     --color-highlight: #aaa;
     --color-cell-black: #404040;
     --color-cell-white: #e0e0e0;
-    --color-letter: #777;
+    --color-letter: #404040;
 
     /* Spacing variables */
     --spacing-xs: 0.25rem;
@@ -176,6 +176,23 @@ body.rules-hidden .game-container {
     font-size: 1.1rem;
 }
 
+/* Board icon sizes */
+.board.board-4 .cell-icon {
+    font-size: 2rem;
+}
+
+.board.board-5 .cell-icon {
+    font-size: 1.8rem;
+}
+
+.board.board-6 .cell-icon {
+    font-size: 1.6rem;
+}
+
+.board.board-7 .cell-icon {
+    font-size: 1.4rem;
+}
+
 /* Cell styles */
 .cell {
     background: var(--color-white);
@@ -205,12 +222,43 @@ body.rules-hidden .game-container {
     background-color: var(--color-cell-white);
 }
 
+/* Icon styles */
+.cell-icon {
+    position: absolute;
+    z-index: 1;
+    opacity: 0.6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: inherit;
+    /* make sure these are centered */
+    top: 20%;
+    left: 18%;
+}
+
+.cell.has-stone .cell-icon {
+    opacity: 0.3;
+}
+
+.cell.symbols-hidden .cell-letter {
+    display: none;
+}
+
+.cell.icons-hidden .cell-icon {
+    display: none;
+}
+
 .cell-letter {
     position: absolute;
-    z-index: 9999;
+    z-index: 3;
     color: var(--color-letter);
     transition: color var(--transition-default);
     font-weight: 900;
+    text-shadow:
+        -1px -1px 0 white,
+        1px -1px 0 white,
+        -1px 1px 0 white,
+        1px 1px 0 white;
 }
 
 .cell.has-stone .cell-letter {
@@ -223,7 +271,7 @@ body.rules-hidden .game-container {
     width: 80%;
     height: 80%;
     border-radius: 50%;
-    z-index: 2;
+    z-index: 4;
 }
 
 .stone.black {
