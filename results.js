@@ -61,20 +61,55 @@ class ResultsViewer {
         }
     }
 
-    populateFilterDropdowns() {
+    populateFilterDropdowns(additionalBoards = new Set()) {
         const board1Filter = document.getElementById('filter-board1');
         const board2Filter = document.getElementById('filter-board2');
 
+        // Clear existing options except the "No filter" option
+        while (board1Filter.options.length > 1) board1Filter.remove(1);
+        while (board2Filter.options.length > 1) board2Filter.remove(1);
+
+        // Combine boards from BOARD_LAYOUTS and tournament files
+        const allBoards = new Map();
+
+        // Add boards from BOARD_LAYOUTS
         Object.entries(BOARD_LAYOUTS).forEach(([id, layout]) => {
-            const option = new Option(layout.name, id);
-            board1Filter.add(option.cloneNode(true));
-            board2Filter.add(option.cloneNode(true));
+            allBoards.set(id, layout.name);
         });
 
-        // Add filter change handlers
-        board1Filter.addEventListener('change', () => this.applyFilters());
-        board2Filter.addEventListener('change', () => this.applyFilters());
-        document.getElementById('filter-starting').addEventListener('input', () => this.applyFilters());
+        // Add additional boards found in tournaments
+        additionalBoards.forEach(id => {
+            if (!allBoards.has(id)) {
+                allBoards.set(id, `Board ${id}`);
+            }
+        });
+
+        // Sort boards by ID and add to dropdowns
+        Array.from(allBoards.entries())
+            .sort((a, b) => a[0].localeCompare(b[0]))
+            .forEach(([id, name]) => {
+                const option = new Option(name, id);
+                board1Filter.add(option.cloneNode(true));
+                board2Filter.add(option.cloneNode(true));
+            });
+
+        // Add filter change handlers if they haven't been added before
+        if (!this.filtersInitialized) {
+            board1Filter.addEventListener('change', () => this.applyFilters());
+            board2Filter.addEventListener('change', () => this.applyFilters());
+            document.getElementById('filter-starting').addEventListener('input', () => this.applyFilters());
+            this.filtersInitialized = true;
+        }
+    }
+
+    // Then just before loading tournaments (in loadTournamentList and loadFromWeb), add:
+    collectBoardsFromTournament(tournamentData) {
+        const boards = new Set();
+        if (tournamentData.metadata?.boards) {
+            if (tournamentData.metadata.boards.board1) boards.add(tournamentData.metadata.boards.board1);
+            if (tournamentData.metadata.boards.board2) boards.add(tournamentData.metadata.boards.board2);
+        }
+        return boards;
     }
 
     applyFilters() {
@@ -172,6 +207,7 @@ class ResultsViewer {
             let loadedCount = 0;
             let errorCount = 0;
             const errors = new Set();
+            const allBoards = new Set();
 
             for (const filename of tournamentFiles) {
                 try {
@@ -182,8 +218,11 @@ class ResultsViewer {
                     }
                     const data = await response.json();
 
+                    const boardsInTournament = this.collectBoardsFromTournament(data);
+                    boardsInTournament.forEach(board => allBoards.add(board));
+
                     const playerNames = data.metadata.selectedAIs
-                        .map(id => AI_PLAYERS[id].name)
+                        .map(id => AI_PLAYERS[id]?.name || 'Unknown AI')
                         .join(', ');
 
                     const item = document.createElement('div');
@@ -199,6 +238,8 @@ class ResultsViewer {
                     errorCount++;
                 }
             }
+
+            this.populateFilterDropdowns(allBoards);
 
             // Show summary of load results
             if (errorCount > 0) {
@@ -347,6 +388,7 @@ class ResultsViewer {
         let loadedCount = 0;
         let errorCount = 0;
         const errors = new Set();
+        const allBoards = new Set();
 
         try {
             for await (const entry of this.dirHandle.values()) {
@@ -361,6 +403,9 @@ class ResultsViewer {
                         if (!data.metadata || !data.metadata.selectedAIs || !data.metadata.boards) {
                             throw new Error('Invalid tournament file structure');
                         }
+
+                        const boardsInTournament = this.collectBoardsFromTournament(data);
+                        boardsInTournament.forEach(board => allBoards.add(board));
 
                         const playerNames = data.metadata.selectedAIs
                             .map(id => AI_PLAYERS[id]?.name || 'Unknown AI')
@@ -381,6 +426,8 @@ class ResultsViewer {
                     }
                 }
             }
+
+            this.populateFilterDropdowns(allBoards);
 
             // Show summary of load results
             if (errorCount > 0) {
