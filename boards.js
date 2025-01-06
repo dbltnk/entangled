@@ -281,6 +281,28 @@ const BOARD_LAYOUTS = {
             ['5', '6', '7', '8', '9', '0']
         ]
     },
+    board6x5: {
+        name: "Top left to bottom right (6x5)",
+        grid: [
+            ['A', 'B', 'C', 'D', 'E', 'F'],
+            ['G', 'H', 'I', 'J', 'K', 'L'],
+            ['M', 'N', 'O', 'P', 'Q', 'R'],
+            ['S', 'T', 'U', 'V', 'W', 'X'],
+            ['Y', 'Z', '1', '2', '3', '4'],
+            ['.', '.', '.', '.', '.', '.']
+        ]
+    },
+    board6x4: {
+        name: "Top left to bottom right (6x4)",
+        grid: [
+            ['.', '.', '.', '.', '.', '.'],
+            ['A', 'B', 'C', 'D', 'E', 'F'],
+            ['G', 'H', 'I', 'J', 'K', 'L'],
+            ['M', 'N', 'O', 'P', 'Q', 'R'],
+            ['S', 'T', 'U', 'V', 'W', 'X'],
+            ['.', '.', '.', '.', '.', '.']
+        ]
+    },
     board22: {
         name: "6x6 board 1",
         grid: [
@@ -347,16 +369,16 @@ const BOARD_LAYOUTS = {
             return this.board.grid;
         }
     },
-    random5x5: {
-        name: "Random Board (5x5)",
-        get grid() {
-            return createRandomGrid(5);
-        }
-    },
     random4x4: {
         name: "Random Board (4x4)",
         get grid() {
             return createRandomGrid(4);
+        }
+    },
+    random5x5: {
+        name: "Random Board (5x5)",
+        get grid() {
+            return createRandomGrid(5);
         }
     },
     random6x6: {
