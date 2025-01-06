@@ -4,9 +4,23 @@
 <head>
     <meta charset="utf-8">
     <title>Evolutionary Search With Valid Boards & Custom Output</title>
+    <style>
+        #status,
+        #results {
+            font-family: monospace;
+        }
+    </style>
 </head>
 
 <body style="font-family: sans-serif; margin: 1rem;">
+    <label for="boardTypeSelect">Board Type:</label>
+    <select id="boardTypeSelect">
+        <option value="5x5">5x5</option>
+        <option value="7x7Donut">Donut (7x7)</option>
+    </select>
+    <label style="margin-left:1rem;" for="pinnedCheckbox">
+        <input type="checkbox" id="pinnedCheckbox" checked> Pin first board
+    </label>
     <button id="startBtn">Start</button>
     <button id="stopBtn" disabled>Stop</button>
     <div style="margin-top: 1rem;">
@@ -14,13 +28,13 @@
         <pre id="results"></pre>
     </div>
     <script>
-        const symbols = "ABCDEFGHIJKLMNOPQRSTUVWXY";
         const WORKER_COUNT = 16;
         let populationSize = 100;
         let running = false;
         let globalBestScore = -Infinity;
         let globalBestB1 = null;
         let globalBestB2 = null;
+        let globalBestStats = null;
         let totalBoardsEvaluated = 0;
         let workers = [];
         let startTime = 0;
@@ -39,206 +53,353 @@
             return (4294967296 * (2097151 & h2) + (h1 >>> 0)) >>> 0;
         }
 
-        const workerScript = `
-const symbols = "ABCDEFGHIJKLMNOPQRSTUVWXY";
-const tileScoreCache = new Float64Array(25);
-for (let i = 0; i < 25; i++) {
-    let r = Math.floor(i / 5);
-    let c = i % 5;
-    let s = 0;
-    for (let rr = 0; rr < 5; rr++) {
-        for (let cc = 0; cc < 5; cc++) {
-            if (rr === r && cc === c) continue;
-            let dist = Math.abs(rr - r) + Math.abs(cc - c);
-            s += 1 / dist;
-        }
-    }
-    tileScoreCache[i] = s;
-}
+        const unifiedWorkerScript = `
+const donutIndices = [
+    [2,3,4],
+    [1,2,3,4,5],
+    [0,1,2,3,4,5,6],
+    [0,1,2,4,5,6],
+    [0,1,2,3,4,5,6],
+    [1,2,3,4,5],
+    [2,3,4]
+];
 
-function isValidBoard(board) {
-    if (!board || board.length !== 25) return false;
-    let used = new Uint8Array(25);
-    for (let i = 0; i < 25; i++) {
-        let idx = board[i].charCodeAt(0) - 65;
-        if (idx < 0 || idx >= 25) return false;
-        if (used[idx]) return false;
-        used[idx] = 1;
-    }
-    return true;
-}
-
-function evaluateBoards(board1, board2) {
-    if (!isValidBoard(board1) || !isValidBoard(board2)) return -Infinity;
-    let pos2 = new Uint8Array(25);
-    for (let i = 0; i < 25; i++) {
-        pos2[board2[i].charCodeAt(0) - 65] = i;
-    }
-    let best = -Infinity, worst = Infinity, sum = 0;
-    let scArray = new Float64Array(25);
-    for (let i = 0; i < 25; i++) {
-        let sc = tileScoreCache[i] + tileScoreCache[pos2[board1[i].charCodeAt(0) - 65]];
-        scArray[i] = sc;
-        sum += sc;
-        if (sc > best) best = sc;
-        if (sc < worst) worst = sc;
-    }
-    let mean = sum / 25;
-    let variance = 0;
-    for (let i = 0; i < 25; i++) {
-        let d = scArray[i] - mean;
-        variance += d * d;
-    }
-    variance /= 25;
-    let std = Math.sqrt(variance);
-    let eps = 1e-10;
-    let bestCount = 0;
-    for (let i = 0; i < 25; i++) {
-        if (Math.abs(scArray[i] - best) < eps) bestCount++;
-    }
-    let ratio = worst / best;
-    return bestCount - std - ratio;
-}
-
-function randomBoard() {
-    const arr = symbols.split("");
-    for (let i = arr.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [arr[i], arr[j]] = [arr[j], arr[i]];
-    }
-    return arr;
-}
-
-function mutate(board) {
-    if (!isValidBoard(board)) return randomBoard();
-    const copy = board.slice();
-    const swaps = 2;
-    for (let i = 0; i < swaps; i++) {
-        const idx1 = Math.floor(Math.random() * 25);
-        const idx2 = Math.floor(Math.random() * 25);
-        [copy[idx1], copy[idx2]] = [copy[idx2], copy[idx1]];
-    }
-    return isValidBoard(copy) ? copy : randomBoard();
-}
-
-function crossover(b1, b2) {
-    if (!isValidBoard(b1) || !isValidBoard(b2)) return randomBoard();
-    const child = new Array(25).fill(null);
-    const half = 12;
-    for (let i = 0; i < half; i++) {
-        child[i] = b1[i];
-    }
-    let fillIndex = half;
-    for (let i = 0; i < 25; i++) {
-        const sym = b2[i];
-        if (!child.includes(sym)) {
-            child[fillIndex++] = sym;
-            if (fillIndex >= 25) break;
-        }
-    }
-    if (child.includes(null)) {
-        const missing = symbols.split("").filter(letter => !child.includes(letter));
-        let idx = 0;
-        for (let i = 0; i < 25; i++) {
-            if (child[i] === null) child[i] = missing[idx++];
-        }
-    }
-    return isValidBoard(child) ? child : randomBoard();
-}
-
-function pick(pop) {
-    if (!pop || pop.length === 0) return randomBoard();
-    let totalScore = 0;
-    for (const item of pop) {
-        totalScore += (item.score + 50);
-    }
-    const rnd = Math.random() * totalScore;
-    let run = 0;
-    for (const item of pop) {
-        run += (item.score + 50);
-        if (run >= rnd) return item.board;
-    }
-    return pop[pop.length - 1].board;
-}
-
+let mode = "";
+let pinned = false;
+let popSize = 0;
+let generationChunks = 50;
 let population = [];
 let evolving = false;
 let boardsEvaluated = 0;
 let bestScore = -Infinity;
 let bestB1 = null;
 let bestB2 = null;
-let popSize = 0;
-let generationChunks = 50;
+let bestStats = null;
+let cache5x5 = null;
 
-onmessage = function(e) {
-    const data = e.data;
-    if (data.msg === 'start') {
-        popSize = data.popSize;
-        generationChunks = data.generationChunks;
-        population = [];
-        for (let i = 0; i < popSize; i++) {
-            const b1 = randomBoard();
-            const b2 = randomBoard();
-            const sc = evaluateBoards(b1, b2);
-            population.push({ board1: b1, board2: b2, score: sc });
-        }
-        bestScore = -Infinity;
-        bestB1 = null;
-        bestB2 = null;
-        for (const p of population) {
-            if (p.score > bestScore) {
-                bestScore = p.score;
-                bestB1 = p.board1;
-                bestB2 = p.board2;
+const pinnedBoard5x5 = "ABCDEFGHIJKLMNOPQRSTUVWXY".split("");
+const pinnedDonutLeft = [
+'.','.','A','B','C','.','.',
+'.','D','E','F','G','H','.',
+'I','J','K','L','M','N','O',
+'P','Q','R','.','S','T','U',
+'V','W','X','Y','Z','1','2',
+'.','3','4','5','6','7','.',
+'.','.','8','9','0','.','.'
+];
+
+function build5x5Cache() {
+    cache5x5 = new Float64Array(25);
+    for (let i = 0; i < 25; i++) {
+        let r = Math.floor(i / 5);
+        let c = i % 5;
+        let s = 0;
+        for (let rr = 0; rr < 5; rr++) {
+            for (let cc = 0; cc < 5; cc++) {
+                if (rr === r && cc === c) continue;
+                let dist = Math.abs(rr - r) + Math.abs(cc - c);
+                s += 1 / dist;
             }
         }
-        boardsEvaluated = popSize;
-        evolving = true;
+        cache5x5[i] = s;
+    }
+}
+
+function randomBoard(isLeft) {
+    if (pinned && isLeft) {
+        if (mode === '5x5') return pinnedBoard5x5.slice();
+        return pinnedDonutLeft.slice();
+    }
+    if (mode === '5x5') {
+        const arr = "ABCDEFGHIJKLMNOPQRSTUVWXY".split("");
+        for (let i = arr.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        return arr;
+    } else {
+        const validPositions = [];
+        for (let r=0; r<7; r++){
+            for (let c=0; c<7; c++){
+                if (donutIndices[r].includes(c)) validPositions.push(r*7 + c);
+            }
+        }
+        const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".split("");
+        for (let i = chars.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [chars[i], chars[j]] = [chars[j], chars[i]];
+        }
+        const chosen = chars.slice(0, validPositions.length);
+        const boardArr = new Array(49).fill(".");
+        for (let i=0; i<validPositions.length; i++){
+            boardArr[validPositions[i]] = chosen[i];
+        }
+        return boardArr;
+    }
+}
+
+function isValidBoard(b) {
+    if (mode === '5x5') {
+        if (!b || b.length !== 25) return false;
+        const used = new Uint8Array(25);
+        for (let i=0; i<25; i++) {
+            let idx = b[i].charCodeAt(0) - 65;
+            if (idx<0 || idx>=25 || used[idx]) return false;
+            used[idx] = 1;
+        }
+        return true;
+    } else {
+        if (!b || b.length !== 49) return false;
+        const seen = new Set();
+        for (let i=0; i<49; i++){
+            const ch = b[i];
+            if (ch === ".") continue;
+            if (seen.has(ch)) return false;
+            seen.add(ch);
+        }
+        return true;
+    }
+}
+
+function evaluateBoards(b1, b2) {
+    if (!isValidBoard(b1) || !isValidBoard(b2)) {
+        return { score: -Infinity, moves: 0, stdev: 0, ratio: 0 };
+    }
+    const size = mode === '5x5' ? 5 : 7;
+
+    function getTileScore(row, col, boardSize) {
+        let score = 0;
+        for (let r = 0; r < boardSize; r++) {
+            for (let c = 0; c < boardSize; c++) {
+                if (r === row && c === col) continue;
+                const dist = Math.abs(row - r) + Math.abs(col - c);
+                score += 1 / dist;
+            }
+        }
+        return score;
+    }
+
+    const scArray = [];
+    for (let i = 0; i < b1.length; i++) {
+        const symbol = b1[i];
+        if (symbol === '.') continue;
+        const j = b2.indexOf(symbol);
+        if (j < 0) continue;
+        const r1 = Math.floor(i / size);
+        const c1 = i % size;
+        const r2 = Math.floor(j / size);
+        const c2 = j % size;
+        scArray.push(getTileScore(r1, c1, size) + getTileScore(r2, c2, size));
+    }
+
+    if (scArray.length === 0) {
+        return { score: -Infinity, moves: 0, stdev: 0, ratio: 0 };
+    }
+
+    const best = Math.max(...scArray);
+    const worst = Math.min(...scArray);
+    const sum = scArray.reduce((acc, val) => acc + val, 0);
+    const mean = sum / scArray.length;
+    let variance = 0;
+    for (const val of scArray) {
+        const diff = val - mean;
+        variance += diff * diff;
+    }
+    variance /= scArray.length;
+    const stdev = Math.sqrt(variance);
+    const eps = 1e-10;
+    const bestCount = scArray.filter(x => Math.abs(x - best) < eps).length;
+    const ratio = worst / best;
+    const combinedScore = bestCount - stdev - ratio;
+
+    return {
+        score: combinedScore,
+        moves: bestCount,
+        stdev,
+        ratio
+    };
+}
+
+function mutate(b) {
+    if (!isValidBoard(b)) return randomBoard(false);
+    const copy = b.slice();
+    if (mode === '5x5') {
+        for (let s=0; s<2; s++){
+            const i1 = Math.floor(Math.random()*25);
+            const i2 = Math.floor(Math.random()*25);
+            [copy[i1], copy[i2]] = [copy[i2], copy[i1]];
+        }
+    } else {
+        const valid = [];
+        for (let i=0; i<49; i++){
+            if (copy[i] !== ".") valid.push(i);
+        }
+        for (let s=0; s<2; s++){
+            const i1 = valid[Math.floor(Math.random()*valid.length)];
+            const i2 = valid[Math.floor(Math.random()*valid.length)];
+            [copy[i1], copy[i2]] = [copy[i2], copy[i1]];
+        }
+    }
+    return isValidBoard(copy) ? copy : randomBoard(false);
+}
+
+function crossover(b1, b2) {
+    if (!isValidBoard(b1) || !isValidBoard(b2)) return randomBoard(false);
+    if (mode === '5x5') {
+        const child = new Array(25).fill(null);
+        const half=12;
+        for (let i=0; i<half; i++){
+            child[i] = b1[i];
+        }
+        let fillIndex=half;
+        for (let i=0; i<25; i++){
+            if (!child.includes(b2[i])) {
+                child[fillIndex++] = b2[i];
+                if (fillIndex>=25) break;
+            }
+        }
+        if (child.includes(null)){
+            const missing = "ABCDEFGHIJKLMNOPQRSTUVWXY".split("").filter(x=>!child.includes(x));
+            let midx=0;
+            for (let i=0; i<25; i++){
+                if (child[i]===null) child[i]=missing[midx++];
+            }
+        }
+        return isValidBoard(child)?child:randomBoard(false);
+    } else {
+        const child = b1.slice();
+        const valid = [];
+        for (let i=0; i<49; i++){
+            if (child[i]!==".") valid.push(i);
+        }
+        const half=Math.floor(valid.length/2);
+        const used=new Set();
+        for (let i=0; i<49; i++){
+            if (child[i]!==".") used.add(child[i]);
+        }
+        let added=0;
+        for (let i=0; i<49; i++){
+            if (b2[i]==="."||used.has(b2[i])) continue;
+            if (added<half && child[i]!=="."){
+                child[i] = b2[i];
+                added++;
+                used.add(b2[i]);
+            }
+        }
+        return isValidBoard(child)?child:randomBoard(false);
+    }
+}
+
+function pickPop(pop) {
+    let totalScore=0;
+    for (const item of pop){
+        totalScore+=(item.stats.score+50);
+    }
+    const rnd=Math.random()*totalScore;
+    let run=0;
+    for (const item of pop){
+        run+=(item.stats.score+50);
+        if (run>=rnd) return item;
+    }
+    return pop[pop.length-1];
+}
+
+function insertImmigrants(pop) {
+    let count = Math.floor(pop.length * 0.05);
+    for (let i=0; i<count; i++){
+        const b1 = randomBoard(false);
+        const b2 = randomBoard(false);
+        const st = evaluateBoards(b1, b2);
+        pop[Math.floor(Math.random()*pop.length)] = {board1:b1, board2:b2, stats:st};
+    }
+    return pop;
+}
+
+onmessage = (e)=>{
+    const data = e.data;
+    if (data.msg === "start") {
+        mode = data.mode;
+        pinned = data.pinned;
+        popSize = data.popSize;
+        generationChunks = data.generationChunks;
+        population=[];
+        bestScore=-Infinity; bestB1=null; bestB2=null; bestStats=null;
+        boardsEvaluated=0; evolving=true;
+        for (let i=0; i<popSize; i++){
+            const b1=randomBoard(true);
+            const b2=randomBoard(false);
+            const st=evaluateBoards(b1,b2);
+            population.push({board1:b1, board2:b2, stats:st});
+        }
+        for (const p of population){
+            if (p.stats.score>bestScore){
+                bestScore=p.stats.score;
+                bestStats=p.stats;
+                bestB1=p.board1;
+                bestB2=p.board2;
+            }
+        }
+        boardsEvaluated=popSize;
         runEvolution();
-    } else if (data.msg === 'stop') {
-        evolving = false;
+    } else if (data.msg==="stop") {
+        evolving=false;
     }
 };
 
-function runEvolution() {
-    if (!evolving) return;
-    for (let g = 0; g < generationChunks; g++) {
-        const newPop = [];
-        for (let i = 0; i < popSize; i++) {
-            const parent1A = pick(population);
-            const parent1B = pick(population);
-            const child1 = crossover(parent1A, parent1B);
-            const mut1 = mutate(child1);
+function runEvolution(){
+    if(!evolving) return;
+    for (let g=0; g<generationChunks; g++){
+        const newPop=[];
+        for (let i=0; i<popSize; i++){
+            let leftBoard, rightBoard;
+            if (pinned) {
+                leftBoard = randomBoard(true);
+            } else {
+                const p1A=pickPop(population).board1;
+                const p1B=pickPop(population).board2;
+                const child1=crossover(p1A,p1B);
+                leftBoard=mutate(child1);
+            }
+            const p2A=pickPop(population).board1;
+            const p2B=pickPop(population).board2;
+            const child2=crossover(p2A,p2B);
+            rightBoard=mutate(child2);
 
-            const parent2A = pick(population);
-            const parent2B = pick(population);
-            const child2 = crossover(parent2A, parent2B);
-            const mut2 = mutate(child2);
-
-            const sc = evaluateBoards(mut1, mut2);
-            newPop.push({ board1: mut1, board2: mut2, score: sc });
+            const st=evaluateBoards(leftBoard,rightBoard);
+            newPop.push({board1:leftBoard, board2:rightBoard, stats:st});
             boardsEvaluated++;
-            if (sc > bestScore) {
-                bestScore = sc;
-                bestB1 = mut1;
-                bestB2 = mut2;
+            if(st.score>bestScore){
+                bestScore=st.score;
+                bestStats=st;
+                bestB1=leftBoard;
+                bestB2=rightBoard;
             }
         }
-        population = newPop;
+        population=newPop;
+        population=insertImmigrants(population);
     }
     postMessage({
-        msg: 'progress',
+        msg:'progress',
         boardsEvaluated,
         bestScore,
         bestB1,
-        bestB2
+        bestB2,
+        bestStats
     });
-    if (evolving) setTimeout(runEvolution, 0);
+    if(evolving) setTimeout(runEvolution,0);
 }
 `;
 
-        const blob = new Blob([workerScript], { type: "text/javascript" });
+        const blob = new Blob([unifiedWorkerScript], { type: 'text/javascript' });
         const workerURL = URL.createObjectURL(blob);
+
+        function getSelectedMode() {
+            return document.getElementById('boardTypeSelect').value;
+        }
+
+        function isPinned() {
+            return document.getElementById('pinnedCheckbox').checked;
+        }
 
         document.getElementById("startBtn").addEventListener("click", () => {
             if (running) return;
@@ -246,6 +407,7 @@ function runEvolution() {
             globalBestScore = -Infinity;
             globalBestB1 = null;
             globalBestB2 = null;
+            globalBestStats = null;
             totalBoardsEvaluated = 0;
             startTime = performance.now();
             document.getElementById("results").textContent = "";
@@ -255,7 +417,7 @@ function runEvolution() {
             workers = [];
             for (let i = 0; i < WORKER_COUNT; i++) {
                 const w = new Worker(workerURL);
-                w.onmessage = evt => {
+                w.onmessage = (evt) => {
                     const d = evt.data;
                     if (d.msg === "progress") {
                         totalBoardsEvaluated += (d.boardsEvaluated - totalBoardsEvaluated) / WORKER_COUNT;
@@ -263,11 +425,18 @@ function runEvolution() {
                             globalBestScore = d.bestScore;
                             globalBestB1 = d.bestB1;
                             globalBestB2 = d.bestB2;
+                            globalBestStats = d.bestStats;
                         }
                         updateStatus();
                     }
                 };
-                w.postMessage({ msg: "start", popSize: populationSize, generationChunks: 50 });
+                w.postMessage({
+                    msg: "start",
+                    mode: getSelectedMode(),
+                    pinned: isPinned(),
+                    popSize: populationSize,
+                    generationChunks: 50
+                });
                 workers.push(w);
             }
         });
@@ -291,16 +460,17 @@ function runEvolution() {
             out += "board" + hashedId + "left: {\n";
             out += "    name: \"" + leftName + "\",\n";
             out += "    grid: [\n";
-            for (let r = 0; r < 5; r++) {
-                const rowSlice = b1.slice(r * 5, r * 5 + 5);
+            const size = b1.length === 25 ? 5 : 7;
+            for (let r = 0; r < size; r++) {
+                const rowSlice = b1.slice(r * size, r * size + size);
                 out += "        ['" + rowSlice.join("', '") + "'],\n";
             }
-            out += "    ]\n},\n\n";
+            out += "    ]\n},\n";
             out += "board" + hashedId + "right: {\n";
             out += "    name: \"" + rightName + "\",\n";
             out += "    grid: [\n";
-            for (let r = 0; r < 5; r++) {
-                const rowSlice = b2.slice(r * 5, r * 5 + 5);
+            for (let r = 0; r < size; r++) {
+                const rowSlice = b2.slice(r * size, r * size + size);
                 out += "        ['" + rowSlice.join("', '") + "'],\n";
             }
             out += "    ]\n},\n";
@@ -315,8 +485,14 @@ function runEvolution() {
             s += "Boards Evaluated (approx): " + Math.floor(totalBoardsEvaluated) + "\n";
             s += "Avg Boards/sec: " + boardsPerSec.toFixed(2) + "\n";
             s += "Global Best Score: " + globalBestScore.toFixed(4) + "\n\n";
+            if (globalBestStats) {
+                s += "Combined Score: " + globalBestStats.score.toFixed(2) + "\n";
+                s += "Viable Moves: " + globalBestStats.moves + "\n";
+                s += "Standard Deviation: " + globalBestStats.stdev.toFixed(2) + "\n";
+                s += "Best/Worst Ratio: " + globalBestStats.ratio.toFixed(2) + "\n\n";
+            }
             if (globalBestB1 && globalBestB2) {
-                s += "\nPaste into boards.js:\n\n";
+                s += "Paste into boards.js:\n\n";
                 s += generateBoardOutput(globalBestB1, globalBestB2, globalBestScore);
             }
             document.getElementById("status").textContent = s;

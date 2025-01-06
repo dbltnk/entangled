@@ -201,6 +201,16 @@ const BOARD_LAYOUTS = {
             ['I', 'J', 'Y', 'V', 'E'],
         ]
     },
+    board4047117779right: {
+        name: "4047117779 right",
+        grid: [
+            ['S', 'H', 'C', 'K', 'G'],
+            ['I', 'E', 'J', 'X', 'B'],
+            ['Q', 'D', 'A', 'F', 'P'],
+            ['L', 'U', 'T', 'W', 'N'],
+            ['M', 'O', 'Y', 'R', 'V'],
+        ]
+    },
     board3893435730right: {
         name: "evolved right",
         grid: [
@@ -209,6 +219,16 @@ const BOARD_LAYOUTS = {
             ['P', 'M', 'E', 'O', 'Y'],
             ['R', 'U', 'N', 'G', 'X'],
             ['A', 'H', 'Q', 'V', 'W'],
+        ]
+    },
+    board4047117779right: {
+        name: "evolved to match A-Z",
+        grid: [
+            ['S', 'H', 'C', 'K', 'G'],
+            ['I', 'E', 'J', 'X', 'B'],
+            ['Q', 'D', 'A', 'F', 'P'],
+            ['L', 'U', 'T', 'W', 'N'],
+            ['M', 'O', 'Y', 'R', 'V'],
         ]
     },
     board23: {
@@ -306,6 +326,18 @@ const BOARD_LAYOUTS = {
             ['L', 'N', '7', 'B', 'H', 'C', '6'],
             ['.', 'Q', '2', 'V', 'J', '5', '.'],
             ['.', '.', '4', 'X', 'R', '.', '.']
+        ]
+    },
+    board2494836417right: {
+        name: "evolved to match Donut A-Z",
+        grid: [
+            ['.', '.', 'F', 'O', '5', '.', '.'],
+            ['.', 'X', 'K', 'Q', 'Y', 'P', '.'],
+            ['G', 'L', '2', '1', '8', 'I', '0'],
+            ['A', 'E', '4', '.', '6', 'U', 'T'],
+            ['3', 'R', 'D', 'J', 'C', 'V', 'Z'],
+            ['.', 'M', '7', '9', 'S', 'B', '.'],
+            ['.', '.', 'W', 'H', 'N', '.', '.'],
         ]
     },
     centeredRandom7x7: {

@@ -361,7 +361,6 @@
             const viableMoves = scores.filter(s => Math.abs(s.score - best) < epsilon).length;
             const bestWorstRatio = worst / best;
 
-            // Calculate combined score
             const combinedScore = viableMoves - stdDev - bestWorstRatio;
 
             return {
@@ -402,15 +401,11 @@
 
         function getScoreColor(score, minScore, maxScore) {
             const ratio = (score - minScore) / (maxScore - minScore);
-            // Enhanced blue with more dramatic variation for the given value range
-            // Values around 22.0 will be very dark, 17.0 will be much lighter
             return `hsla(210, 100%, ${85 - (ratio * 70)}%, ${0.4 + (ratio * 0.6)})`;
         }
 
         function getFrequencyColor(percentage) {
-            // Enhanced red with more dramatic variation
-            // Values around 15-17% will be very dark, 1% will be much lighter
-            const normalizedRatio = Math.min(percentage / 20, 1); // Cap at 20% for normalization
+            const normalizedRatio = Math.min(percentage / 20, 1);
             return `hsla(0, 100%, ${85 - (normalizedRatio * 70)}%, ${0.4 + (normalizedRatio * 0.6)})`;
         }
 
@@ -422,10 +417,12 @@
 
             for (let row = 0; row < size; row++) {
                 for (let col = 0; col < size; col++) {
+                    const symbol = board.grid[row][col];
+                    if (symbol === '.') { container.appendChild(document.createElement('div')).className = 'board-cell placeholder-cell'; continue; }
                     const cell = document.createElement('div');
                     cell.className = 'board-cell';
-                    const symbol = board.grid[row][col];
-                    const score = scores.find(s => s.symbol === symbol).score;
+
+                    const score = scores.find(s => s.symbol === symbol)?.score || 0;
                     cell.style.backgroundColor = getScoreColor(score, minScore, maxScore);
 
                     const ratio = (score - minScore) / (maxScore - minScore);
@@ -434,7 +431,7 @@
                     cell.innerHTML = `
                         <div style="font-size: 1.2rem; font-weight: bold; margin-bottom: 2px;">${symbol}</div>
                         <div style="font-size: 0.75rem; font-weight: 500;">${score.toFixed(1)}</div>
-                     `;
+                    `;
                     cell.style.width = `${40}px`;
                     cell.style.padding = '4px';
                     cell.style.textAlign = 'center';
@@ -452,9 +449,10 @@
 
             for (let row = 0; row < size; row++) {
                 for (let col = 0; col < size; col++) {
+                    const symbol = board.grid[row][col];
+                    if (symbol === '.') { container.appendChild(document.createElement('div')).className = 'board-cell placeholder-cell'; continue; }
                     const cell = document.createElement('div');
                     cell.className = 'board-cell';
-                    const symbol = board.grid[row][col];
                     const frequency = moveFrequencies[symbol]?.percentage || 0;
                     cell.style.backgroundColor = getFrequencyColor(frequency);
 
@@ -463,7 +461,7 @@
 
                     cell.innerHTML = `
                        <div style="font-size: 1.2rem; font-weight: bold; margin-bottom: 2px;">${symbol}</div>
-                        <div style="font-size: 0.75rem; font-weight: 500;">${frequency.toFixed(1)}%</div>
+                       <div style="font-size: 0.75rem; font-weight: 500;">${frequency.toFixed(1)}%</div>
                     `;
                     cell.style.width = `${40}px`;
                     cell.style.padding = '4px';
@@ -480,7 +478,6 @@
 
             if (!moveFrequenciesData || !moveFrequenciesData.filteredMoves) return;
 
-            // First organize data by symbol and AI type
             const symbolData = {};
             moveFrequenciesData.filteredMoves.forEach(move => {
                 const symbol = move.move;
@@ -502,12 +499,20 @@
                 symbolData[symbol].total++;
             });
 
-            // Sort symbols by total count
             const sortedSymbols = Object.entries(symbolData)
                 .sort((a, b) => b[1].total - a[1].total)
                 .map(([symbol]) => symbol);
 
-            const aiColors = { 'random': '#1C9941', 'deterministic': '#88A02C', 'aggressive': '#DDDD22', 'defensive': '#FD8D3C', 'minimax': '#E6550D', 'mcts': '#DE2D26', 'hybrid': '#A50F15' };
+            const aiColors = {
+                'random': '#1C9941',
+                'deterministic': '#88A02C',
+                'aggressive': '#DDDD22',
+                'defensive': '#FD8D3C',
+                'minimax': '#E6550D',
+                'mcts': '#DE2D26',
+                'hybrid': '#A50F15'
+            };
+
             const datasets = Object.entries(aiColors).map(([aiType, color]) => ({
                 label: aiType,
                 data: sortedSymbols.map(symbol => symbolData[symbol][aiType]),
@@ -672,7 +677,6 @@
             const validBoards = Object.entries(BOARD_LAYOUTS).filter(([id, layout]) =>
                 layout.grid.length === size && !id.includes('random') && !id.includes('Random'));
 
-            // Update board filters
             const board1Filter = document.getElementById('board1Filter');
             const board2Filter = document.getElementById('board2Filter');
             const currentBoard1 = board1Filter.value;
@@ -684,7 +688,6 @@
             board1Filter.innerHTML = options;
             board2Filter.innerHTML = options;
 
-            // Set default board1Id for 5x5 boards on first load
             let board1Id = currentBoard1;
             if (size === 5 && !board1Id) {
                 board1Id = 'board1';
@@ -734,7 +737,6 @@
             boardPairs
                 .map(([[id1, board1], [id2, board2]]) => {
                     if (!board1 || !board2) return null;
-
                     const scores = analyzeBoards(board1, board2);
                     const metrics = calculateBoardMetrics(scores);
                     const moveFrequencies = calculateMoveFrequencies(globalFirstMoves, id1, id2);
@@ -893,7 +895,9 @@
             for (let row = 0; row < size; row++) {
                 for (let col = 0; col < size; col++) {
                     const symbol = board1.grid[row][col];
+                    if (symbol === '.') continue;
                     const board2Pos = findSymbolPosition(symbol, board2.grid);
+                    if (!board2Pos) continue;
                     const score1 = getTileScore(row, col, size);
                     const score2 = getTileScore(board2Pos.row, board2Pos.col, size);
 
@@ -909,12 +913,10 @@
             return scores;
         }
 
-        // Event listeners
         document.getElementById('sizeFilter').addEventListener('change', updateDisplay);
         document.getElementById('board1Filter').addEventListener('change', updateDisplay);
         document.getElementById('board2Filter').addEventListener('change', updateDisplay);
 
-        // Initial display
         initializeData();
     </script>
 </body>
