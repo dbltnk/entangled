@@ -166,25 +166,74 @@ class ResultsViewer {
         const tournamentId = tournamentData.metadata.runId;
         const items = document.querySelectorAll('.tournament-item');
         items.forEach(item => item.classList.remove('selected'));
+
+        // Find the item by checking the tournament ID in the content
         const selectedItem = Array.from(items)
-            .find(item => item.querySelector('h3').textContent.includes(`Tournament ${tournamentId}`));
+            .find(item => {
+                const idElement = item.querySelector('.tournament-id');
+                return idElement && idElement.textContent.includes(tournamentId);
+            });
+
         if (selectedItem) {
             selectedItem.classList.add('selected');
         }
     }
 
     createTournamentItemHTML(data) {
-        const playerNames = data.metadata.selectedAIs
-            .map(id => AI_PLAYERS[id]?.name || 'Unknown AI')
-            .join(', ');
+        // Calculate totals and percentages
+        let wins = 0;
+        let losses = 0;
+        let draws = 0;
+        let totalGames = 0;
+
+        Object.values(data.results).forEach(result => {
+            result.games.forEach(game => {
+                if (game.winner === 'black') wins++;
+                else if (game.winner === 'white') losses++;
+                else draws++;
+                totalGames++;
+            });
+        });
+
+        // Calculate percentages
+        const winPercent = ((wins / totalGames) * 100).toFixed(0);
+        const lossPercent = ((losses / totalGames) * 100).toFixed(0);
+        const drawPercent = ((draws / totalGames) * 100).toFixed(0);
+
+        // Determine which percentage is highest
+        const maxPercent = Math.max(parseInt(winPercent), parseInt(lossPercent), parseInt(drawPercent));
+        const formatPercent = (percent) => {
+            return parseInt(percent) === maxPercent ?
+                `<strong>${percent}%</strong>` :
+                `${percent}%`;
+        };
 
         return `
-            <h3>Tournament ${data.metadata.runId}</h3>
-            <div class="tournament-info">
-                <div><strong>Players:</strong> ${playerNames}</div>
-                <div><strong>Games:</strong> ${data.metadata.totalGames}</div>
-                <div><strong>Boards:</strong> board1: ${data.metadata.boards.board1} vs board2: ${data.metadata.boards.board2}</div>
-                <div><strong>Start:</strong> ${data.metadata.startingConfig || 'None'}</div>
+            <div class="tournament-header">
+                <div class="tournament-id">Tournament: ${data.metadata.runId}</div>
+                <div class="tournament-date">Date: ${new Date(data.metadata.timestamp).toLocaleDateString()}</div>
+            </div>
+            <div class="board-info">
+                <div class="board-row">
+                    <span class="board-label">Left:</span>
+                    <span class="board-value">${BOARD_LAYOUTS[data.metadata.boards.board1]?.name || 'Unknown'} (${data.metadata.boards.board1})</span>
+                </div>
+                <div class="board-row">
+                    <span class="board-label">Right:</span>
+                    <span class="board-value">${BOARD_LAYOUTS[data.metadata.boards.board2]?.name || 'Unknown'} (${data.metadata.boards.board2})</span>
+                </div>
+                <div class="board-row">
+                    <span class="board-label">Start:</span>
+                    <span class="board-value">${data.metadata.startingConfig || 'None'}</span>
+                </div>
+            </div>
+            <div class="result-info">
+                <span class="result-label">Result:</span>
+                <span class="result-value">${formatPercent(winPercent)}/${formatPercent(lossPercent)}/${formatPercent(drawPercent)} (${totalGames})</span>
+            </div>
+            <div class="players-info">
+                <span class="players-label">Players:</span>
+                <span class="players-value">${data.metadata.selectedAIs.map(id => AI_PLAYERS[id]?.name || 'Unknown AI').join(', ')}</span>
             </div>
         `;
     }
