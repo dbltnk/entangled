@@ -811,3 +811,19 @@
     color: #c62828;
     margin-bottom: var(--spacing-md);
 }
+
+#loading-status {
+    background: #f3f4f6;
+    padding: 0.5rem;
+    margin-bottom: 1rem;
+    border-radius: 4px;
+    text-align: center;
+    font-weight: 500;
+    color: #374151;
+}
+
+.filter-panel select:disabled,
+.filter-panel input:disabled {
+    background-color: #f3f4f6;
+    cursor: not-allowed;
+}

@@ -7,21 +7,33 @@ class ResultsViewer {
         this.dirHandle = null;
         this.currentTournament = null;
         this.tournamentFiles = [];
-        this.currentSelectionIndex = -1; // Track current selection
+        this.currentSelectionIndex = -1;
+        this.isLoading = false;
+        this.loadedCount = 0;
+        this.totalCount = 0;
         this.setupEventListeners();
         this.populateFilterDropdowns();
+    }
 
-        // Add click handlers for both loading methods
-        document.getElementById('load-directory').addEventListener('click', () => {
-            this.initializeFileSystem();
-        });
+    showLoadingState(show, count = 0, total = 0) {
+        const filterPanel = document.querySelector('.filter-panel');
+        const loadingDiv = document.getElementById('loading-status') || document.createElement('div');
+        loadingDiv.id = 'loading-status';
 
-        document.getElementById('load-web').addEventListener('click', () => {
-            this.loadFromWeb();
-        });
-
-        // Add keyboard navigation
-        document.addEventListener('keydown', (e) => this.handleKeyNavigation(e));
+        if (show) {
+            loadingDiv.textContent = `Loading Tournaments: ${count}/${total}...`;
+            filterPanel.prepend(loadingDiv);
+            // Disable filters while loading
+            document.getElementById('filter-board1').disabled = true;
+            document.getElementById('filter-board2').disabled = true;
+            document.getElementById('filter-starting').disabled = true;
+        } else {
+            loadingDiv.remove();
+            // Enable filters after loading
+            document.getElementById('filter-board1').disabled = false;
+            document.getElementById('filter-board2').disabled = false;
+            document.getElementById('filter-starting').disabled = false;
+        }
     }
 
     handleKeyNavigation(e) {
@@ -74,13 +86,13 @@ class ResultsViewer {
 
         // Add boards from BOARD_LAYOUTS
         Object.entries(BOARD_LAYOUTS).forEach(([id, layout]) => {
-            allBoards.set(id, layout.name);
+            allBoards.set(id, `${layout.name} (${id})`);
         });
 
         // Add additional boards found in tournaments
         additionalBoards.forEach(id => {
             if (!allBoards.has(id)) {
-                allBoards.set(id, `Board ${id}`);
+                allBoards.set(id, `Board ${id} (${id})`);
             }
         });
 
@@ -92,14 +104,6 @@ class ResultsViewer {
                 board1Filter.add(option.cloneNode(true));
                 board2Filter.add(option.cloneNode(true));
             });
-
-        // Add filter change handlers if they haven't been added before
-        if (!this.filtersInitialized) {
-            board1Filter.addEventListener('change', () => this.applyFilters());
-            board2Filter.addEventListener('change', () => this.applyFilters());
-            document.getElementById('filter-starting').addEventListener('input', () => this.applyFilters());
-            this.filtersInitialized = true;
-        }
     }
 
     // Then just before loading tournaments (in loadTournamentList and loadFromWeb), add:
@@ -113,41 +117,42 @@ class ResultsViewer {
     }
 
     applyFilters() {
+        if (this.isLoading) return;
+
         const board1Filter = document.getElementById('filter-board1').value;
         const board2Filter = document.getElementById('filter-board2').value;
         const startingFilter = document.getElementById('filter-starting').value.trim().toUpperCase();
-
-        // Reset selection when filters change
-        this.currentSelectionIndex = -1;
 
         const items = document.querySelectorAll('.tournament-item');
         items.forEach(item => {
             let show = true;
 
-            // Extract the board IDs from the text content using regex
-            const boardTextMatch = item.textContent.match(/board1: (\w+) vs board2: (\w+)/);
-            if (boardTextMatch) {
-                const [, board1Id, board2Id] = boardTextMatch;
-
-                // Compare exact board IDs
-                if (board1Filter && board1Filter !== board1Id) {
-                    show = false;
-                }
-
-                if (board2Filter && board2Filter !== board2Id) {
+            if (board1Filter) {
+                const board1Text = item.querySelector('.board-value')?.textContent || '';
+                if (!board1Text.includes(`(${board1Filter})`)) {
                     show = false;
                 }
             }
 
-            // Filter by starting position
-            if (startingFilter && !item.textContent.includes(startingFilter)) {
-                show = false;
+            if (board2Filter) {
+                const board2Elements = item.querySelectorAll('.board-value');
+                const board2Text = board2Elements[1]?.textContent || '';
+                if (!board2Text.includes(`(${board2Filter})`)) {
+                    show = false;
+                }
+            }
+
+            if (startingFilter) {
+                const startElements = item.querySelectorAll('.board-value');
+                const startText = startElements[2]?.textContent || '';
+                if (!startText.includes(startingFilter)) {
+                    show = false;
+                }
             }
 
             item.style.display = show ? '' : 'none';
         });
     }
-
     async initializeFileSystem() {
         try {
             this.dirHandle = await window.showDirectoryPicker({
@@ -241,17 +246,21 @@ class ResultsViewer {
     async loadFromWeb() {
         const tournamentListElement = document.getElementById('tournament-list');
         tournamentListElement.innerHTML = '';
+        this.isLoading = true;
+        this.loadedCount = 0;
 
         try {
-            // First fetch the index file
             console.log('Fetching tournaments.json...');
             const baseUrl = 'https://dbltnk.github.io/entangled/tournaments/';
             const indexResponse = await fetch(baseUrl + 'tournaments.json');
             if (!indexResponse.ok) {
-                throw new Error(`Failed to fetch tournament index: ${indexResponse.status} ${indexResponse.statusText}`);
+                throw new Error(`Failed to fetch tournament index: ${indexResponse.status}`);
             }
             const tournamentFiles = await indexResponse.json();
             console.log('Found tournament files:', tournamentFiles);
+
+            this.totalCount = tournamentFiles.length;
+            this.showLoadingState(true, 0, this.totalCount);
 
             let loadedCount = 0;
             let errorCount = 0;
@@ -263,24 +272,22 @@ class ResultsViewer {
                     console.log(`Fetching ${filename}...`);
                     const response = await fetch(baseUrl + filename);
                     if (!response.ok) {
-                        throw new Error(`HTTP error: ${response.status} ${response.statusText}`);
+                        throw new Error(`HTTP error: ${response.status}`);
                     }
                     const data = await response.json();
 
                     const boardsInTournament = this.collectBoardsFromTournament(data);
                     boardsInTournament.forEach(board => allBoards.add(board));
 
-                    const playerNames = data.metadata.selectedAIs
-                        .map(id => AI_PLAYERS[id]?.name || 'Unknown AI')
-                        .join(', ');
-
                     const item = document.createElement('div');
                     item.className = 'tournament-item';
                     item.innerHTML = this.createTournamentItemHTML(data);
-
                     item.addEventListener('click', () => this.loadWebTournament(filename));
                     tournamentListElement.appendChild(item);
+
                     loadedCount++;
+                    this.showLoadingState(true, loadedCount, this.totalCount);
+
                 } catch (error) {
                     console.error(`Error processing tournament ${filename}:`, error);
                     errors.add(`${filename}: ${error.message}`);
@@ -288,27 +295,9 @@ class ResultsViewer {
                 }
             }
 
+            this.isLoading = false;
+            this.showLoadingState(false);
             this.populateFilterDropdowns(allBoards);
-
-            // Show summary of load results
-            if (errorCount > 0) {
-                const errorSummary = document.createElement('div');
-                errorSummary.className = 'tournament-item error';
-                errorSummary.innerHTML = `
-                    <h3>Loading Summary</h3>
-                    <div>Successfully loaded: ${loadedCount} files</div>
-                    <div>Failed to load: ${errorCount} files</div>
-                    <details>
-                        <summary>Show Error Details</summary>
-                        <pre>${Array.from(errors).join('\n')}</pre>
-                    </details>
-                `;
-                tournamentListElement.insertBefore(errorSummary, tournamentListElement.firstChild);
-            }
-
-            if (loadedCount === 0) {
-                tournamentListElement.innerHTML = '<div class="tournament-item">No tournament files found</div>';
-            }
 
         } catch (error) {
             console.error('Failed to load tournaments from web:', error);
@@ -316,8 +305,9 @@ class ResultsViewer {
                 <div class="tournament-item error">
                     <h3>Failed to load tournaments</h3>
                     <div>${error.message}</div>
-                    <div>Please check browser console for details.</div>
                 </div>`;
+            this.isLoading = false;
+            this.showLoadingState(false);
         }
     }
 
@@ -419,13 +409,14 @@ class ResultsViewer {
     async loadTournamentList() {
         const tournamentList = document.getElementById('tournament-list');
         tournamentList.innerHTML = '';
+        this.isLoading = true;
+        this.loadedCount = 0;
 
         if (!this.dirHandle) {
             tournamentList.innerHTML = '<div class="tournament-item error">No directory selected</div>';
             return;
         }
 
-        // Verify we still have read permission
         try {
             await this.dirHandle.requestPermission({ mode: 'read' });
         } catch (error) {
@@ -436,19 +427,28 @@ class ResultsViewer {
 
         let loadedCount = 0;
         let errorCount = 0;
+        let totalFiles = 0;
         const errors = new Set();
         const allBoards = new Set();
 
         try {
+            // First count total files for the loading indicator
             for await (const entry of this.dirHandle.values()) {
-                if (entry.name.endsWith('.json')) {
-                    if (entry.name === 'tournaments.json') continue; // Skip tournaments.json
+                if (entry.name.endsWith('.json') && entry.name !== 'tournaments.json') {
+                    totalFiles++;
+                }
+            }
+
+            this.totalCount = totalFiles;
+            this.showLoadingState(true, 0, this.totalCount);
+
+            for await (const entry of this.dirHandle.values()) {
+                if (entry.name.endsWith('.json') && entry.name !== 'tournaments.json') {
                     try {
                         const file = await entry.getFile();
                         const content = await file.text();
                         const data = JSON.parse(content);
 
-                        // Validate expected data structure
                         if (!data.metadata || !data.metadata.selectedAIs || !data.metadata.boards) {
                             throw new Error('Invalid tournament file structure');
                         }
@@ -456,18 +456,15 @@ class ResultsViewer {
                         const boardsInTournament = this.collectBoardsFromTournament(data);
                         boardsInTournament.forEach(board => allBoards.add(board));
 
-                        const playerNames = data.metadata.selectedAIs
-                            .map(id => AI_PLAYERS[id]?.name || 'Unknown AI')
-                            .join(', ');
-
                         const item = document.createElement('div');
                         item.className = 'tournament-item';
                         item.innerHTML = this.createTournamentItemHTML(data);
-
                         item.addEventListener('click', () => this.loadTournament(entry));
                         tournamentList.appendChild(item);
                         this.tournamentFiles.push(entry);
                         loadedCount++;
+
+                        this.showLoadingState(true, loadedCount, this.totalCount);
                     } catch (error) {
                         console.error(`Error processing tournament file ${entry.name}:`, error);
                         errors.add(`${entry.name}: ${error.message}`);
@@ -478,7 +475,13 @@ class ResultsViewer {
 
             this.populateFilterDropdowns(allBoards);
 
-            // Show summary of load results
+        } catch (error) {
+            console.error('Error reading directory:', error);
+            tournamentList.innerHTML = `<div class="tournament-item error">Failed to read directory: ${error.message}</div>`;
+        } finally {
+            this.isLoading = false;
+            this.showLoadingState(false);
+
             if (errorCount > 0) {
                 const errorSummary = document.createElement('div');
                 errorSummary.className = 'tournament-item error';
@@ -497,9 +500,6 @@ class ResultsViewer {
             if (loadedCount === 0) {
                 tournamentList.innerHTML = '<div class="tournament-item">No tournament files found</div>';
             }
-        } catch (error) {
-            console.error('Error reading directory:', error);
-            tournamentList.innerHTML = `<div class="tournament-item error">Failed to read directory: ${error.message}</div>`;
         }
     }
 
@@ -532,6 +532,16 @@ class ResultsViewer {
     }
 
     setupEventListeners() {
+        // Add filter change handlers
+        document.getElementById('filter-board1').addEventListener('change', () => this.applyFilters());
+        document.getElementById('filter-board2').addEventListener('change', () => this.applyFilters());
+        document.getElementById('filter-starting').addEventListener('input', () => this.applyFilters());
+
+        // Add load buttons handlers
+        document.getElementById('load-directory').addEventListener('click', () => this.initializeFileSystem());
+        document.getElementById('load-web').addEventListener('click', () => this.loadFromWeb());
+
+        // Add tab button handlers
         document.querySelectorAll('.tab-button').forEach(button => {
             button.addEventListener('click', () => this.switchTab(button.dataset.tab));
         });
@@ -551,6 +561,11 @@ class ResultsViewer {
         this.updateOverviewTab();
         this.updateMatchupsTab();
         this.updateDetailsTab();
+
+        // Re-attach tab event listeners after updating content
+        document.querySelectorAll('.tab-button').forEach(button => {
+            button.addEventListener('click', () => this.switchTab(button.dataset.tab));
+        });
     }
 
     updateOverviewTab() {
