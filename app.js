@@ -12,7 +12,8 @@ let gameSettings = {
     score: true,
     currentPlayer: true,
     icons: true,
-    symbols: false
+    symbols: false,
+    tiebreaker: false
 };
 
 let game = null;
@@ -56,7 +57,7 @@ const ICON_MAPPINGS = {
     '4': 'fa-shield-virus',
     '5': 'fa-star-of-life',
     '6': 'fa-thermometer',
-    '7': 'fa-satellite-dish',
+    '7': 'fa-chart-pie',
     '8': 'fa-tornado',
     '9': 'fa-wind',
     '@': 'fa-microchip',
@@ -564,12 +565,65 @@ function showWinner(winner) {
     const winnerDisplay = document.createElement('div');
     winnerDisplay.className = 'winner';
 
-    if (winner === 'TIE') {
-        winnerDisplay.textContent = 'Game Over - Tie!';
+    const endStats = game.getEndGameStats();
+    const scores = endStats.scores;
+
+    // If tiebreaker is enabled and scores are tied, show the detailed analysis
+    if (endStats.tiebreakerEnabled && scores.black === scores.white) {
+        const blackClusters = endStats.clusters.black.all;
+        const whiteClusters = endStats.clusters.white.all;
+
+        winnerDisplay.innerHTML = `
+            Game Over! Base scores tied (${scores.black} - ${scores.white})
+            
+            <br><br>Tiebreaker analysis:
+            <br>1. Largest groups comparison:
+            <br>   ⚫ Black's largest: ${blackClusters[0] || 0} stones
+            <br>   ⚪ White's largest: ${whiteClusters[0] || 0} stones
+        `;
+
+        // Find the first difference in cluster sizes
+        let decidingIndex = 0;
+        while (decidingIndex < Math.max(blackClusters.length, whiteClusters.length)) {
+            const blackSize = blackClusters[decidingIndex] || 0;
+            const whiteSize = whiteClusters[decidingIndex] || 0;
+
+            if (blackSize !== whiteSize) {
+                break;
+            }
+            decidingIndex++;
+
+            winnerDisplay.innerHTML += `
+                <br>   → Tied, checking next largest
+                <br>
+                <br>${decidingIndex + 1}. Second-largest groups:
+                <br>   ⚫ Black's next largest: ${blackSize} stones
+                <br>   ⚪ White's next largest: ${whiteSize} stones
+            `;
+        }
+
+        // If we found a difference, show who won
+        if (decidingIndex < Math.max(blackClusters.length, whiteClusters.length)) {
+            const blackSize = blackClusters[decidingIndex] || 0;
+            const whiteSize = whiteClusters[decidingIndex] || 0;
+            const winner = blackSize > whiteSize ? 'Black' : 'White';
+            const symbol = blackSize > whiteSize ? '⚫' : '⚪';
+            const biggerSize = Math.max(blackSize, whiteSize);
+            const smallerSize = Math.min(blackSize, whiteSize);
+            winnerDisplay.innerHTML += `
+                <br>   → ${symbol} ${winner} wins! (${biggerSize} > ${smallerSize})
+            `;
+        }
+
+        // Show full details at the bottom
+        winnerDisplay.innerHTML += `
+            <br><br>Details:
+            <br>⚫ Black's groups: ${blackClusters.join('+')}
+            <br>⚪ White's groups: ${whiteClusters.join('+')}
+        `;
     } else {
-        const blackScore = game.getScore(PLAYERS.BLACK);
-        const whiteScore = game.getScore(PLAYERS.WHITE);
-        winnerDisplay.textContent = `${winner} wins! (${blackScore} - ${whiteScore})`;
+        // Regular game end without tiebreaker or different scores
+        winnerDisplay.innerHTML = `${winner === 'TIE' ? 'Game Over - Tie!' : `${winner} wins!`} (${scores.black} - ${scores.white})`;
     }
 
     document.querySelector('.stats').appendChild(winnerDisplay);
@@ -641,7 +695,7 @@ function initializeGame() {
     const board1Layout = getSelectedBoardLayout(board1Select);
     const board2Layout = getSelectedBoardLayout(board2Select);
 
-    game = new EntangledGame(board1Layout, board2Layout, startingConfig);
+    game = new EntangledGame(board1Layout, board2Layout, startingConfig, gameSettings.tiebreaker);
 
     const existingWinner = document.querySelector('.winner');
     if (existingWinner) {
@@ -663,16 +717,27 @@ function init() {
         icon.classList.toggle('rotated');
     });
 
-    ['hover', 'groups', 'size', 'score', 'currentPlayer', 'icons', 'symbols'].forEach(setting => {
+    ['hover', 'groups', 'size', 'score', 'currentPlayer', 'icons', 'symbols', 'tiebreaker'].forEach(setting => {
         const checkbox = document.getElementById(`setting-${setting}`);
-        checkbox.addEventListener('change', (e) => {
-            gameSettings[setting] = e.target.checked;
-            saveSettings();
-            applySettings();
-            if (game) {
-                updateDisplay();
-            }
-        });
+        if (checkbox) {
+            checkbox.addEventListener('change', (e) => {
+                gameSettings[setting] = e.target.checked;
+                saveSettings();
+                applySettings();
+                if (game) {
+                    // For tiebreaker, we need to restart the game for it to take effect
+                    if (setting === 'tiebreaker') {
+                        game = new EntangledGame(
+                            game.board1Layout,
+                            game.board2Layout,
+                            '', // Starting config blank since game is in progress
+                            gameSettings.tiebreaker
+                        );
+                    }
+                    updateDisplay();
+                }
+            });
+        }
     });
 
     populatePlayerDropdowns();

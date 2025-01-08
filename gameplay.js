@@ -18,7 +18,8 @@ class EntangledGame {
     constructor(
         board1Layout = BOARD_LAYOUTS.board1.grid,
         board2Layout = BOARD_LAYOUTS.board2.grid,
-        startingConfig = ''
+        startingConfig = '',
+        enableTieBreaker = false
     ) {
         // Store the symbol layouts and determine board size
         this.board1Layout = board1Layout;
@@ -51,6 +52,8 @@ class EntangledGame {
         if (startingConfig) {
             this.placeStartingStones(startingConfig);
         }
+
+        this.enableTieBreaker = enableTieBreaker;
 
         this._lastMove = null;
     }
@@ -352,6 +355,22 @@ class EntangledGame {
         return board1Score + board2Score;
     }
 
+    findAllClusterSizes(board, player) {
+        const visited = Array(this.boardSize).fill(false)
+            .map(() => Array(this.boardSize).fill(false));
+        const clusters = [];
+
+        for (let row = 0; row < this.boardSize; row++) {
+            for (let col = 0; col < this.boardSize; col++) {
+                if (board[row][col] === player && !visited[row][col]) {
+                    clusters.push(this.exploreCluster(board, row, col, player, visited));
+                }
+            }
+        }
+
+        return clusters.sort((a, b) => b - a); // Sort descending
+    }
+
     getWinner() {
         if (!this.gameOver) {
             throw new Error('Game is not over yet');
@@ -362,7 +381,68 @@ class EntangledGame {
 
         if (blackScore > whiteScore) return PLAYERS.BLACK;
         if (whiteScore > blackScore) return PLAYERS.WHITE;
+
+        // If scores are tied and tiebreaker is enabled
+        if (this.enableTieBreaker) {
+            const blackClusters1 = this.findAllClusterSizes(this.board1, PLAYERS.BLACK);
+            const blackClusters2 = this.findAllClusterSizes(this.board2, PLAYERS.BLACK);
+            const whiteClusters1 = this.findAllClusterSizes(this.board1, PLAYERS.WHITE);
+            const whiteClusters2 = this.findAllClusterSizes(this.board2, PLAYERS.WHITE);
+
+            // Get largest cluster sizes for each player
+            const blackClusters = [...blackClusters1, ...blackClusters2].sort((a, b) => b - a);
+            const whiteClusters = [...whiteClusters1, ...whiteClusters2].sort((a, b) => b - a);
+
+            // Compare only the unique cluster sizes, ignoring count of each size
+            const blackUniqueSizes = [...new Set(blackClusters)];
+            const whiteUniqueSizes = [...new Set(whiteClusters)];
+
+            const maxLength = Math.max(blackUniqueSizes.length, whiteUniqueSizes.length);
+            for (let i = 0; i < maxLength; i++) {
+                const blackSize = blackUniqueSizes[i] || 0;
+                const whiteSize = whiteUniqueSizes[i] || 0;
+
+                if (blackSize > whiteSize) return PLAYERS.BLACK;
+                if (whiteSize > blackSize) return PLAYERS.WHITE;
+            }
+
+            // If we get here, all unique cluster sizes are the same
+            return 'TIE';
+        }
+
         return 'TIE';
+    }
+
+    getEndGameStats() {
+        if (!this.gameOver) return null;
+
+        const blackScore = this.getScore(PLAYERS.BLACK);
+        const whiteScore = this.getScore(PLAYERS.WHITE);
+
+        const blackClusters1 = this.findAllClusterSizes(this.board1, PLAYERS.BLACK);
+        const blackClusters2 = this.findAllClusterSizes(this.board2, PLAYERS.BLACK);
+        const whiteClusters1 = this.findAllClusterSizes(this.board1, PLAYERS.WHITE);
+        const whiteClusters2 = this.findAllClusterSizes(this.board2, PLAYERS.WHITE);
+
+        return {
+            scores: {
+                black: blackScore,
+                white: whiteScore
+            },
+            clusters: {
+                black: {
+                    board1: blackClusters1,
+                    board2: blackClusters2,
+                    all: [...blackClusters1, ...blackClusters2].sort((a, b) => b - a)
+                },
+                white: {
+                    board1: whiteClusters1,
+                    board2: whiteClusters2,
+                    all: [...whiteClusters1, ...whiteClusters2].sort((a, b) => b - a)
+                }
+            },
+            tiebreakerEnabled: this.enableTieBreaker
+        };
     }
 
     getBoard1() {
