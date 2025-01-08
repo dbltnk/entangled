@@ -13,7 +13,7 @@ let gameSettings = {
     currentPlayer: true,
     icons: true,
     symbols: false,
-    tiebreaker: false
+    tiebreaker: true
 };
 
 let game = null;
