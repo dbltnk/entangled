@@ -201,16 +201,6 @@ const BOARD_LAYOUTS = {
             ['I', 'J', 'Y', 'V', 'E'],
         ]
     },
-    board4047117779right: {
-        name: "4047117779 right",
-        grid: [
-            ['S', 'H', 'C', 'K', 'G'],
-            ['I', 'E', 'J', 'X', 'B'],
-            ['Q', 'D', 'A', 'F', 'P'],
-            ['L', 'U', 'T', 'W', 'N'],
-            ['M', 'O', 'Y', 'R', 'V'],
-        ]
-    },
     board3893435730right: {
         name: "evolved right",
         grid: [
@@ -279,6 +269,17 @@ const BOARD_LAYOUTS = {
             ['S', 'T', 'U', 'V', 'W', 'X'],
             ['Y', 'Z', '1', '2', '3', '4'],
             ['5', '6', '7', '8', '9', '0']
+        ]
+    },
+    minidonutleft: {
+        name: "mini donut A-Z",
+        grid: [
+            ['.', '.', 'A', 'B', '.', '.'],
+            ['.', 'C', 'D', 'E', 'F', '.'],
+            ['G', 'H', 'I', 'J', 'K', 'L'],
+            ['M', 'N', 'O', 'P', 'Q', 'R'],
+            ['.', 'S', 'T', 'U', 'V', '.'],
+            ['.', '.', 'W', 'X', '.', '.']
         ]
     },
     board6x5: {
