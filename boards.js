@@ -282,6 +282,17 @@ const BOARD_LAYOUTS = {
             ['.', '.', 'W', 'X', '.', '.']
         ]
     },
+    board3747648197only: {
+        name: "mini donut evo righ",
+        grid: [
+            ['.', '.', 'I', 'B', '.', '.'],
+            ['.', 'M', 'E', 'H', 'S', '.'],
+            ['O', 'Q', 'L', 'A', 'K', 'W'],
+            ['F', 'D', 'G', 'X', 'N', 'J'],
+            ['.', 'V', 'U', 'T', 'C', '.'],
+            ['.', '.', 'R', 'P', '.', '.'],
+        ]
+    },
     board6x5: {
         name: "Top left to bottom right (6x5)",
         grid: [
