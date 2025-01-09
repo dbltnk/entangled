@@ -555,7 +555,7 @@ function updateDisplay() {
     }
 }
 
-function showWinner(winner) {
+function showWinner(winnerData) {
     const existingWinner = document.querySelector('.winner');
     if (existingWinner) {
         existingWinner.remove();
@@ -567,64 +567,67 @@ function showWinner(winner) {
     const endStats = game.getEndGameStats();
     const scores = endStats.scores;
 
-    // If scores are tied, show the detailed analysis
+    // Create header content
+    let content = `
+        <div style="margin-bottom: 1rem;">
+            Game Over! Base scores:<br>⚫ ${scores.black} vs ⚪ ${scores.white}
+        </div>
+    `;
+
     if (scores.black === scores.white) {
-        const blackClusters = endStats.clusters.black.all;
-        const whiteClusters = endStats.clusters.white.all;
-
-        winnerDisplay.innerHTML = `
-            Game Over! Base scores tied (${scores.black} - ${scores.white})
-            
-            <br><br>Tiebreaker analysis:
-            <br>1. Largest groups comparison:
-            <br>   ⚫ Black's largest: ${blackClusters[0] || 0} stones
-            <br>   ⚪ White's largest: ${whiteClusters[0] || 0} stones
+        content += `
+            <div style="margin-bottom: 1rem;">
+                Scores tied - checking groups...
+            </div>
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; font-size: 0.9rem; border-collapse: collapse; margin-bottom: 1rem;">
+                    <thead>
+                        <tr>
+                            <th style="text-align: left; padding: 2px;">Lvl</th>
+                            <th style="text-align: center; padding: 2px;">⚫</th>
+                            <th style="text-align: center; padding: 2px;">=</th>
+                            <th style="text-align: center; padding: 2px;">⚪</th>
+                        </tr>
+                    </thead>
+                    <tbody>
         `;
 
-        // Find the first difference in cluster sizes
-        let decidingIndex = 0;
-        while (decidingIndex < Math.max(blackClusters.length, whiteClusters.length)) {
-            const blackSize = blackClusters[decidingIndex] || 0;
-            const whiteSize = whiteClusters[decidingIndex] || 0;
+        winnerData.comparisonData.forEach((level, index) => {
+            const isDeciding = (index + 1) === winnerData.decidingLevel;
+            const rowStyle = isDeciding ? 'background-color: rgba(0,0,0,0.1);' : '';
+            const decider = isDeciding ? ' ←' : '';
 
-            if (blackSize !== whiteSize) {
-                break;
-            }
-            decidingIndex++;
-
-            winnerDisplay.innerHTML += `
-                <br>   → Tied, checking next largest
-                <br>
-                <br>${decidingIndex + 1}. Second-largest groups:
-                <br>   ⚫ Black's next largest: ${blackSize} stones
-                <br>   ⚪ White's next largest: ${whiteSize} stones
+            content += `
+                <tr style="${rowStyle}">
+                    <td style="padding: 2px;">${level.level}</td>
+                    <td style="text-align: right; padding: 2px;">${level.black.board1}+${level.black.board2}</td>
+                    <td style="text-align: left; padding: 2px;">=${level.black.sum}</td>
+                    <td style="text-align: right; padding: 2px;">${level.white.board1}+${level.white.board2}</td>
+                    <td style="text-align: left; padding: 2px;">=${level.white.sum}${decider}</td>
+                </tr>
             `;
-        }
+        });
 
-        // If we found a difference, show who won
-        if (decidingIndex < Math.max(blackClusters.length, whiteClusters.length)) {
-            const blackSize = blackClusters[decidingIndex] || 0;
-            const whiteSize = whiteClusters[decidingIndex] || 0;
-            const winner = blackSize > whiteSize ? 'Black' : 'White';
-            const symbol = blackSize > whiteSize ? '⚫' : '⚪';
-            const biggerSize = Math.max(blackSize, whiteSize);
-            const smallerSize = Math.min(blackSize, whiteSize);
-            winnerDisplay.innerHTML += `
-                <br>   → ${symbol} ${winner} wins! (${biggerSize} > ${smallerSize})
-            `;
-        }
-
-        // Show full details at the bottom
-        winnerDisplay.innerHTML += `
-            <br><br>Details:
-            <br>⚫ Black's groups: ${blackClusters.join('+')}
-            <br>⚪ White's groups: ${whiteClusters.join('+')}
+        content += `
+                </tbody>
+            </table>
+        </div>
         `;
+
+        if (winnerData.winner !== 'TIE') {
+            const symbol = winnerData.winner === PLAYERS.BLACK ? '⚫' : '⚪';
+            content += `<div style="font-weight: bold;">${symbol} wins at level ${winnerData.decidingLevel}!</div>`;
+        } else {
+            content += '<div>Complete tie!</div>';
+        }
     } else {
-        // Regular game end without tiebreaker or different scores
-        winnerDisplay.innerHTML = `${winner === 'TIE' ? 'Game Over - Tie!' : `${winner} wins!`} (${scores.black} - ${scores.white})`;
+        // Regular win without tiebreaker
+        const winner = scores.black > scores.white ? 'BLACK' : 'WHITE';
+        const symbol = winner === 'BLACK' ? '⚫' : '⚪';
+        content += `<div style="font-weight: bold;">${symbol} ${winner} wins with ${Math.max(scores.black, scores.white)}!</div>`;
     }
 
+    winnerDisplay.innerHTML = content;
     document.querySelector('.stats').appendChild(winnerDisplay);
 }
 

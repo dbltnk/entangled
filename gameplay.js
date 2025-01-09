@@ -382,35 +382,49 @@ class EntangledGame {
         if (blackScore > whiteScore) return PLAYERS.BLACK;
         if (whiteScore > blackScore) return PLAYERS.WHITE;
 
-        // If scores are tied and tiebreaker is enabled
-        if (this.enableTieBreaker) {
-            const blackClusters1 = this.findAllClusterSizes(this.board1, PLAYERS.BLACK);
-            const blackClusters2 = this.findAllClusterSizes(this.board2, PLAYERS.BLACK);
-            const whiteClusters1 = this.findAllClusterSizes(this.board1, PLAYERS.WHITE);
-            const whiteClusters2 = this.findAllClusterSizes(this.board2, PLAYERS.WHITE);
+        // Score is tied, perform detailed comparison
+        const blackClusters1 = this.findAllClusterSizes(this.board1, PLAYERS.BLACK);
+        const blackClusters2 = this.findAllClusterSizes(this.board2, PLAYERS.BLACK);
+        const whiteClusters1 = this.findAllClusterSizes(this.board1, PLAYERS.WHITE);
+        const whiteClusters2 = this.findAllClusterSizes(this.board2, PLAYERS.WHITE);
 
-            // Get largest cluster sizes for each player
-            const blackClusters = [...blackClusters1, ...blackClusters2].sort((a, b) => b - a);
-            const whiteClusters = [...whiteClusters1, ...whiteClusters2].sort((a, b) => b - a);
+        // Get longest length to know how many levels to compare
+        const maxGroups = Math.max(
+            blackClusters1.length + blackClusters2.length,
+            whiteClusters1.length + whiteClusters2.length
+        );
 
-            // Compare only the unique cluster sizes, ignoring count of each size
-            const blackUniqueSizes = [...new Set(blackClusters)];
-            const whiteUniqueSizes = [...new Set(whiteClusters)];
+        // Compare sums at each level
+        let comparisonData = [];
+        for (let i = 0; i < maxGroups; i++) {
+            const blackBoard1 = blackClusters1[i] || 0;
+            const blackBoard2 = blackClusters2[i] || 0;
+            const whiteBoard1 = whiteClusters1[i] || 0;
+            const whiteBoard2 = whiteClusters2[i] || 0;
 
-            const maxLength = Math.max(blackUniqueSizes.length, whiteUniqueSizes.length);
-            for (let i = 0; i < maxLength; i++) {
-                const blackSize = blackUniqueSizes[i] || 0;
-                const whiteSize = whiteUniqueSizes[i] || 0;
+            const blackSum = blackBoard1 + blackBoard2;
+            const whiteSum = whiteBoard1 + whiteBoard2;
 
-                if (blackSize > whiteSize) return PLAYERS.BLACK;
-                if (whiteSize > blackSize) return PLAYERS.WHITE;
+            comparisonData.push({
+                level: i + 1,
+                black: { board1: blackBoard1, board2: blackBoard2, sum: blackSum },
+                white: { board1: whiteBoard1, board2: whiteBoard2, sum: whiteSum }
+            });
+
+            if (blackSum !== whiteSum) {
+                return {
+                    winner: blackSum > whiteSum ? PLAYERS.BLACK : PLAYERS.WHITE,
+                    comparisonData,
+                    decidingLevel: i + 1
+                };
             }
-
-            // If we get here, all unique cluster sizes are the same
-            return 'TIE';
         }
 
-        return 'TIE';
+        return {
+            winner: 'TIE',
+            comparisonData,
+            decidingLevel: maxGroups
+        };
     }
 
     getEndGameStats() {
