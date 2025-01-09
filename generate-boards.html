@@ -15,12 +15,10 @@
 <body style="font-family: sans-serif; margin: 1rem;">
     <label for="sizeSelect">Board Size:</label>
     <select id="sizeSelect"></select>
-
     <label style="margin-left:1rem;" for="boardSelect">Match Board:</label>
     <select id="boardSelect">
         <option value="none">None</option>
     </select>
-
     <button id="startBtn">Start</button>
     <button id="stopBtn" disabled>Stop</button>
     <div style="margin-top: 1rem;">
@@ -41,7 +39,6 @@
         let workers = [];
         let startTime = 0;
 
-        // Gather unique board sizes from the layouts
         const uniqueSizes = [...new Set(
             Object.values(BOARD_LAYOUTS).map(layout => layout.grid.length)
         )].sort((a, b) => a - b);
@@ -58,8 +55,6 @@
             const size = parseInt(sizeSelect.value);
             const boardSelect = document.getElementById('boardSelect');
             boardSelect.innerHTML = '<option value="none">None</option>';
-
-            // Only list boards that match the chosen size (excluding "Random" boards)
             Object.entries(BOARD_LAYOUTS).forEach(([id, layout]) => {
                 if (layout.grid.length === size && !id.toLowerCase().includes('random')) {
                     const option = document.createElement('option');
@@ -87,10 +82,30 @@
             return (4294967296 * (2097151 & h2) + (h1 >>> 0)) >>> 0;
         }
 
-        // The worker code as a string
         const unifiedWorkerScript = `
+let tileScores = [];
 
-// Return valid symbols for each board size
+function precomputeTileScores(size) {
+    tileScores = new Array(size * size).fill(0);
+    for (let pos = 0; pos < size * size; pos++) {
+        let s = 0;
+        const row = Math.floor(pos / size);
+        const col = pos % size;
+        for (let r = 0; r < size; r++) {
+            for (let c = 0; c < size; c++) {
+                if (r === row && c === col) continue;
+                const dist = Math.abs(row - r) + Math.abs(col - c);
+                s += 1 / dist;
+            }
+        }
+        tileScores[pos] = s;
+    }
+}
+
+function getTileScore(pos) {
+    return tileScores[pos];
+}
+
 const getSymbolsForSize = (size) => {
     if (size === 4) return 'ABCDEFGHIJKLMNOP';
     if (size === 5) return 'ABCDEFGHIJKLMNOPQRSTUVWXY';
@@ -100,7 +115,7 @@ const getSymbolsForSize = (size) => {
 };
 
 let boardSize = 0;
-let pinnedBoard = null;   // If a board is pinned, it remains b1
+let pinnedBoard = null;
 let evolving = false;
 let boardsEvaluated = 0;
 let bestScore = -Infinity;
@@ -109,36 +124,23 @@ let bestB2 = null;
 let bestStats = null;
 let population = [];
 
-/**
- * Create a random board that uses all symbols for the given boardSize
- * but doesn't worry about dot positions (only used when pinnedBoard is NOT used).
- */
 function randomFullBoard() {
     const boardLength = boardSize * boardSize;
     const symbols = getSymbolsForSize(boardSize).split('');
     const result = new Array(boardLength).fill('.');
-
-    // Shuffle the symbol list
     for (let i = symbols.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [symbols[i], symbols[j]] = [symbols[j], symbols[i]];
     }
-    // Place them
     for (let i = 0; i < boardLength; i++) {
         if (i < symbols.length) result[i] = symbols[i];
     }
     return result;
 }
 
-/**
- * Create a new board that has exactly the same dot pattern as pinnedBoard
- * but the non-dot symbols are shuffled among those non-dot positions.
- */
 function randomBoardMatchingPinned(pin) {
     const boardLength = boardSize * boardSize;
-    // Copy pinned dot pattern
-    const result = [...pin];  // just to get the same length
-    // We'll gather all non-dot symbols
+    const result = [...pin];
     const symbolPositions = [];
     const symbols = [];
     for (let i = 0; i < boardLength; i++) {
@@ -146,23 +148,19 @@ function randomBoardMatchingPinned(pin) {
             symbolPositions.push(i);
             symbols.push(pin[i]);
         } else {
-            // keep the '.' in the result
             result[i] = '.';
         }
     }
-    // Shuffle the collected symbols
     for (let i = symbols.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [symbols[i], symbols[j]] = [symbols[j], symbols[i]];
     }
-    // Put them back in the same non-dot positions
     for (let idx = 0; idx < symbolPositions.length; idx++) {
         result[symbolPositions[idx]] = symbols[idx];
     }
     return result;
 }
 
-// Returns true if board uses only valid symbols and no duplicates
 function isValidBoard(board) {
     if (!board || board.length !== boardSize * boardSize) {
         return false;
@@ -179,30 +177,11 @@ function isValidBoard(board) {
     return true;
 }
 
-/**
- * The synergy/score function for boards.
- */
 function evaluateBoards(b1, b2) {
     if (!isValidBoard(b1) || !isValidBoard(b2)) {
         return { score: -Infinity, moves: 0, stdev: 0, ratio: 0 };
     }
-
-    function getTileScore(pos) {
-        let score = 0;
-        const row = Math.floor(pos / boardSize);
-        const col = pos % boardSize;
-        for (let r = 0; r < boardSize; r++) {
-            for (let c = 0; c < boardSize; c++) {
-                if (r === row && c === col) continue;
-                const dist = Math.abs(row - r) + Math.abs(col - c);
-                score += 1 / dist;
-            }
-        }
-        return score;
-    }
-
     const scores = [];
-    // For each symbol in b1, see if it appears in b2
     for (let i = 0; i < b1.length; i++) {
         const symbol = b1[i];
         if (symbol === '.') continue;
@@ -210,11 +189,9 @@ function evaluateBoards(b1, b2) {
         if (j < 0) continue;
         scores.push(getTileScore(i) + getTileScore(j));
     }
-
     if (!scores.length) {
         return { score: -Infinity, moves: 0, stdev: 0, ratio: 0 };
     }
-
     const best = Math.max(...scores);
     const worst = Math.min(...scores);
     const sum = scores.reduce((a, b) => a + b, 0);
@@ -223,7 +200,6 @@ function evaluateBoards(b1, b2) {
     const stdev = Math.sqrt(variance);
     const bestCount = scores.filter(x => Math.abs(x - best) < 1e-10).length;
     const ratio = worst / best;
-
     return {
         score: bestCount - stdev - ratio,
         moves: bestCount,
@@ -232,7 +208,6 @@ function evaluateBoards(b1, b2) {
     };
 }
 
-// Mutate a board by swapping a few pairs of non-dot symbols
 function mutate(board) {
     if (!isValidBoard(board)) return board;
     const copy = [...board];
@@ -250,17 +225,12 @@ function mutate(board) {
     return isValidBoard(copy) ? copy : board;
 }
 
-/**
- * Crossover for the second board. If pinnedBoard is used, we do NOT cross b1.
- */
 function crossover(b2a, b2b) {
     if (!isValidBoard(b2a) || !isValidBoard(b2b)) return b2a;
-    // We assume both have the same dot pattern as pinnedBoard, so let's do half from b2a, half from b2b
     const child = [...b2a];
     const validPositions = child.map((v, i) => (v !== '.' ? i : -1)).filter(i => i !== -1);
     const half = Math.floor(validPositions.length / 2);
     const used = new Set(b2a.filter(v => v !== '.').slice(0, half));
-
     let added = 0;
     for (const pos of validPositions) {
         if (added >= half) break;
@@ -270,10 +240,7 @@ function crossover(b2a, b2b) {
         used.add(symbol);
         added++;
     }
-
-    // Fill the leftover with any leftover symbols
     const fullSym = getSymbolsForSize(boardSize).split('');
-    // Or we can gather from pinnedBoard, but if pinnedBoard has same set, it's the same
     const childSymbols = child.filter(ch => ch !== '.');
     const usedAll = new Set(childSymbols);
     const remain = fullSym.filter(ch => !usedAll.has(ch));
@@ -282,13 +249,9 @@ function crossover(b2a, b2b) {
             child[pos] = remain.pop() || '.';
         }
     }
-
     return isValidBoard(child) ? child : b2a;
 }
 
-/**
- * Weighted random parent selection
- */
 function pickParent(pop) {
     const totalScore = pop.reduce((sum, p) => sum + (p.stats.score + 50), 0);
     let r = Math.random() * totalScore;
@@ -299,21 +262,15 @@ function pickParent(pop) {
     return pop[pop.length - 1];
 }
 
-/**
- * Insert some random immigrants. 
- * If pinned board, randomizing b2 with the same dot layout.
- */
 function insertImmigrants(pop) {
     const count = Math.max(1, Math.floor(pop.length * 0.05));
     for (let i = 0; i < count; i++) {
         const idx = Math.floor(Math.random() * pop.length);
         if (pinnedBoard) {
-            // We keep pinnedBoard as b1
             const newB2 = randomBoardMatchingPinned(pinnedBoard);
             const stats = evaluateBoards(pinnedBoard, newB2);
             pop[idx] = { board1: pinnedBoard, board2: newB2, stats };
         } else {
-            // old approach: random for both
             const b1 = randomFullBoard();
             const b2 = randomFullBoard();
             const stats = evaluateBoards(b1, b2);
@@ -327,9 +284,10 @@ onmessage = (e) => {
     const data = e.data;
     if (data.msg === "start") {
         boardSize = data.boardSize;
+        precomputeTileScores(boardSize);
         pinnedBoard = null;
         if (data.matchBoard && data.matchBoard.length) {
-            pinnedBoard = data.matchBoard; // This is the pinned layout
+            pinnedBoard = data.matchBoard;
         }
         evolving = true;
         boardsEvaluated = 0;
@@ -338,17 +296,12 @@ onmessage = (e) => {
         bestB2 = null;
         bestStats = null;
         population = [];
-
-        // Initialize population
         for (let i = 0; i < ${POPULATION_SIZE}; i++) {
             let b1, b2;
             if (pinnedBoard) {
-                // b1 is pinned
                 b1 = [...pinnedBoard];
-                // b2 is a random rearrangement that matches pinned's dots
                 b2 = randomBoardMatchingPinned(pinnedBoard);
             } else {
-                // No pinned board: random
                 b1 = randomFullBoard();
                 b2 = randomFullBoard();
             }
@@ -361,7 +314,6 @@ onmessage = (e) => {
                 bestB2 = b2;
             }
         }
-
         boardsEvaluated = ${POPULATION_SIZE};
         evolve();
     } else if (data.msg === "stop") {
@@ -371,22 +323,18 @@ onmessage = (e) => {
 
 function evolve() {
     if (!evolving) return;
-
     for (let g = 0; g < 50; g++) {
         const newPop = [];
         for (let i = 0; i < ${POPULATION_SIZE}; i++) {
             let b1, b2, stats;
             if (pinnedBoard) {
-                // pinned board is always b1
                 b1 = [...pinnedBoard];
                 const parent1 = pickParent(population);
                 const parent2 = pickParent(population);
-                // We do crossover for b2 only
                 const x2 = crossover(parent1.board2, parent2.board2);
                 b2 = mutate(x2);
                 stats = evaluateBoards(b1, b2);
             } else {
-                // old approach for both boards
                 const p1 = pickParent(population);
                 const p2 = pickParent(population);
                 const x1 = crossover(p1.board1, p2.board1);
@@ -406,8 +354,6 @@ function evolve() {
         }
         population = insertImmigrants(newPop);
     }
-
-    // Send progress
     if (bestScore > -Infinity) {
         postMessage({
             msg: 'progress',
@@ -434,19 +380,15 @@ function evolve() {
 }
 `;
 
-        // Create a blob from the worker script so we can spawn Worker instances
         const blob = new Blob([unifiedWorkerScript], { type: 'text/javascript' });
         const workerURL = URL.createObjectURL(blob);
 
         document.getElementById("startBtn").addEventListener("click", () => {
             if (running) return;
-
             const size = parseInt(sizeSelect.value);
             const boardId = boardSelect.value;
             let matchBoard = null;
-
             if (boardId !== 'none') {
-                // Flatten the chosen board's 2D grid into a 1D array
                 matchBoard = [];
                 const layout = BOARD_LAYOUTS[boardId].grid;
                 for (let i = 0; i < layout.length; i++) {
@@ -455,7 +397,6 @@ function evolve() {
                     }
                 }
             }
-
             running = true;
             globalBestScore = -Infinity;
             globalBestB1 = null;
@@ -463,21 +404,16 @@ function evolve() {
             globalBestStats = null;
             totalBoardsEvaluated = 0;
             startTime = performance.now();
-
             document.getElementById("results").textContent = "";
             document.getElementById("status").textContent = "Starting...";
             document.getElementById("stopBtn").disabled = false;
             document.getElementById("startBtn").disabled = true;
-
             workers = [];
-
-            // Start the workers
             for (let i = 0; i < WORKER_COUNT; i++) {
                 const worker = new Worker(workerURL);
                 worker.onmessage = (evt) => {
                     const data = evt.data;
                     if (data.msg === "progress") {
-                        // Average boards evaluated among all workers
                         totalBoardsEvaluated += (data.boardsEvaluated - totalBoardsEvaluated) / WORKER_COUNT;
                         if (data.bestScore > globalBestScore) {
                             globalBestScore = data.bestScore;
@@ -488,13 +424,11 @@ function evolve() {
                         updateStatus();
                     }
                 };
-
                 worker.postMessage({
                     msg: "start",
                     boardSize: size,
                     matchBoard: matchBoard
                 });
-
                 workers.push(worker);
             }
         });
@@ -509,47 +443,38 @@ function evolve() {
             document.getElementById("startBtn").disabled = false;
         });
 
-        /**
-         * Generates a snippet for boards.js from the given boards.
-         * If pinnedBoard is used, we only output the second board.
-         */
         function generateBoardOutput(b1, b2, score, pinnedUsed) {
             const inputStr = b1.join("") + b2.join("") + score.toFixed(4);
             const hashedId = cyrb53(inputStr).toString();
             const size = Math.sqrt(b1.length);
             let out = "";
-
             if (!pinnedUsed) {
-                // No pinned board: we produce 2 boards
                 out += `board${hashedId}left: {\n`;
                 out += `    name: "evolved left",\n`;
                 out += "    grid: [\n";
                 for (let r = 0; r < size; r++) {
                     const row = b1.slice(r * size, (r + 1) * size);
-                    out += `        ['${row.join("', '")}'],\n`;
+                    out += `        [${row.map(x => "'" + x + "'").join(", ")}],\n`;
                 }
                 out += "    ]\n},\n";
-
                 out += `board${hashedId}right: {\n`;
                 out += `    name: "evolved right",\n`;
                 out += "    grid: [\n";
                 for (let r = 0; r < size; r++) {
                     const row = b2.slice(r * size, (r + 1) * size);
-                    out += `        ['${row.join("', '")}'],\n`;
+                    out += `        [${row.map(x => "'" + x + "'").join(", ")}],\n`;
                 }
                 out += "    ]\n},\n";
             } else {
-                // If pinned board: only produce the second board
                 out += `board${hashedId}only: {\n`;
                 out += `    name: "evolved second",\n`;
                 out += "    grid: [\n";
                 for (let r = 0; r < size; r++) {
                     const row = b2.slice(r * size, (r + 1) * size);
-                    out += `        ['${row.join("', '")}'],\n`;
+                    out += `        [${row.map(x => "'" + x + "'").join(", ")}],\n`;
                 }
                 out += "    ]\n},\n";
             }
-
             return out;
         }
 
@@ -570,44 +495,33 @@ function evolve() {
             const elapsedSec = (now - startTime) / 1000;
             const boardsPerSec = elapsedSec > 0 ? totalBoardsEvaluated / elapsedSec : 0;
             const pinnedUsed = (boardSelect.value !== 'none');
-
             let status = `Time Elapsed: ${elapsedSec.toFixed(2)}s\n`;
             status += `Boards Evaluated (approx): ${Math.floor(totalBoardsEvaluated)}\n`;
             status += `Avg Boards/sec: ${boardsPerSec.toFixed(2)}\n`;
             status += `Global Best Score: ${globalBestScore.toFixed(4)}\n\n`;
-
             if (globalBestStats) {
                 status += `Combined Score: ${globalBestStats.score.toFixed(2)}\n`;
                 status += `Viable Moves: ${globalBestStats.moves}\n`;
                 status += `Standard Deviation: ${globalBestStats.stdev.toFixed(2)}\n`;
                 status += `Best/Worst Ratio: ${globalBestStats.ratio.toFixed(2)}\n\n`;
-
                 if (globalBestB1 && globalBestB2) {
                     const size = Math.sqrt(globalBestB1.length);
-                    // Pinned board is always b1 if pinnedUsed
                     status += 'Current best board(s):\n\n';
-
-                    // Show pinned board only if pinnedUsed is false 
-                    // or if you want to see it in debug form, you can always show it
                     if (!pinnedUsed) {
                         status += 'Board 1:\n';
                         status += formatBoard(globalBestB1, size) + '\n';
                         status += 'Board 2:\n';
                         status += formatBoard(globalBestB2, size) + '\n';
                     } else {
-                        // If pinned, b1 never changes, so let's just show b2:
                         status += 'Pinned Board (unchanged, for reference):\n';
                         status += formatBoard(globalBestB1, size) + '\n';
                         status += 'Evolved Board (Board 2):\n';
                         status += formatBoard(globalBestB2, size) + '\n';
                     }
-
-                    // Output snippet for boards.js
                     status += '\nPaste into boards.js:\n\n';
                     status += generateBoardOutput(globalBestB1, globalBestB2, globalBestScore, pinnedUsed);
                 }
             }
-
             document.getElementById("status").textContent = status;
         }
     </script>
