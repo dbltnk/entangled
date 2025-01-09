@@ -13,7 +13,6 @@ let gameSettings = {
     currentPlayer: true,
     icons: true,
     symbols: false,
-    tiebreaker: true
 };
 
 let game = null;
@@ -568,8 +567,8 @@ function showWinner(winner) {
     const endStats = game.getEndGameStats();
     const scores = endStats.scores;
 
-    // If tiebreaker is enabled and scores are tied, show the detailed analysis
-    if (endStats.tiebreakerEnabled && scores.black === scores.white) {
+    // If scores are tied, show the detailed analysis
+    if (scores.black === scores.white) {
         const blackClusters = endStats.clusters.black.all;
         const whiteClusters = endStats.clusters.white.all;
 
@@ -695,7 +694,7 @@ function initializeGame() {
     const board1Layout = getSelectedBoardLayout(board1Select);
     const board2Layout = getSelectedBoardLayout(board2Select);
 
-    game = new EntangledGame(board1Layout, board2Layout, startingConfig, gameSettings.tiebreaker);
+    game = new EntangledGame(board1Layout, board2Layout, startingConfig);
 
     const existingWinner = document.querySelector('.winner');
     if (existingWinner) {
@@ -717,7 +716,7 @@ function init() {
         icon.classList.toggle('rotated');
     });
 
-    ['hover', 'groups', 'size', 'score', 'currentPlayer', 'icons', 'symbols', 'tiebreaker'].forEach(setting => {
+    ['hover', 'groups', 'size', 'score', 'currentPlayer', 'icons', 'symbols'].forEach(setting => {
         const checkbox = document.getElementById(`setting-${setting}`);
         if (checkbox) {
             checkbox.addEventListener('change', (e) => {
@@ -725,15 +724,6 @@ function init() {
                 saveSettings();
                 applySettings();
                 if (game) {
-                    // For tiebreaker, we need to restart the game for it to take effect
-                    if (setting === 'tiebreaker') {
-                        game = new EntangledGame(
-                            game.board1Layout,
-                            game.board2Layout,
-                            '', // Starting config blank since game is in progress
-                            gameSettings.tiebreaker
-                        );
-                    }
                     updateDisplay();
                 }
             });
