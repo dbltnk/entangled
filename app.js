@@ -201,12 +201,12 @@ function populateBoardsBySize(size) {
         4: ['board4x4', 'random4x4'],
         5: ['board1', 'board7'],
         6: ['board6x6', 'random6x6'],
-        7: ['board7x7', 'centeredRandom7x7']
+        7: ['donutleft', 'board2494836417right']
     };
 
     const defaultConfigs = {
         4: '',
-        5: 'WD1,WD2',
+        5: '',
         6: '',
         7: ''
     };
@@ -751,7 +751,7 @@ function init() {
         initializeBoards();
     });
 
-    populateBoardsBySize(5);
+    populateBoardsBySize(7);
 
     document.getElementById('start-game').addEventListener('click', () => {
         stopGame();
