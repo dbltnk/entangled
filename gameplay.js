@@ -438,6 +438,35 @@ class EntangledGame {
         const whiteClusters1 = this.findAllClusterSizes(this.board1, PLAYERS.WHITE);
         const whiteClusters2 = this.findAllClusterSizes(this.board2, PLAYERS.WHITE);
 
+        // Generate comparison data like getWinner()
+        const maxGroups = Math.max(
+            blackClusters1.length + blackClusters2.length,
+            whiteClusters1.length + whiteClusters2.length
+        );
+
+        let comparisonData = [];
+        let decidingLevel = null;
+
+        for (let i = 0; i < maxGroups; i++) {
+            const blackBoard1 = blackClusters1[i] || 0;
+            const blackBoard2 = blackClusters2[i] || 0;
+            const whiteBoard1 = whiteClusters1[i] || 0;
+            const whiteBoard2 = whiteClusters2[i] || 0;
+
+            const blackSum = blackBoard1 + blackBoard2;
+            const whiteSum = whiteBoard1 + whiteBoard2;
+
+            comparisonData.push({
+                level: i + 1,
+                black: { board1: blackBoard1, board2: blackBoard2, sum: blackSum },
+                white: { board1: whiteBoard1, board2: whiteBoard2, sum: whiteSum }
+            });
+
+            if (decidingLevel === null && blackSum !== whiteSum) {
+                decidingLevel = i + 1;
+            }
+        }
+
         return {
             scores: {
                 black: blackScore,
@@ -446,16 +475,21 @@ class EntangledGame {
             clusters: {
                 black: {
                     board1: blackClusters1,
-                    board2: blackClusters2,
-                    all: [...blackClusters1, ...blackClusters2].sort((a, b) => b - a)
+                    board2: blackClusters2
                 },
                 white: {
                     board1: whiteClusters1,
-                    board2: whiteClusters2,
-                    all: [...whiteClusters1, ...whiteClusters2].sort((a, b) => b - a)
+                    board2: whiteClusters2
                 }
             },
-            tiebreakerEnabled: this.enableTieBreaker
+            tiebreaker: {
+                comparisonData,
+                decidingLevel: decidingLevel || maxGroups,
+                winner: decidingLevel ?
+                    (comparisonData[decidingLevel - 1].black.sum > comparisonData[decidingLevel - 1].white.sum ?
+                        PLAYERS.BLACK : PLAYERS.WHITE) :
+                    'TIE'
+            }
         };
     }
 

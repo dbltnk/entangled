@@ -54,28 +54,20 @@ self.onmessage = function (e) {
         }
     }
 
-    // Get final scores
-    const blackScore = game.getScore(PLAYERS.BLACK);
-    const whiteScore = game.getScore(PLAYERS.WHITE);
-    let winner;
-
-    if (blackScore > whiteScore) {
-        winner = PLAYERS.BLACK;
-    } else if (whiteScore > blackScore) {
-        winner = PLAYERS.WHITE;
-    } else {
-        winner = 'TIE';
-    }
+    // Get final stats including detailed tiebreaker info
+    const endStats = game.getEndGameStats();
 
     // Send result back to main thread
     self.postMessage({
         matchup,
         matchIndex,
         result: {
-            winner,
-            blackScore,
-            whiteScore,
-            history
+            winner: endStats.tiebreaker.winner,
+            blackScore: endStats.scores.black,
+            whiteScore: endStats.scores.white,
+            history,
+            tiebreaker: endStats.tiebreaker,  // Add full tiebreaker data
+            clusters: endStats.clusters       // Add all cluster sizes
         }
     });
 };

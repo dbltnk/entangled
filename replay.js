@@ -303,10 +303,50 @@ class GameReplay {
                 currentPlayerDisplay.textContent =
                     `Current player: ${state.currentPlayer === 'BLACK' ? '⚫ Black' : '⚪ White'}`;
             } else {
-                const winner = state.blackScore > state.whiteScore ? '⚫ Black wins!' :
-                    state.whiteScore > state.blackScore ? '⚪ White wins!' :
-                        'Draw!';
-                currentPlayerDisplay.textContent = winner;
+                // Create a game instance to get final stats
+                const finalGame = new EntangledGame(state.board1Layout, state.board2Layout);
+                // Replay all moves to get to final state
+                for (let i = 1; i < this.history.length; i++) {
+                    finalGame.makeMove(this.history[i].move);
+                }
+                const endStats = finalGame.getEndGameStats();
+
+                let content = `
+                    <div class="final-state">
+                        Base scores: ⚫ ${endStats.scores.black} vs ⚪ ${endStats.scores.white}<br>`;
+
+                if (endStats.scores.black === endStats.scores.white) {
+                    content += `<table class="tiebreaker-table" style="margin-top:0.5rem; font-size:0.9em; width:100%;">
+                        <tr>
+                            <th>Lvl</th><th>⚫</th><th>=</th><th>⚪</th><th>=</th>
+                        </tr>`;
+
+                    endStats.tiebreaker.comparisonData.forEach((level, i) => {
+                        const isDeciding = (i + 1) === endStats.tiebreaker.decidingLevel;
+                        content += `
+                            <tr ${isDeciding ? 'style="background:rgba(0,0,0,0.1)"' : ''}>
+                                <td>${level.level}</td>
+                                <td>${level.black.board1}+${level.black.board2}</td>
+                                <td>${level.black.sum}</td>
+                                <td>${level.white.board1}+${level.white.board2}</td>
+                                <td>${level.white.sum}${isDeciding ? ' ←' : ''}</td>
+                            </tr>`;
+                    });
+                    content += `</table>`;
+
+                    if (endStats.tiebreaker.winner !== 'TIE') {
+                        const symbol = endStats.tiebreaker.winner === 'BLACK' ? '⚫' : '⚪';
+                        content += `<div style="margin-top:0.5rem">${symbol} wins at level ${endStats.tiebreaker.decidingLevel}!</div>`;
+                    } else {
+                        content += '<div style="margin-top:0.5rem">Complete tie!</div>';
+                    }
+                } else {
+                    const winner = endStats.scores.black > endStats.scores.white ? 'BLACK' : 'WHITE';
+                    const symbol = winner === 'BLACK' ? '⚫' : '⚪';
+                    content += `<div>${symbol} wins ${Math.max(endStats.scores.black, endStats.scores.white)}-${Math.min(endStats.scores.black, endStats.scores.white)}!</div>`;
+                }
+                content += '</div>';
+                currentPlayerDisplay.innerHTML = content;
             }
         }
 

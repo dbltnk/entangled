@@ -633,8 +633,22 @@ class ResultsViewer {
 
     calculateAggregatedStats(results, selfPlayOnly) {
         const stats = {
-            white: { games: 0, wins: 0, draws: 0, losses: 0, scores: [] },
-            black: { games: 0, wins: 0, draws: 0, losses: 0, scores: [] }
+            white: {
+                games: 0,
+                wins: 0,
+                draws: 0,
+                losses: 0,
+                scores: [],
+                tiebreakerWins: 0
+            },
+            black: {
+                games: 0,
+                wins: 0,
+                draws: 0,
+                losses: 0,
+                scores: [],
+                tiebreakerWins: 0
+            }
         };
 
         Object.values(results).forEach(result => {
@@ -650,9 +664,15 @@ class ResultsViewer {
                 if (game.winner === 'black') {
                     stats.black.wins++;
                     stats.white.losses++;
+                    if (game.black === game.white) {  // Was a tiebreaker win
+                        stats.black.tiebreakerWins++;
+                    }
                 } else if (game.winner === 'white') {
                     stats.white.wins++;
                     stats.black.losses++;
+                    if (game.black === game.white) {  // Was a tiebreaker win
+                        stats.white.tiebreakerWins++;
+                    }
                 } else {
                     stats.black.draws++;
                     stats.white.draws++;
@@ -809,20 +829,49 @@ class ResultsViewer {
             const matchupDiv = document.createElement('div');
             matchupDiv.className = 'game-detail';
 
-            const gamesHtml = result.games.map((game, index) => `
-                <div class="game-result">
-                    <div>
-                        <span class="game-number">Game ${index + 1}</span>
-                        <span class="winner-${game.winner}">
-                            ${game.winner === 'draw' ? 'Draw' : `${game.winner} wins`}
-                        </span>
-                        <span class="score">
-                            (⚫ ${game.black} - ⚪ ${game.white})
-                        </span>
-                    </div>
-                    <button class="replay-button">Replay</button>
-                </div>
-            `).join('');
+            const gamesHtml = result.games.map((game, index) => {
+                let html = `
+                    <div class="game-result">
+                        <div>
+                            <span class="game-number">Game ${index + 1}</span>
+                            <span class="winner-${game.winner}">
+                                ${game.winner === 'draw' ? 'Draw' : `${game.winner} wins`}
+                            </span>
+                            <span class="score">
+                                (⚫ ${game.black} - ⚪ ${game.white})
+                            </span>
+                        </div>`;
+
+                // Add tiebreaker details if scores were equal
+                if (game.black === game.white && game.tiebreaker) {
+                    html += `
+                        <div class="tiebreaker-details" style="font-size: 0.9rem; margin: 0.5rem 0; background: #f5f5f5; padding: 0.5rem;">
+                            <table style="width: 100%; border-collapse: collapse;">
+                                <tr>
+                                    <th style="text-align: left;">Lvl</th>
+                                    <th style="text-align: center;">⚫</th>
+                                    <th style="text-align: center;">=</th>
+                                    <th style="text-align: center;">⚪</th>
+                                </tr>`;
+
+                    game.tiebreaker.comparisonData.forEach((level, i) => {
+                        const isDeciding = (i + 1) === game.tiebreaker.decidingLevel;
+                        html += `
+                            <tr style="${isDeciding ? 'background: rgba(0,0,0,0.1);' : ''}">
+                                <td>${level.level}</td>
+                                <td style="text-align: right;">${level.black.board1}+${level.black.board2}</td>
+                                <td style="text-align: center;">${level.black.sum}</td>
+                                <td style="text-align: right;">${level.white.board1}+${level.white.board2}</td>
+                                <td style="text-align: left;">${level.white.sum}${isDeciding ? ' ←' : ''}</td>
+                            </tr>`;
+                    });
+
+                    html += `</table></div>`;
+                }
+
+                html += `<button class="replay-button">Replay</button></div>`;
+                return html;
+            }).join('');
 
             matchupDiv.innerHTML = `
                 <h3>⚫ ${AI_PLAYERS[result.black].name} vs ⚪ ${AI_PLAYERS[result.white].name}</h3>

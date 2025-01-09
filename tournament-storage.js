@@ -124,7 +124,9 @@ class TournamentStorage {
             winner: gameData.result.winner === 'TIE' ? 'draw' : gameData.result.winner.toLowerCase(),
             black: gameData.result.blackScore,
             white: gameData.result.whiteScore,
-            moves: moves
+            moves: moves,
+            tiebreaker: gameData.result.tiebreaker,  // Add tiebreaker data
+            clusters: gameData.result.clusters       // Add cluster data
         });
     }
 
