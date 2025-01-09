@@ -29,7 +29,7 @@ const ICON_MAPPINGS = {
     'C': 'fa-flask-vial',
     'D': 'fa-dna',
     'E': 'fa-microscope',
-    'F': 'fa-flask',
+    'F': 'fa-biohazard',
     'G': 'fa-database',
     'H': 'fa-brain',
     'I': 'fa-infinity',
@@ -70,7 +70,7 @@ const ICON_MAPPINGS = {
     '-': 'fa-staff-snake',
     '=': 'fa-code-branch',
     '/': 'fa-tower-broadcast',
-    '?': 'fa-biohazard',
+    '?': 'fa-flask',
     '!': 'fa-explosion',
     '~': 'fa-hurricane'
 };
