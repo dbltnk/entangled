@@ -30,15 +30,21 @@
 
         const WORKER_COUNT = 16;
         const POPULATION_SIZE = 100;
+
         let running = false;
+        let clockInterval = null;
+        let startTime = 0;
+
         let globalBestScore = -Infinity;
         let globalBestB1 = null;
         let globalBestB2 = null;
         let globalBestStats = null;
         let totalBoardsEvaluated = 0;
         let workers = [];
-        let startTime = 0;
+        // Track how many boards each worker has evaluated
+        let workerCounts = new Array(WORKER_COUNT).fill(0);
 
+        // Gather unique board sizes
         const uniqueSizes = [...new Set(
             Object.values(BOARD_LAYOUTS).map(layout => layout.grid.length)
         )].sort((a, b) => a - b);
@@ -82,6 +88,7 @@
             return (4294967296 * (2097151 & h2) + (h1 >>> 0)) >>> 0;
         }
 
+        // Updated worker script to recompute BFS for every pair we evaluate
         const unifiedWorkerScript = `
 let tileScores = [];
 
@@ -102,8 +109,9 @@ function precomputeTileScores(size) {
     }
 }
 
-let distanceCache;
+let distanceCache = null;
 
+// BFS for a single board
 function calculateDistancesFromPos(pos, size, board) {
     const distances = new Uint8Array(size * size).fill(255);
     const queue = [[pos, 0]];
@@ -116,7 +124,7 @@ function calculateDistancesFromPos(pos, size, board) {
         
         const moves = [
             [row - 1, col],
-            [row + 1, col], 
+            [row + 1, col],
             [row, col - 1],
             [row, col + 1]
         ];
@@ -124,6 +132,7 @@ function calculateDistancesFromPos(pos, size, board) {
         for (const [newRow, newCol] of moves) {
             if (newRow < 0 || newRow >= size || newCol < 0 || newCol >= size) continue;
             const newPos = newRow * size + newCol;
+            // Only walk through actual symbol positions, treat dots as walls
             if (board[newPos] === '.' || distances[newPos] !== 255) continue;
             distances[newPos] = dist + 1;
             queue.push([newPos, dist + 1]);
@@ -132,6 +141,7 @@ function calculateDistancesFromPos(pos, size, board) {
     return distances;
 }
 
+// Recompute BFS for the actual boards being evaluated:
 function precomputeDistances(size, board1, board2) {
     const totalSize = size * size;
     distanceCache = {
@@ -181,10 +191,12 @@ function randomFullBoard() {
     const boardLength = boardSize * boardSize;
     const symbols = getSymbolsForSize(boardSize).split('');
     const result = new Array(boardLength).fill('.');
+    // Shuffle
     for (let i = symbols.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [symbols[i], symbols[j]] = [symbols[j], symbols[i]];
     }
+    // Fill
     for (let i = 0; i < boardLength; i++) {
         if (i < symbols.length) result[i] = symbols[i];
     }
@@ -204,6 +216,7 @@ function randomBoardMatchingPinned(pin) {
             result[i] = '.';
         }
     }
+    // Shuffle pinned symbols
     for (let i = symbols.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [symbols[i], symbols[j]] = [symbols[j], symbols[i]];
@@ -238,8 +251,6 @@ function evaluateBoards(b1, b2) {
             stdev: 0,
             ratio: 0,
             proximityPenalty: 0,
-
-            // NEW: Return empty arrays for the three categories
             proximityViolationsDirectBoth: [],
             proximityViolationsOneDist2: [],
             proximityViolationsDist2Both: []
@@ -247,6 +258,7 @@ function evaluateBoards(b1, b2) {
     }
 
     const scores = [];
+    // Sum tile scores for matching symbols
     for (let i = 0; i < b1.length; i++) {
         const symbol = b1[i];
         if (symbol === '.') continue;
@@ -262,15 +274,13 @@ function evaluateBoards(b1, b2) {
             stdev: 0,
             ratio: 0,
             proximityPenalty: 0,
-
-            // NEW: Return empty arrays for the three categories
             proximityViolationsDirectBoth: [],
             proximityViolationsOneDist2: [],
             proximityViolationsDist2Both: []
         };
     }
 
-    // Calculate base metrics
+    // Compute base metrics
     const best = Math.max(...scores);
     const worst = Math.min(...scores);
     const sum = scores.reduce((a, b) => a + b, 0);
@@ -280,13 +290,21 @@ function evaluateBoards(b1, b2) {
     const bestCount = scores.filter(x => Math.abs(x - best) < 1e-10).length;
     const ratio = worst / best;
 
-    // Three separate sets of proximity violations
+    function isDiagonal(pos1, pos2, size) {
+        const row1 = Math.floor(pos1 / size);
+        const col1 = pos1 % size;
+        const row2 = Math.floor(pos2 / size);
+        const col2 = pos2 % size;
+        
+        // Check if positions are diagonal to each other
+        return Math.abs(row1 - row2) === 1 && Math.abs(col1 - col2) === 1;
+    }
+
     const proximityViolationsDirectBoth = new Set();
     const proximityViolationsOneDist2 = new Set();
     const proximityViolationsDist2Both = new Set();
     let proximityPenalty = 0;
 
-    // Loop to check distances on each board
     for (let i = 0; i < b1.length; i++) {
         const symbol1 = b1[i];
         if (symbol1 === '.') continue;
@@ -297,44 +315,41 @@ function evaluateBoards(b1, b2) {
             if (symbol2 === '.') continue;
             const j2 = b2.indexOf(symbol2);
 
-            const dist1 = distanceCache.board1[i * boardSize * boardSize + k];
-            const dist2 = distanceCache.board2[j1 * boardSize * boardSize + j2];
+            // Check if directly adjacent (Manhattan distance 1)
+            const isAdjacent1 = Math.abs(Math.floor(i / boardSize) - Math.floor(k / boardSize)) + 
+                               Math.abs((i % boardSize) - (k % boardSize)) === 1;
+            const isAdjacent2 = Math.abs(Math.floor(j1 / boardSize) - Math.floor(j2 / boardSize)) + 
+                               Math.abs((j1 % boardSize) - (j2 % boardSize)) === 1;
 
-            // Only proceed if both distances are valid (not 255)
-            if (dist1 !== 255 && dist2 !== 255) {
-                // Case 1: direct neighbors on both boards
-                if (dist1 === 1 && dist2 === 1) {
-                    proximityPenalty += 1;
-                    proximityViolationsDirectBoth.add(symbol1);
-                    proximityViolationsDirectBoth.add(symbol2);
-                }
-                // Case 2: direct neighbor on one board + distance 2 on the other
-                else if (
-                    (dist1 === 1 && dist2 === 2) ||
-                    (dist1 === 2 && dist2 === 1)
-                ) {
-                    proximityPenalty += 0.5;
-                    proximityViolationsOneDist2.add(symbol1);
-                    proximityViolationsOneDist2.add(symbol2);
-                }
-                // Case 3: distance 2 on both boards
-                else if (dist1 === 2 && dist2 === 2) {
-                    proximityPenalty += 0.25;
-                    proximityViolationsDist2Both.add(symbol1);
-                    proximityViolationsDist2Both.add(symbol2);
-                }
+            // Check if diagonal
+            const isDiagonal1 = isDiagonal(i, k, boardSize);
+            const isDiagonal2 = isDiagonal(j1, j2, boardSize);
+
+            if (isAdjacent1 && isAdjacent2) {
+                proximityPenalty += 4;
+                proximityViolationsDirectBoth.add(symbol1);
+                proximityViolationsDirectBoth.add(symbol2);
+            }
+            else if ((isAdjacent1 && isDiagonal2) || (isDiagonal1 && isAdjacent2)) {
+                proximityPenalty += 1;
+                proximityViolationsOneDist2.add(symbol1);
+                proximityViolationsOneDist2.add(symbol2);
+            }
+            else if (isDiagonal1 && isDiagonal2) {
+                proximityPenalty += 0.25;
+                proximityViolationsDist2Both.add(symbol1);
+                proximityViolationsDist2Both.add(symbol2);
             }
         }
     }
 
+    // Final combined score
     return {
         score: bestCount - stdev - ratio - proximityPenalty,
         moves: bestCount,
         stdev,
         ratio,
         proximityPenalty,
-
-        // Convert each Set to a sorted array
         proximityViolationsDirectBoth: Array.from(proximityViolationsDirectBoth).sort(),
         proximityViolationsOneDist2: Array.from(proximityViolationsOneDist2).sort(),
         proximityViolationsDist2Both: Array.from(proximityViolationsDist2Both).sort()
@@ -348,6 +363,7 @@ function mutate(board) {
     for (let i = 0; i < copy.length; i++) {
         if (copy[i] !== '.') validPos.push(i);
     }
+    // Swap 2 pairs of symbols
     for (let s = 0; s < 2; s++) {
         const i1 = Math.floor(Math.random() * validPos.length);
         const i2 = Math.floor(Math.random() * validPos.length);
@@ -386,6 +402,7 @@ function crossover(b2a, b2b) {
 }
 
 function pickParent(pop) {
+    // Weighted pick by (score + 50) to keep positives
     const totalScore = pop.reduce((sum, p) => sum + (p.stats.score + 50), 0);
     let r = Math.random() * totalScore;
     for (const item of pop) {
@@ -422,10 +439,6 @@ onmessage = (e) => {
         if (data.matchBoard && data.matchBoard.length) {
             pinnedBoard = data.matchBoard;
         }
-        // Initialize both boards for distance calculation
-        const b1 = pinnedBoard || randomFullBoard();
-        const b2 = randomFullBoard();
-        precomputeDistances(boardSize, b1, b2);
         evolving = true;
         boardsEvaluated = 0;
         bestScore = -Infinity;
@@ -433,6 +446,8 @@ onmessage = (e) => {
         bestB2 = null;
         bestStats = null;
         population = [];
+
+        // Initialize population
         for (let i = 0; i < ${POPULATION_SIZE}; i++) {
             let b1, b2;
             if (pinnedBoard) {
@@ -491,6 +506,7 @@ function evolve() {
         }
         population = insertImmigrants(newPop);
     }
+    // Post status
     if (bestScore > -Infinity) {
         postMessage({
             msg: 'progress',
@@ -504,8 +520,6 @@ function evolve() {
                 stdev: bestStats.stdev,
                 ratio: bestStats.ratio,
                 proximityPenalty: bestStats.proximityPenalty,
-                
-                // Include each of the new arrays here:
                 proximityViolationsDirectBoth: bestStats.proximityViolationsDirectBoth,
                 proximityViolationsOneDist2: bestStats.proximityViolationsOneDist2,
                 proximityViolationsDist2Both: bestStats.proximityViolationsDist2Both
@@ -526,65 +540,88 @@ function evolve() {
         const blob = new Blob([unifiedWorkerScript], { type: 'text/javascript' });
         const workerURL = URL.createObjectURL(blob);
 
-        document.getElementById("startBtn").addEventListener("click", () => {
-            if (running) return;
-            const size = parseInt(sizeSelect.value);
-            const boardId = boardSelect.value;
-            let matchBoard = null;
-            if (boardId !== 'none') {
-                matchBoard = [];
-                const layout = BOARD_LAYOUTS[boardId].grid;
-                for (let i = 0; i < layout.length; i++) {
-                    for (let j = 0; j < layout.length; j++) {
-                        matchBoard.push(layout[i][j]);
+        // 
+        // NEW FUNCTION: updates ONLY the top line of the status text
+        // to show the real-time clock, ignoring the rest of the content.
+        //
+        function updateClockOnly() {
+            if (!running) return; // no-op if not running
+            const now = performance.now();
+            const elapsedSec = (now - startTime) / 1000;
+
+            const statusEl = document.getElementById("status");
+            const oldText = statusEl.textContent || "";
+            const lines = oldText.split("\n");
+
+            // Make sure there's at least one line
+            if (lines.length === 0) {
+                lines.push("");
+            }
+
+            // Overwrite the first line with the current time
+            lines[0] = `Time Elapsed: ${elapsedSec.toFixed(2)}s`;
+
+            // Reassemble the text
+            statusEl.textContent = lines.join("\n");
+        }
+
+        function updateStatus() {
+            const now = performance.now();
+            const elapsedSec = (now - startTime) / 1000;
+            const boardsPerSec = elapsedSec > 0 ? totalBoardsEvaluated / elapsedSec : 0;
+            const pinnedUsed = (boardSelect.value !== 'none');
+
+            // We'll build the entire status content from scratch
+            // but remember: the clock will be overwritten by updateClockOnly()
+            // in between Worker messages. That is okay; they won't conflict badly.
+            let status = `Time Elapsed: ${elapsedSec.toFixed(2)}s\n`;
+            status += `Boards Evaluated (approx): ${Math.floor(totalBoardsEvaluated)}\n`;
+            status += `Avg Boards/sec: ${boardsPerSec.toFixed(2)}\n`;
+            status += `Global Best Score: ${globalBestScore.toFixed(4)}\n\n`;
+            if (globalBestStats) {
+                status += `Combined Score: ${globalBestStats.score.toFixed(2)}\n`;
+                status += `Viable Moves: ${globalBestStats.moves}\n`;
+                status += `Standard Deviation: ${globalBestStats.stdev.toFixed(2)}\n`;
+                status += `Best/Worst Ratio: ${globalBestStats.ratio.toFixed(2)}\n`;
+                status += `Proximity Penalty: ${globalBestStats.proximityPenalty}\n`;
+
+                const {
+                    proximityViolationsDirectBoth,
+                    proximityViolationsOneDist2,
+                    proximityViolationsDist2Both
+                } = globalBestStats;
+
+                if (proximityViolationsDirectBoth.length > 0) {
+                    status += `Proximity Violations (neighbours on both boards): ${proximityViolationsDirectBoth.join(', ')}\n`;
+                }
+                if (proximityViolationsOneDist2.length > 0) {
+                    status += `Proximity Violations (neighbours on one board, diagonal on other): ${proximityViolationsOneDist2.join(', ')}\n`;
+                }
+                if (proximityViolationsDist2Both.length > 0) {
+                    status += `Proximity Violations (diagonal on both boards): ${proximityViolationsDist2Both.join(', ')}\n`;
+                }
+                status += '\n';
+
+                if (globalBestB1 && globalBestB2) {
+                    const size = Math.sqrt(globalBestB1.length);
+                    status += 'Current best board(s):\n\n';
+                    if (!pinnedUsed) {
+                        status += 'Board 1:\n';
+                        status += formatBoard(globalBestB1, size) + '\n';
+                        status += 'Board 2:\n';
+                        status += formatBoard(globalBestB2, size) + '\n';
+                    } else {
+                        status += 'Pinned Board (unchanged, for reference):\n';
+                        status += formatBoard(globalBestB1, size) + '\n';
+                        status += 'Evolved Board (Board 2):\n';
+                        status += formatBoard(globalBestB2, size) + '\n';
                     }
+                    status += '\nPaste into boards.js:\n\n';
+                    status += generateBoardOutput(globalBestB1, globalBestB2, globalBestScore, pinnedUsed);
                 }
             }
-            running = true;
-            globalBestScore = -Infinity;
-            globalBestB1 = null;
-            globalBestB2 = null;
-            globalBestStats = null;
-            totalBoardsEvaluated = 0;
-            startTime = performance.now();
-            document.getElementById("results").textContent = "";
-            document.getElementById("status").textContent = "Starting...";
-            document.getElementById("stopBtn").disabled = false;
-            document.getElementById("startBtn").disabled = true;
-            workers = [];
-            for (let i = 0; i < WORKER_COUNT; i++) {
-                const worker = new Worker(workerURL);
-                worker.onmessage = (evt) => {
-                    const data = evt.data;
-                    if (data.msg === "progress") {
-                        totalBoardsEvaluated += (data.boardsEvaluated - totalBoardsEvaluated) / WORKER_COUNT;
-                        if (data.bestScore > globalBestScore) {
-                            globalBestScore = data.bestScore;
-                            globalBestB1 = data.bestB1;
-                            globalBestB2 = data.bestB2;
-                            globalBestStats = data.bestStats;
-                        }
-                        updateStatus();
-                    }
-                };
-                worker.postMessage({
-                    msg: "start",
-                    boardSize: size,
-                    matchBoard: matchBoard
-                });
-                workers.push(worker);
-            }
-        });
-
-        document.getElementById("stopBtn").addEventListener("click", () => {
-            if (!running) return;
-            running = false;
-            for (const worker of workers) {
-                worker.postMessage({ msg: "stop" });
-            }
-            document.getElementById("stopBtn").disabled = true;
-            document.getElementById("startBtn").disabled = false;
-        });
+            document.getElementById("status").textContent = status;
+        }
 
         function generateBoardOutput(b1, b2, score, pinnedUsed) {
             const inputStr = b1.join("") + b2.join("") + score.toFixed(4);
@@ -633,57 +670,85 @@ function evolve() {
             return result;
         }
 
-        function updateStatus() {
-            const now = performance.now();
-            const elapsedSec = (now - startTime) / 1000;
-            const boardsPerSec = elapsedSec > 0 ? totalBoardsEvaluated / elapsedSec : 0;
-            const pinnedUsed = (boardSelect.value !== 'none');
-            let status = `Time Elapsed: ${elapsedSec.toFixed(2)}s\n`;
-            status += `Boards Evaluated (approx): ${Math.floor(totalBoardsEvaluated)}\n`;
-            status += `Avg Boards/sec: ${boardsPerSec.toFixed(2)}\n`;
-            status += `Global Best Score: ${globalBestScore.toFixed(4)}\n\n`;
-            if (globalBestStats) {
-                status += `Combined Score: ${globalBestStats.score.toFixed(2)}\n`;
-                status += `Viable Moves: ${globalBestStats.moves}\n`;
-                status += `Standard Deviation: ${globalBestStats.stdev.toFixed(2)}\n`;
-                status += `Best/Worst Ratio: ${globalBestStats.ratio.toFixed(2)}\n`;
-                status += `Proximity Penalty: ${globalBestStats.proximityPenalty}\n`;
-                const {
-                    proximityViolationsDirectBoth,
-                    proximityViolationsOneDist2,
-                    proximityViolationsDist2Both
-                } = globalBestStats;
+        document.getElementById("startBtn").addEventListener("click", () => {
+            if (running) return;
 
-                if (proximityViolationsDirectBoth.length > 0) {
-                    status += `Proximity Violations (direct on both boards): ${proximityViolationsDirectBoth.join(', ')}\n`;
-                }
-                if (proximityViolationsOneDist2.length > 0) {
-                    status += `Proximity Violations (direct on one board, distance 2 on other): ${proximityViolationsOneDist2.join(', ')}\n`;
-                }
-                if (proximityViolationsDist2Both.length > 0) {
-                    status += `Proximity Violations (distance 2 on both boards): ${proximityViolationsDist2Both.join(', ')}\n`;
-                }
-                status += '\n';
-                if (globalBestB1 && globalBestB2) {
-                    const size = Math.sqrt(globalBestB1.length);
-                    status += 'Current best board(s):\n\n';
-                    if (!pinnedUsed) {
-                        status += 'Board 1:\n';
-                        status += formatBoard(globalBestB1, size) + '\n';
-                        status += 'Board 2:\n';
-                        status += formatBoard(globalBestB2, size) + '\n';
-                    } else {
-                        status += 'Pinned Board (unchanged, for reference):\n';
-                        status += formatBoard(globalBestB1, size) + '\n';
-                        status += 'Evolved Board (Board 2):\n';
-                        status += formatBoard(globalBestB2, size) + '\n';
+            const size = parseInt(sizeSelect.value);
+            const boardId = boardSelect.value;
+            let matchBoard = null;
+            if (boardId !== 'none') {
+                matchBoard = [];
+                const layout = BOARD_LAYOUTS[boardId].grid;
+                for (let i = 0; i < layout.length; i++) {
+                    for (let j = 0; j < layout.length; j++) {
+                        matchBoard.push(layout[i][j]);
                     }
-                    status += '\nPaste into boards.js:\n\n';
-                    status += generateBoardOutput(globalBestB1, globalBestB2, globalBestScore, pinnedUsed);
                 }
             }
-            document.getElementById("status").textContent = status;
-        }
+
+            running = true;
+            startTime = performance.now();
+
+            // Start the real-time clock updates every 200ms
+            clockInterval = setInterval(updateClockOnly, 10);
+
+            globalBestScore = -Infinity;
+            globalBestB1 = null;
+            globalBestB2 = null;
+            globalBestStats = null;
+            totalBoardsEvaluated = 0;
+
+            document.getElementById("results").textContent = "";
+            document.getElementById("status").textContent = "Starting...";
+            document.getElementById("stopBtn").disabled = false;
+            document.getElementById("startBtn").disabled = true;
+            workers = [];
+            workerCounts = new Array(WORKER_COUNT).fill(0);
+
+            for (let i = 0; i < WORKER_COUNT; i++) {
+                const worker = new Worker(workerURL);
+                // For each worker, track boardsEvaluated separately and sum them
+                worker.onmessage = (evt) => {
+                    const data = evt.data;
+                    if (data.msg === "progress") {
+                        // Each worker updates its own count:
+                        workerCounts[i] = data.boardsEvaluated;
+                        totalBoardsEvaluated = workerCounts.reduce((a, b) => a + b, 0);
+
+                        if (data.bestScore > globalBestScore) {
+                            globalBestScore = data.bestScore;
+                            globalBestB1 = data.bestB1;
+                            globalBestB2 = data.bestB2;
+                            globalBestStats = data.bestStats;
+                        }
+                        updateStatus(); // updates all lines
+                    }
+                };
+                worker.postMessage({
+                    msg: "start",
+                    boardSize: size,
+                    matchBoard: matchBoard
+                });
+                workers.push(worker);
+            }
+        });
+
+        document.getElementById("stopBtn").addEventListener("click", () => {
+            if (!running) return;
+            running = false;
+
+            // Stop the clock timer
+            if (clockInterval) {
+                clearInterval(clockInterval);
+                clockInterval = null;
+            }
+
+            for (const worker of workers) {
+                worker.postMessage({ msg: "stop" });
+            }
+            document.getElementById("stopBtn").disabled = true;
+            document.getElementById("startBtn").disabled = false;
+        });
     </script>
 </body>
 
