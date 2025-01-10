@@ -102,6 +102,59 @@ function precomputeTileScores(size) {
     }
 }
 
+let distanceCache;
+
+function calculateDistancesFromPos(pos, size, board) {
+    const distances = new Uint8Array(size * size).fill(255);
+    const queue = [[pos, 0]];
+    distances[pos] = 0;
+    
+    while (queue.length > 0) {
+        const [curPos, dist] = queue.shift();
+        const row = Math.floor(curPos / size);
+        const col = curPos % size;
+        
+        const moves = [
+            [row - 1, col],
+            [row + 1, col], 
+            [row, col - 1],
+            [row, col + 1]
+        ];
+        
+        for (const [newRow, newCol] of moves) {
+            if (newRow < 0 || newRow >= size || newCol < 0 || newCol >= size) continue;
+            const newPos = newRow * size + newCol;
+            if (board[newPos] === '.' || distances[newPos] !== 255) continue;
+            distances[newPos] = dist + 1;
+            queue.push([newPos, dist + 1]);
+        }
+    }
+    return distances;
+}
+
+function precomputeDistances(size, board1, board2) {
+    const totalSize = size * size;
+    distanceCache = {
+        board1: new Uint8Array(totalSize * totalSize),
+        board2: new Uint8Array(totalSize * totalSize)
+    };
+    
+    for (let pos = 0; pos < totalSize; pos++) {
+        if (board1[pos] !== '.') {
+            const distances = calculateDistancesFromPos(pos, size, board1);
+            for (let toPos = 0; toPos < totalSize; toPos++) {
+                distanceCache.board1[pos * totalSize + toPos] = distances[toPos];
+            }
+        }
+        if (board2[pos] !== '.') {
+            const distances = calculateDistancesFromPos(pos, size, board2);
+            for (let toPos = 0; toPos < totalSize; toPos++) {
+                distanceCache.board2[pos * totalSize + toPos] = distances[toPos];
+            }
+        }
+    }
+}
+
 function getTileScore(pos) {
     return tileScores[pos];
 }
@@ -179,8 +232,20 @@ function isValidBoard(board) {
 
 function evaluateBoards(b1, b2) {
     if (!isValidBoard(b1) || !isValidBoard(b2)) {
-        return { score: -Infinity, moves: 0, stdev: 0, ratio: 0 };
+        return {
+            score: -Infinity,
+            moves: 0,
+            stdev: 0,
+            ratio: 0,
+            proximityPenalty: 0,
+
+            // NEW: Return empty arrays for the three categories
+            proximityViolationsDirectBoth: [],
+            proximityViolationsOneDist2: [],
+            proximityViolationsDist2Both: []
+        };
     }
+
     const scores = [];
     for (let i = 0; i < b1.length; i++) {
         const symbol = b1[i];
@@ -189,9 +254,23 @@ function evaluateBoards(b1, b2) {
         if (j < 0) continue;
         scores.push(getTileScore(i) + getTileScore(j));
     }
+
     if (!scores.length) {
-        return { score: -Infinity, moves: 0, stdev: 0, ratio: 0 };
+        return {
+            score: -Infinity,
+            moves: 0,
+            stdev: 0,
+            ratio: 0,
+            proximityPenalty: 0,
+
+            // NEW: Return empty arrays for the three categories
+            proximityViolationsDirectBoth: [],
+            proximityViolationsOneDist2: [],
+            proximityViolationsDist2Both: []
+        };
     }
+
+    // Calculate base metrics
     const best = Math.max(...scores);
     const worst = Math.min(...scores);
     const sum = scores.reduce((a, b) => a + b, 0);
@@ -200,11 +279,65 @@ function evaluateBoards(b1, b2) {
     const stdev = Math.sqrt(variance);
     const bestCount = scores.filter(x => Math.abs(x - best) < 1e-10).length;
     const ratio = worst / best;
+
+    // Three separate sets of proximity violations
+    const proximityViolationsDirectBoth = new Set();
+    const proximityViolationsOneDist2 = new Set();
+    const proximityViolationsDist2Both = new Set();
+    let proximityPenalty = 0;
+
+    // Loop to check distances on each board
+    for (let i = 0; i < b1.length; i++) {
+        const symbol1 = b1[i];
+        if (symbol1 === '.') continue;
+        const j1 = b2.indexOf(symbol1);
+
+        for (let k = i + 1; k < b1.length; k++) {
+            const symbol2 = b1[k];
+            if (symbol2 === '.') continue;
+            const j2 = b2.indexOf(symbol2);
+
+            const dist1 = distanceCache.board1[i * boardSize * boardSize + k];
+            const dist2 = distanceCache.board2[j1 * boardSize * boardSize + j2];
+
+            // Only proceed if both distances are valid (not 255)
+            if (dist1 !== 255 && dist2 !== 255) {
+                // Case 1: direct neighbors on both boards
+                if (dist1 === 1 && dist2 === 1) {
+                    proximityPenalty += 1;
+                    proximityViolationsDirectBoth.add(symbol1);
+                    proximityViolationsDirectBoth.add(symbol2);
+                }
+                // Case 2: direct neighbor on one board + distance 2 on the other
+                else if (
+                    (dist1 === 1 && dist2 === 2) ||
+                    (dist1 === 2 && dist2 === 1)
+                ) {
+                    proximityPenalty += 0.5;
+                    proximityViolationsOneDist2.add(symbol1);
+                    proximityViolationsOneDist2.add(symbol2);
+                }
+                // Case 3: distance 2 on both boards
+                else if (dist1 === 2 && dist2 === 2) {
+                    proximityPenalty += 0.25;
+                    proximityViolationsDist2Both.add(symbol1);
+                    proximityViolationsDist2Both.add(symbol2);
+                }
+            }
+        }
+    }
+
     return {
-        score: bestCount - stdev - ratio,
+        score: bestCount - stdev - ratio - proximityPenalty,
         moves: bestCount,
         stdev,
-        ratio
+        ratio,
+        proximityPenalty,
+
+        // Convert each Set to a sorted array
+        proximityViolationsDirectBoth: Array.from(proximityViolationsDirectBoth).sort(),
+        proximityViolationsOneDist2: Array.from(proximityViolationsOneDist2).sort(),
+        proximityViolationsDist2Both: Array.from(proximityViolationsDist2Both).sort()
     };
 }
 
@@ -289,6 +422,10 @@ onmessage = (e) => {
         if (data.matchBoard && data.matchBoard.length) {
             pinnedBoard = data.matchBoard;
         }
+        // Initialize both boards for distance calculation
+        const b1 = pinnedBoard || randomFullBoard();
+        const b2 = randomFullBoard();
+        precomputeDistances(boardSize, b1, b2);
         evolving = true;
         boardsEvaluated = 0;
         bestScore = -Infinity;
@@ -365,7 +502,13 @@ function evolve() {
                 score: bestStats.score,
                 moves: bestStats.moves,
                 stdev: bestStats.stdev,
-                ratio: bestStats.ratio
+                ratio: bestStats.ratio,
+                proximityPenalty: bestStats.proximityPenalty,
+                
+                // Include each of the new arrays here:
+                proximityViolationsDirectBoth: bestStats.proximityViolationsDirectBoth,
+                proximityViolationsOneDist2: bestStats.proximityViolationsOneDist2,
+                proximityViolationsDist2Both: bestStats.proximityViolationsDist2Both
             }
         });
     } else {
@@ -503,7 +646,24 @@ function evolve() {
                 status += `Combined Score: ${globalBestStats.score.toFixed(2)}\n`;
                 status += `Viable Moves: ${globalBestStats.moves}\n`;
                 status += `Standard Deviation: ${globalBestStats.stdev.toFixed(2)}\n`;
-                status += `Best/Worst Ratio: ${globalBestStats.ratio.toFixed(2)}\n\n`;
+                status += `Best/Worst Ratio: ${globalBestStats.ratio.toFixed(2)}\n`;
+                status += `Proximity Penalty: ${globalBestStats.proximityPenalty}\n`;
+                const {
+                    proximityViolationsDirectBoth,
+                    proximityViolationsOneDist2,
+                    proximityViolationsDist2Both
+                } = globalBestStats;
+
+                if (proximityViolationsDirectBoth.length > 0) {
+                    status += `Proximity Violations (direct on both boards): ${proximityViolationsDirectBoth.join(', ')}\n`;
+                }
+                if (proximityViolationsOneDist2.length > 0) {
+                    status += `Proximity Violations (direct on one board, distance 2 on other): ${proximityViolationsOneDist2.join(', ')}\n`;
+                }
+                if (proximityViolationsDist2Both.length > 0) {
+                    status += `Proximity Violations (distance 2 on both boards): ${proximityViolationsDist2Both.join(', ')}\n`;
+                }
+                status += '\n';
                 if (globalBestB1 && globalBestB2) {
                     const size = Math.sqrt(globalBestB1.length);
                     status += 'Current best board(s):\n\n';
