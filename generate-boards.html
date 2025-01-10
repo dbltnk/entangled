@@ -165,8 +165,64 @@ function precomputeDistances(size, board1, board2) {
     }
 }
 
-function getTileScore(pos) {
-    return tileScores[pos];
+function getTileScore(pos, board1, board2, isBoard1) {
+    const baseScore = tileScores[pos];
+    const currentBoard = isBoard1 ? board1 : board2;
+    const otherBoard = isBoard1 ? board2 : board1;
+    const symbol = currentBoard[pos];
+    let proximityBonus = 0;
+
+    // If this is a dot or not a valid position, return 0
+    if (symbol === '.' || symbol === undefined) return 0;
+
+    const row = Math.floor(pos / boardSize);
+    const col = pos % boardSize;  // Changed from size to boardSize
+
+    // Find matching symbol position in other board
+    const matchPos = otherBoard.indexOf(symbol);
+    if (matchPos === -1) return 0;
+
+    // For each valid neighbor position of our symbol
+    for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+            if (dr === 0 && dc === 0) continue;
+
+            const checkRow = row + dr;
+            const checkCol = col + dc;
+            if (checkRow < 0 || checkRow >= boardSize || checkCol < 0 || checkCol >= boardSize) continue;
+
+            const checkPos = checkRow * boardSize + checkCol;
+            const neighborSymbol = currentBoard[checkPos];
+            if (neighborSymbol === '.') continue;
+
+            // Find where this neighbor symbol is on the other board
+            const neighborMatchPos = otherBoard.indexOf(neighborSymbol);
+            if (neighborMatchPos === -1) continue;
+
+            const matchRow = Math.floor(matchPos / boardSize);
+            const matchCol = matchPos % boardSize;
+            const neighborMatchRow = Math.floor(neighborMatchPos / boardSize);
+            const neighborMatchCol = neighborMatchPos % boardSize;
+
+            // Check if these symbols are also neighbors on the other board
+            const isDirect = Math.abs(matchRow - neighborMatchRow) + Math.abs(matchCol - neighborMatchCol) === 1;
+            const isDiagonal = Math.abs(matchRow - neighborMatchRow) === 1 && Math.abs(matchCol - neighborMatchCol) === 1;
+
+            // Current position is direct neighbor
+            const isCurrentDirect = Math.abs(dr) + Math.abs(dc) === 1;
+            const isCurrentDiagonal = Math.abs(dr) === 1 && Math.abs(dc) === 1;
+
+            if (isCurrentDirect && isDirect) {
+                proximityBonus += 8;
+            } else if ((isCurrentDirect && isDiagonal) || (isCurrentDiagonal && isDirect)) {
+                proximityBonus += 4;
+            } else if (isCurrentDiagonal && isDiagonal) {
+                proximityBonus += 2;
+            }
+        }
+    }
+
+    return baseScore + proximityBonus;
 }
 
 const getSymbolsForSize = (size) => {
@@ -249,22 +305,18 @@ function evaluateBoards(b1, b2) {
             score: -Infinity,
             moves: 0,
             stdev: 0,
-            ratio: 0,
-            proximityPenalty: 0,
-            proximityViolationsDirectBoth: [],
-            proximityViolationsOneDist2: [],
-            proximityViolationsDist2Both: []
+            ratio: 0
         };
     }
 
     const scores = [];
-    // Sum tile scores for matching symbols
+    // Sum tile scores for matching symbols, now including proximity bonuses
     for (let i = 0; i < b1.length; i++) {
         const symbol = b1[i];
         if (symbol === '.') continue;
         const j = b2.indexOf(symbol);
         if (j < 0) continue;
-        scores.push(getTileScore(i) + getTileScore(j));
+        scores.push(getTileScore(i, b1, b2, true) + getTileScore(j, b1, b2, false));
     }
 
     if (!scores.length) {
@@ -272,11 +324,7 @@ function evaluateBoards(b1, b2) {
             score: -Infinity,
             moves: 0,
             stdev: 0,
-            ratio: 0,
-            proximityPenalty: 0,
-            proximityViolationsDirectBoth: [],
-            proximityViolationsOneDist2: [],
-            proximityViolationsDist2Both: []
+            ratio: 0
         };
     }
 
@@ -290,69 +338,12 @@ function evaluateBoards(b1, b2) {
     const bestCount = scores.filter(x => Math.abs(x - best) < 1e-10).length;
     const ratio = worst / best;
 
-    function isDiagonal(pos1, pos2, size) {
-        const row1 = Math.floor(pos1 / size);
-        const col1 = pos1 % size;
-        const row2 = Math.floor(pos2 / size);
-        const col2 = pos2 % size;
-        
-        // Check if positions are diagonal to each other
-        return Math.abs(row1 - row2) === 1 && Math.abs(col1 - col2) === 1;
-    }
-
-    const proximityViolationsDirectBoth = new Set();
-    const proximityViolationsOneDist2 = new Set();
-    const proximityViolationsDist2Both = new Set();
-    let proximityPenalty = 0;
-
-    for (let i = 0; i < b1.length; i++) {
-        const symbol1 = b1[i];
-        if (symbol1 === '.') continue;
-        const j1 = b2.indexOf(symbol1);
-
-        for (let k = i + 1; k < b1.length; k++) {
-            const symbol2 = b1[k];
-            if (symbol2 === '.') continue;
-            const j2 = b2.indexOf(symbol2);
-
-            // Check if directly adjacent (Manhattan distance 1)
-            const isAdjacent1 = Math.abs(Math.floor(i / boardSize) - Math.floor(k / boardSize)) + 
-                               Math.abs((i % boardSize) - (k % boardSize)) === 1;
-            const isAdjacent2 = Math.abs(Math.floor(j1 / boardSize) - Math.floor(j2 / boardSize)) + 
-                               Math.abs((j1 % boardSize) - (j2 % boardSize)) === 1;
-
-            // Check if diagonal
-            const isDiagonal1 = isDiagonal(i, k, boardSize);
-            const isDiagonal2 = isDiagonal(j1, j2, boardSize);
-
-            if (isAdjacent1 && isAdjacent2) {
-                proximityPenalty += 4;
-                proximityViolationsDirectBoth.add(symbol1);
-                proximityViolationsDirectBoth.add(symbol2);
-            }
-            else if ((isAdjacent1 && isDiagonal2) || (isDiagonal1 && isAdjacent2)) {
-                proximityPenalty += 1;
-                proximityViolationsOneDist2.add(symbol1);
-                proximityViolationsOneDist2.add(symbol2);
-            }
-            else if (isDiagonal1 && isDiagonal2) {
-                proximityPenalty += 0.25;
-                proximityViolationsDist2Both.add(symbol1);
-                proximityViolationsDist2Both.add(symbol2);
-            }
-        }
-    }
-
     // Final combined score
     return {
-        score: bestCount - stdev - ratio - proximityPenalty,
+        score: bestCount - stdev - ratio,
         moves: bestCount,
         stdev,
-        ratio,
-        proximityPenalty,
-        proximityViolationsDirectBoth: Array.from(proximityViolationsDirectBoth).sort(),
-        proximityViolationsOneDist2: Array.from(proximityViolationsOneDist2).sort(),
-        proximityViolationsDist2Both: Array.from(proximityViolationsDist2Both).sort()
+        ratio
     };
 }
 
@@ -518,11 +509,7 @@ function evolve() {
                 score: bestStats.score,
                 moves: bestStats.moves,
                 stdev: bestStats.stdev,
-                ratio: bestStats.ratio,
-                proximityPenalty: bestStats.proximityPenalty,
-                proximityViolationsDirectBoth: bestStats.proximityViolationsDirectBoth,
-                proximityViolationsOneDist2: bestStats.proximityViolationsOneDist2,
-                proximityViolationsDist2Both: bestStats.proximityViolationsDist2Both
+                ratio: bestStats.ratio
             }
         });
     } else {
@@ -531,6 +518,7 @@ function evolve() {
             boardsEvaluated
         });
     }
+
     if (evolving) {
         setTimeout(evolve, 0);
     }
@@ -571,36 +559,16 @@ function evolve() {
             const boardsPerSec = elapsedSec > 0 ? totalBoardsEvaluated / elapsedSec : 0;
             const pinnedUsed = (boardSelect.value !== 'none');
 
-            // We'll build the entire status content from scratch
-            // but remember: the clock will be overwritten by updateClockOnly()
-            // in between Worker messages. That is okay; they won't conflict badly.
             let status = `Time Elapsed: ${elapsedSec.toFixed(2)}s\n`;
             status += `Boards Evaluated (approx): ${Math.floor(totalBoardsEvaluated)}\n`;
             status += `Avg Boards/sec: ${boardsPerSec.toFixed(2)}\n`;
             status += `Global Best Score: ${globalBestScore.toFixed(4)}\n\n`;
+
             if (globalBestStats) {
                 status += `Combined Score: ${globalBestStats.score.toFixed(2)}\n`;
                 status += `Viable Moves: ${globalBestStats.moves}\n`;
                 status += `Standard Deviation: ${globalBestStats.stdev.toFixed(2)}\n`;
-                status += `Best/Worst Ratio: ${globalBestStats.ratio.toFixed(2)}\n`;
-                status += `Proximity Penalty: ${globalBestStats.proximityPenalty}\n`;
-
-                const {
-                    proximityViolationsDirectBoth,
-                    proximityViolationsOneDist2,
-                    proximityViolationsDist2Both
-                } = globalBestStats;
-
-                if (proximityViolationsDirectBoth.length > 0) {
-                    status += `Proximity Violations (neighbours on both boards): ${proximityViolationsDirectBoth.join(', ')}\n`;
-                }
-                if (proximityViolationsOneDist2.length > 0) {
-                    status += `Proximity Violations (neighbours on one board, diagonal on other): ${proximityViolationsOneDist2.join(', ')}\n`;
-                }
-                if (proximityViolationsDist2Both.length > 0) {
-                    status += `Proximity Violations (diagonal on both boards): ${proximityViolationsDist2Both.join(', ')}\n`;
-                }
-                status += '\n';
+                status += `Best/Worst Ratio: ${globalBestStats.ratio.toFixed(2)}\n\n`;
 
                 if (globalBestB1 && globalBestB2) {
                     const size = Math.sqrt(globalBestB1.length);

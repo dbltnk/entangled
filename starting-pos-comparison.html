@@ -235,7 +235,7 @@
             Left boards show position scoring: The scoring system evaluates each tile based on its proximity to all
             other tiles.
             Blue intensity indicates better positions, calculated as the sum of inverse Manhattan distances to other
-            tiles.
+            tiles plus a bonus for connectivity (direct and diagonal neighbours on both boards).
         </p>
         <p>
             Right boards show opening moves: Red intensity shows how frequently each position is chosen as the first
@@ -327,16 +327,64 @@
             }
         }
 
-        function getTileScore(row, col, boardSize) {
-            let score = 0;
+        function getTileScore(row, col, boardSize, board1, board2) {
+            // Base score from connectivity
+            let baseScore = 0;
             for (let r = 0; r < boardSize; r++) {
                 for (let c = 0; c < boardSize; c++) {
                     if (r === row && c === col) continue;
                     const distance = Math.abs(row - r) + Math.abs(col - c);
-                    score += 1 / distance;
+                    baseScore += 1 / distance;
                 }
             }
-            return score;
+
+            // Get the current symbol and its position
+            const symbol = board1[row][col];
+            if (symbol === '.') return 0;
+
+            // Find position in other board
+            const board2Pos = findSymbolPosition(symbol, board2);
+            if (!board2Pos) return 0;
+
+            let proximityBonus = 0;
+
+            // Check all neighboring positions for matching proximity
+            for (let dr = -1; dr <= 1; dr++) {
+                for (let dc = -1; dc <= 1; dc++) {
+                    if (dr === 0 && dc === 0) continue;
+
+                    const checkRow = row + dr;
+                    const checkCol = col + dc;
+                    if (checkRow < 0 || checkRow >= boardSize || checkCol < 0 || checkCol >= boardSize) continue;
+
+                    const neighborSymbol = board1[checkRow][checkCol];
+                    if (neighborSymbol === '.') continue;
+
+                    // Find where this neighbor symbol is on the other board
+                    const neighborMatchPos = findSymbolPosition(neighborSymbol, board2);
+                    if (!neighborMatchPos) continue;
+
+                    // Check if these symbols are also neighbors on the other board
+                    const isDirect = Math.abs(board2Pos.row - neighborMatchPos.row) +
+                        Math.abs(board2Pos.col - neighborMatchPos.col) === 1;
+                    const isDiagonal = Math.abs(board2Pos.row - neighborMatchPos.row) === 1 &&
+                        Math.abs(board2Pos.col - neighborMatchPos.col) === 1;
+
+                    // Current position is direct neighbor
+                    const isCurrentDirect = Math.abs(dr) + Math.abs(dc) === 1;
+                    const isCurrentDiagonal = Math.abs(dr) === 1 && Math.abs(dc) === 1;
+
+                    if (isCurrentDirect && isDirect) {
+                        proximityBonus += 8;
+                    } else if ((isCurrentDirect && isDiagonal) || (isCurrentDiagonal && isDirect)) {
+                        proximityBonus += 4;
+                    } else if (isCurrentDiagonal && isDiagonal) {
+                        proximityBonus += 2;
+                    }
+                }
+            }
+
+            return baseScore + proximityBonus;
         }
 
         function findSymbolPosition(symbol, grid) {
@@ -762,7 +810,7 @@
                     scoreHeader.className = 'section-header';
                     scoreHeader.innerHTML = `
                         <h3>Position Analysis</h3>
-                        <p>Blue intensity shows strength based on connectivity to other cells.</p>
+                        <p>Blue intensity shows strength based on connectivity and matching neighborhood patterns between boards.</p>
                     `;
                     scoreSection.appendChild(scoreHeader);
 
@@ -898,8 +946,8 @@
                     if (symbol === '.') continue;
                     const board2Pos = findSymbolPosition(symbol, board2.grid);
                     if (!board2Pos) continue;
-                    const score1 = getTileScore(row, col, size);
-                    const score2 = getTileScore(board2Pos.row, board2Pos.col, size);
+                    const score1 = getTileScore(row, col, size, board1.grid, board2.grid);
+                    const score2 = getTileScore(board2Pos.row, board2Pos.col, size, board2.grid, board1.grid);
 
                     scores.push({
                         symbol,
