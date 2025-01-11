@@ -213,10 +213,22 @@ class ResultsViewer {
                 `${percent}%`;
         };
 
+        const dateOptions = {
+            year: '2-digit',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+        };
+
+        const date = new Date(data.metadata.timestamp);
+        const formattedDate = date.toLocaleTimeString('en-GB', dateOptions);
+
         return `
             <div class="tournament-header">
                 <div class="tournament-id">Tournament: ${data.metadata.runId}</div>
-                <div class="tournament-date">Date: ${new Date(data.metadata.timestamp).toLocaleDateString()}</div>
+                <div class="tournament-date">${formattedDate}</div>
             </div>
             <div class="board-info">
                 <div class="board-row">
