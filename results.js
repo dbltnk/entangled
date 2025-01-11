@@ -23,13 +23,11 @@ class ResultsViewer {
         if (show) {
             loadingDiv.textContent = `Loading Tournaments: ${count}/${total}...`;
             filterPanel.prepend(loadingDiv);
-            // Disable filters while loading
             document.getElementById('filter-board1').disabled = true;
             document.getElementById('filter-board2').disabled = true;
             document.getElementById('filter-starting').disabled = true;
         } else {
             loadingDiv.remove();
-            // Enable filters after loading
             document.getElementById('filter-board1').disabled = false;
             document.getElementById('filter-board2').disabled = false;
             document.getElementById('filter-starting').disabled = false;
@@ -37,12 +35,10 @@ class ResultsViewer {
     }
 
     handleKeyNavigation(e) {
-        // Only handle navigation keys we're interested in
         if (!['w', 'a', 's', 'd'].includes(e.key)) {
             return;
         }
 
-        // Prevent default scrolling behavior
         e.preventDefault();
 
         const visibleItems = Array.from(document.querySelectorAll('.tournament-item'))
@@ -50,15 +46,11 @@ class ResultsViewer {
 
         if (visibleItems.length === 0) return;
 
-        // Determine direction
         const isUp = e.key === 'w' || e.key === 'a';
 
-        // Update selection index
         if (this.currentSelectionIndex === -1) {
-            // If nothing selected, start at the beginning or end depending on direction
             this.currentSelectionIndex = isUp ? visibleItems.length - 1 : 0;
         } else {
-            // Move up or down
             if (isUp) {
                 this.currentSelectionIndex = Math.max(0, this.currentSelectionIndex - 1);
             } else {
@@ -66,7 +58,6 @@ class ResultsViewer {
             }
         }
 
-        // Trigger click on the selected item
         const selectedItem = visibleItems[this.currentSelectionIndex];
         if (selectedItem) {
             selectedItem.click();
@@ -77,26 +68,21 @@ class ResultsViewer {
         const board1Filter = document.getElementById('filter-board1');
         const board2Filter = document.getElementById('filter-board2');
 
-        // Clear existing options except the "No filter" option
         while (board1Filter.options.length > 1) board1Filter.remove(1);
         while (board2Filter.options.length > 1) board2Filter.remove(1);
 
-        // Combine boards from BOARD_LAYOUTS and tournament files
         const allBoards = new Map();
 
-        // Add boards from BOARD_LAYOUTS
         Object.entries(BOARD_LAYOUTS).forEach(([id, layout]) => {
             allBoards.set(id, `${layout.name} (${id})`);
         });
 
-        // Add additional boards found in tournaments
         additionalBoards.forEach(id => {
             if (!allBoards.has(id)) {
                 allBoards.set(id, `Board ${id} (${id})`);
             }
         });
 
-        // Sort boards by ID and add to dropdowns
         Array.from(allBoards.entries())
             .sort((a, b) => a[0].localeCompare(b[0]))
             .forEach(([id, name]) => {
@@ -104,16 +90,6 @@ class ResultsViewer {
                 board1Filter.add(option.cloneNode(true));
                 board2Filter.add(option.cloneNode(true));
             });
-    }
-
-    // Then just before loading tournaments (in loadTournamentList and loadFromWeb), add:
-    collectBoardsFromTournament(tournamentData) {
-        const boards = new Set();
-        if (tournamentData.metadata?.boards) {
-            if (tournamentData.metadata.boards.board1) boards.add(tournamentData.metadata.boards.board1);
-            if (tournamentData.metadata.boards.board2) boards.add(tournamentData.metadata.boards.board2);
-        }
-        return boards;
     }
 
     applyFilters() {
@@ -153,26 +129,150 @@ class ResultsViewer {
             item.style.display = show ? '' : 'none';
         });
     }
-    async initializeFileSystem() {
+
+    async initializeDirectoryAccess() {
         try {
             this.dirHandle = await window.showDirectoryPicker({
                 id: 'tournaments',
                 mode: 'read',
                 startIn: 'documents'
             });
-            await this.loadTournamentList();
+            await this.loadTournamentsFromDirectory();
         } catch (error) {
             console.error('Failed to initialize file system:', error);
             alert('Failed to access local directory. Make sure you granted the necessary permissions.');
         }
     }
 
-    select(tournamentData) {
+    async loadTournamentsFromWeb() {
+        try {
+            console.log('Fetching tournaments.json...');
+            const baseUrl = 'https://dbltnk.github.io/entangled/tournaments/';
+            const indexResponse = await fetch(baseUrl + 'tournaments.json');
+            if (!indexResponse.ok) {
+                throw new Error(`Failed to fetch tournament index: ${indexResponse.status}`);
+            }
+            const tournamentFiles = await indexResponse.json();
+            console.log('Found tournament files:', tournamentFiles);
+
+            this.totalCount = tournamentFiles.length;
+            this.showLoadingState(true, 0, this.totalCount);
+
+            const tournaments = [];
+            for (const filename of tournamentFiles) {
+                try {
+                    const response = await fetch(baseUrl + filename);
+                    if (!response.ok) continue;
+                    const data = await response.json();
+                    tournaments.push({
+                        data,
+                        source: { type: 'web', filename }
+                    });
+                } catch (error) {
+                    console.warn(`Error loading tournament ${filename}:`, error);
+                }
+                this.loadedCount++;
+                this.showLoadingState(true, this.loadedCount, this.totalCount);
+            }
+
+            await this.processTournaments(tournaments);
+        } catch (error) {
+            console.error('Failed to load tournaments from web:', error);
+            const tournamentList = document.getElementById('tournament-list');
+            tournamentList.innerHTML = `
+                <div class="tournament-item error">
+                    <h3>Failed to load tournaments</h3>
+                    <div>${error.message}</div>
+                </div>`;
+        } finally {
+            this.isLoading = false;
+            this.showLoadingState(false);
+        }
+    }
+
+    async loadTournamentsFromDirectory() {
+        if (!this.dirHandle) {
+            const tournamentList = document.getElementById('tournament-list');
+            tournamentList.innerHTML = '<div class="tournament-item error">No directory selected</div>';
+            return;
+        }
+
+        try {
+            await this.dirHandle.requestPermission({ mode: 'read' });
+
+            const entries = [];
+            for await (const entry of this.dirHandle.values()) {
+                if (entry.name.endsWith('.json') && entry.name !== 'tournaments.json') {
+                    entries.push(entry);
+                }
+            }
+
+            this.totalCount = entries.length;
+            this.showLoadingState(true, 0, this.totalCount);
+
+            const tournaments = [];
+            for (const entry of entries) {
+                try {
+                    const file = await entry.getFile();
+                    const data = JSON.parse(await file.text());
+                    tournaments.push({
+                        data,
+                        source: { type: 'local', entry }
+                    });
+                } catch (error) {
+                    console.warn(`Error loading tournament ${entry.name}:`, error);
+                }
+                this.loadedCount++;
+                this.showLoadingState(true, this.loadedCount, this.totalCount);
+            }
+
+            await this.processTournaments(tournaments);
+        } catch (error) {
+            console.error('Failed to load tournaments:', error);
+            const tournamentList = document.getElementById('tournament-list');
+            tournamentList.innerHTML = `<div class="tournament-item error">Failed to read directory: ${error.message}</div>`;
+        } finally {
+            this.isLoading = false;
+            this.showLoadingState(false);
+        }
+    }
+
+    async processTournaments(tournaments) {
+        const tournamentList = document.getElementById('tournament-list');
+        tournamentList.innerHTML = '';
+        const allBoards = new Set();
+
+        const validTournaments = tournaments
+            .filter(t => t.data?.metadata?.timestamp && t.data?.metadata?.boards)
+            .sort((a, b) => new Date(b.data.metadata.timestamp) - new Date(a.data.metadata.timestamp));
+
+        validTournaments.forEach(tournament => {
+            const { data, source } = tournament;
+
+            if (data.metadata.boards.board1) allBoards.add(data.metadata.boards.board1);
+            if (data.metadata.boards.board2) allBoards.add(data.metadata.boards.board2);
+
+            const item = document.createElement('div');
+            item.className = 'tournament-item';
+            item.innerHTML = this.createTournamentItemHTML(data);
+
+            if (source.type === 'web') {
+                item.addEventListener('click', () => this.loadTournamentFromWeb(source.filename));
+            } else {
+                item.addEventListener('click', () => this.loadTournamentFromDirectory(source.entry));
+            }
+
+            tournamentList.appendChild(item);
+        });
+
+        this.populateFilterDropdowns(allBoards);
+    }
+
+    selectTournament(tournamentData) {
         const tournamentId = tournamentData.metadata.runId;
         const items = document.querySelectorAll('.tournament-item');
         items.forEach(item => item.classList.remove('selected'));
 
-        // Find the item by checking the tournament ID in the content
         const selectedItem = Array.from(items)
             .find(item => {
                 const idElement = item.querySelector('.tournament-id');
@@ -185,7 +285,6 @@ class ResultsViewer {
     }
 
     createTournamentItemHTML(data) {
-        // Calculate totals and percentages
         let wins = 0;
         let losses = 0;
         let draws = 0;
@@ -200,12 +299,10 @@ class ResultsViewer {
             });
         });
 
-        // Calculate percentages
         const winPercent = ((wins / totalGames) * 100).toFixed(0);
         const lossPercent = ((losses / totalGames) * 100).toFixed(0);
         const drawPercent = ((draws / totalGames) * 100).toFixed(0);
 
-        // Determine which percentage is highest
         const maxPercent = Math.max(parseInt(winPercent), parseInt(lossPercent), parseInt(drawPercent));
         const formatPercent = (percent) => {
             return parseInt(percent) === maxPercent ?
@@ -255,75 +352,7 @@ class ResultsViewer {
         `;
     }
 
-    async loadFromWeb() {
-        const tournamentListElement = document.getElementById('tournament-list');
-        tournamentListElement.innerHTML = '';
-        this.isLoading = true;
-        this.loadedCount = 0;
-
-        try {
-            console.log('Fetching tournaments.json...');
-            const baseUrl = 'https://dbltnk.github.io/entangled/tournaments/';
-            const indexResponse = await fetch(baseUrl + 'tournaments.json');
-            if (!indexResponse.ok) {
-                throw new Error(`Failed to fetch tournament index: ${indexResponse.status}`);
-            }
-            const tournamentFiles = await indexResponse.json();
-            console.log('Found tournament files:', tournamentFiles);
-
-            this.totalCount = tournamentFiles.length;
-            this.showLoadingState(true, 0, this.totalCount);
-
-            let loadedCount = 0;
-            let errorCount = 0;
-            const errors = new Set();
-            const allBoards = new Set();
-
-            for (const filename of tournamentFiles) {
-                try {
-                    console.log(`Fetching ${filename}...`);
-                    const response = await fetch(baseUrl + filename);
-                    if (!response.ok) {
-                        throw new Error(`HTTP error: ${response.status}`);
-                    }
-                    const data = await response.json();
-
-                    const boardsInTournament = this.collectBoardsFromTournament(data);
-                    boardsInTournament.forEach(board => allBoards.add(board));
-
-                    const item = document.createElement('div');
-                    item.className = 'tournament-item';
-                    item.innerHTML = this.createTournamentItemHTML(data);
-                    item.addEventListener('click', () => this.loadWebTournament(filename));
-                    tournamentListElement.appendChild(item);
-
-                    loadedCount++;
-                    this.showLoadingState(true, loadedCount, this.totalCount);
-
-                } catch (error) {
-                    console.error(`Error processing tournament ${filename}:`, error);
-                    errors.add(`${filename}: ${error.message}`);
-                    errorCount++;
-                }
-            }
-
-            this.isLoading = false;
-            this.showLoadingState(false);
-            this.populateFilterDropdowns(allBoards);
-
-        } catch (error) {
-            console.error('Failed to load tournaments from web:', error);
-            tournamentListElement.innerHTML = `
-                <div class="tournament-item error">
-                    <h3>Failed to load tournaments</h3>
-                    <div>${error.message}</div>
-                </div>`;
-            this.isLoading = false;
-            this.showLoadingState(false);
-        }
-    }
-
-    async loadWebTournament(filename) {
+    async loadTournamentFromWeb(filename) {
         try {
             const baseUrl = 'https://dbltnk.github.io/entangled/tournaments/';
             const response = await fetch(baseUrl + filename);
@@ -332,7 +361,6 @@ class ResultsViewer {
             }
             const data = await response.json();
 
-            // Validate minimum required data structure
             if (!data.metadata || !data.results) {
                 throw new Error('Invalid tournament data structure: missing required fields');
             }
@@ -342,7 +370,7 @@ class ResultsViewer {
                 this.currentTournament.elo = this.calculateMissingELO();
             }
 
-            this.select(this.currentTournament);
+            this.selectTournament(this.currentTournament);
             this.updateResults();
         } catch (error) {
             console.error('Failed to load tournament data:', error);
@@ -358,18 +386,29 @@ class ResultsViewer {
         }
     }
 
+    async loadTournamentFromDirectory(fileEntry) {
+        const file = await fileEntry.getFile();
+        const content = await file.text();
+        this.currentTournament = JSON.parse(content);
+
+        if (!this.currentTournament.elo || Object.keys(this.currentTournament.elo).length === 0) {
+            this.currentTournament.elo = this.calculateMissingELO();
+        }
+
+        this.selectTournament(this.currentTournament);
+        this.updateResults();
+    }
+
     calculateMissingELO() {
         if (!this.currentTournament || !this.currentTournament.results) {
             return;
         }
 
-        // Initialize ELO system
         const eloSystem = new ELOSystem({
             K: 32,
             initialRating: 1500
         });
 
-        // Process all games chronologically
         const allGames = [];
         Object.entries(this.currentTournament.results).forEach(([key, result]) => {
             result.games.forEach(game => {
@@ -381,10 +420,8 @@ class ResultsViewer {
             });
         });
 
-        // Sort games by move history length as a rough approximation of chronological order
         allGames.sort((a, b) => a.moves?.length - b.moves?.length);
 
-        // Process each game to update ELO ratings
         allGames.forEach(game => {
             let gameResult;
             if (game.winner === 'black') {
@@ -395,12 +432,10 @@ class ResultsViewer {
                 gameResult = 'draw';
             }
 
-            // Update both players' ratings
             eloSystem.updateRating(game.black, 'black', game.white, 'white', gameResult);
             eloSystem.updateRating(game.white, 'white', game.black, 'black', gameResult === 'win' ? 'loss' : gameResult === 'loss' ? 'win' : 'draw');
         });
 
-        // Store calculated ELO ratings
         const elo = {};
         const players = new Set();
         Object.values(this.currentTournament.results).forEach(result => {
@@ -418,117 +453,6 @@ class ResultsViewer {
         return elo;
     }
 
-    async loadTournamentList() {
-        const tournamentList = document.getElementById('tournament-list');
-        tournamentList.innerHTML = '';
-        this.isLoading = true;
-        this.loadedCount = 0;
-
-        if (!this.dirHandle) {
-            tournamentList.innerHTML = '<div class="tournament-item error">No directory selected</div>';
-            return;
-        }
-
-        try {
-            await this.dirHandle.requestPermission({ mode: 'read' });
-        } catch (error) {
-            console.error('Permission error:', error);
-            tournamentList.innerHTML = '<div class="tournament-item error">Directory permission denied. Please try selecting the directory again.</div>';
-            return;
-        }
-
-        let loadedCount = 0;
-        let errorCount = 0;
-        let totalFiles = 0;
-        const errors = new Set();
-        const allBoards = new Set();
-
-        try {
-            // First count total files for the loading indicator
-            for await (const entry of this.dirHandle.values()) {
-                if (entry.name.endsWith('.json') && entry.name !== 'tournaments.json') {
-                    totalFiles++;
-                }
-            }
-
-            this.totalCount = totalFiles;
-            this.showLoadingState(true, 0, this.totalCount);
-
-            for await (const entry of this.dirHandle.values()) {
-                if (entry.name.endsWith('.json') && entry.name !== 'tournaments.json') {
-                    try {
-                        const file = await entry.getFile();
-                        const content = await file.text();
-                        const data = JSON.parse(content);
-
-                        if (!data.metadata || !data.metadata.selectedAIs || !data.metadata.boards) {
-                            throw new Error('Invalid tournament file structure');
-                        }
-
-                        const boardsInTournament = this.collectBoardsFromTournament(data);
-                        boardsInTournament.forEach(board => allBoards.add(board));
-
-                        const item = document.createElement('div');
-                        item.className = 'tournament-item';
-                        item.innerHTML = this.createTournamentItemHTML(data);
-                        item.addEventListener('click', () => this.loadTournament(entry));
-                        tournamentList.appendChild(item);
-                        this.tournamentFiles.push(entry);
-                        loadedCount++;
-
-                        this.showLoadingState(true, loadedCount, this.totalCount);
-                    } catch (error) {
-                        console.error(`Error processing tournament file ${entry.name}:`, error);
-                        errors.add(`${entry.name}: ${error.message}`);
-                        errorCount++;
-                    }
-                }
-            }
-
-            this.populateFilterDropdowns(allBoards);
-
-        } catch (error) {
-            console.error('Error reading directory:', error);
-            tournamentList.innerHTML = `<div class="tournament-item error">Failed to read directory: ${error.message}</div>`;
-        } finally {
-            this.isLoading = false;
-            this.showLoadingState(false);
-
-            if (errorCount > 0) {
-                const errorSummary = document.createElement('div');
-                errorSummary.className = 'tournament-item error';
-                errorSummary.innerHTML = `
-                    <h3>Loading Summary</h3>
-                    <div>Successfully loaded: ${loadedCount} files</div>
-                    <div>Failed to load: ${errorCount} files</div>
-                    <details>
-                        <summary>Show Error Details</summary>
-                        <pre>${Array.from(errors).join('\n')}</pre>
-                    </details>
-                `;
-                tournamentList.insertBefore(errorSummary, tournamentList.firstChild);
-            }
-
-            if (loadedCount === 0) {
-                tournamentList.innerHTML = '<div class="tournament-item">No tournament files found</div>';
-            }
-        }
-    }
-
-    async loadTournament(fileEntry) {
-        // Load and parse tournament data
-        const file = await fileEntry.getFile();
-        const content = await file.text();
-        this.currentTournament = JSON.parse(content);
-
-        if (!this.currentTournament.elo || Object.keys(this.currentTournament.elo).length === 0) {
-            this.currentTournament.elo = this.calculateMissingELO();
-        }
-
-        this.select(this.currentTournament);
-        this.updateResults();
-    }
-
     displayTournamentConfig() {
         const board1Layout = BOARD_LAYOUTS[this.currentTournament.metadata.boards.board1];
         const board2Layout = BOARD_LAYOUTS[this.currentTournament.metadata.boards.board2];
@@ -544,16 +468,13 @@ class ResultsViewer {
     }
 
     setupEventListeners() {
-        // Add filter change handlers
         document.getElementById('filter-board1').addEventListener('change', () => this.applyFilters());
         document.getElementById('filter-board2').addEventListener('change', () => this.applyFilters());
         document.getElementById('filter-starting').addEventListener('input', () => this.applyFilters());
 
-        // Add load buttons handlers
-        document.getElementById('load-directory').addEventListener('click', () => this.initializeFileSystem());
-        document.getElementById('load-web').addEventListener('click', () => this.loadFromWeb());
+        document.getElementById('load-directory').addEventListener('click', () => this.initializeDirectoryAccess());
+        document.getElementById('load-web').addEventListener('click', () => this.loadTournamentsFromWeb());
 
-        // Add tab button handlers
         document.querySelectorAll('.tab-button').forEach(button => {
             button.addEventListener('click', () => this.switchTab(button.dataset.tab));
         });
@@ -574,7 +495,6 @@ class ResultsViewer {
         this.updateMatchupsTab();
         this.updateDetailsTab();
 
-        // Re-attach tab event listeners after updating content
         document.querySelectorAll('.tab-button').forEach(button => {
             button.addEventListener('click', () => this.switchTab(button.dataset.tab));
         });
@@ -584,22 +504,18 @@ class ResultsViewer {
         const results = this.currentTournament.results;
         const elos = this.currentTournament.elo;
 
-        // Update main table
         const tbody = document.querySelector('#overview-table tbody');
         tbody.innerHTML = '';
 
-        // Calculate aggregated stats
         const aggregatedStats = this.calculateAggregatedStats(results, false);
 
-        // Add average row
         const avgRow = this.createStatsRow('Average', {
             elo: null,
             white: aggregatedStats.white,
             black: aggregatedStats.black
-        }, true);  // other-play table
+        }, true);
         tbody.appendChild(avgRow);
 
-        // Add individual AI rows
         const uniqueAIs = new Set();
         Object.values(results).forEach(result => {
             uniqueAIs.add(result.black);
@@ -615,30 +531,26 @@ class ResultsViewer {
         sortedAIs.forEach(ai => {
             const aiStats = this.calculateAIStats(ai, results, false);
             aiStats.elo = elos[ai];
-            const row = this.createStatsRow(AI_PLAYERS[ai].name, aiStats, true);  // other-play table
+            const row = this.createStatsRow(AI_PLAYERS[ai].name, aiStats, true);
             tbody.appendChild(row);
         });
 
-        // Update self-play table
         const selfPlayTbody = document.querySelector('#self-play-table tbody');
         selfPlayTbody.innerHTML = '';
 
-        // Calculate self-play stats
         const selfPlayStats = this.calculateAggregatedStats(results, true);
 
-        // Add average row for self-play
         const selfPlayAvgRow = this.createStatsRow('Average', {
             elo: null,
             white: selfPlayStats.white,
             black: selfPlayStats.black
-        }, false);  // self-play table
+        }, false);
         selfPlayTbody.appendChild(selfPlayAvgRow);
 
-        // Add individual AI rows for self-play
         sortedAIs.forEach(ai => {
             const aiStats = this.calculateAIStats(ai, results, true);
             aiStats.elo = elos[ai];
-            const row = this.createStatsRow(AI_PLAYERS[ai].name, aiStats, false);  // self-play table
+            const row = this.createStatsRow(AI_PLAYERS[ai].name, aiStats, false);
             selfPlayTbody.appendChild(row);
         });
     }
@@ -676,13 +588,13 @@ class ResultsViewer {
                 if (game.winner === 'black') {
                     stats.black.wins++;
                     stats.white.losses++;
-                    if (game.black === game.white) {  // Was a tiebreaker win
+                    if (game.black === game.white) {
                         stats.black.tiebreakerWins++;
                     }
                 } else if (game.winner === 'white') {
                     stats.white.wins++;
                     stats.black.losses++;
-                    if (game.black === game.white) {  // Was a tiebreaker win
+                    if (game.black === game.white) {
                         stats.white.tiebreakerWins++;
                     }
                 } else {
@@ -787,7 +699,6 @@ class ResultsViewer {
                 <td class="draw-percent">${blackStats.drawPercent}%</td>
             `;
         } else {
-            // Self-play table has fewer columns
             row.innerHTML = `
                 <td class="player-name">
                     ${name}
@@ -824,12 +735,12 @@ class ResultsViewer {
 
             const row = tbody.insertRow();
             row.innerHTML = `
-                            <td style="white-space: normal;">${AI_PLAYERS[result.black].name}</td>
-                            <td style="white-space: normal;">${AI_PLAYERS[result.white].name}</td>
-                            <td>${result.games.length}</td>
-                            <td>${result.games.filter(g => g.winner === 'black').length}-${result.games.filter(g => g.winner === 'white').length}-${result.games.filter(g => g.winner === 'draw').length}</td>
-                            <td>${reverseResult ? `${reverseResult.games.filter(g => g.winner === 'white').length}-${reverseResult.games.filter(g => g.winner === 'black').length}-${reverseResult.games.filter(g => g.winner === 'draw').length}` : 'N/A'}</td>
-                        `;
+                <td style="white-space: normal;">${AI_PLAYERS[result.black].name}</td>
+                <td style="white-space: normal;">${AI_PLAYERS[result.white].name}</td>
+                <td>${result.games.length}</td>
+                <td>${result.games.filter(g => g.winner === 'black').length}-${result.games.filter(g => g.winner === 'white').length}-${result.games.filter(g => g.winner === 'draw').length}</td>
+                <td>${reverseResult ? `${reverseResult.games.filter(g => g.winner === 'white').length}-${reverseResult.games.filter(g => g.winner === 'black').length}-${reverseResult.games.filter(g => g.winner === 'draw').length}` : 'N/A'}</td>
+            `;
         });
     }
 
