@@ -818,20 +818,20 @@ class HybridStrongPlayer extends EntangledPlayer {
 export const AI_PLAYERS = {
     random: {
         id: 'random',
-        name: 'Fully Random',
-        description: 'Makes random valid moves',
+        name: '🎲 Pure Random',
+        description: 'Makes completely random moves with no strategy',
         implementation: RandomPlayer
     },
     deterministic: {
         id: 'deterministic',
-        name: 'A-to-Z Deterministic',
-        description: 'Always uses the first available move',
+        name: '🎯 Pure Deterministic',
+        description: 'Always picks the first available move',
         implementation: DeterministicPlayer
     },
     'aggressive-no-rng': {
         id: 'aggressive-no-rng',
-        name: 'Greedy (no-rng)',
-        description: 'Maximizes current turn score',
+        name: '🎯 Det. Greedy',
+        description: 'Maximizes immediate score without considering opponent moves',
         implementation: GreedyHighPlayer,
         defaultConfig: {
             randomize: false,
@@ -840,8 +840,8 @@ export const AI_PLAYERS = {
     },
     'aggressive-some-rng': {
         id: 'aggressive-some-rng',
-        name: 'Greedy (some-rng)',
-        description: 'Maximizes current turn score with randomization',
+        name: '🎲 Rand. Greedy',
+        description: 'Like Greedy Score but randomly picks among good moves',
         implementation: GreedyHighPlayer,
         defaultConfig: {
             randomize: true,
@@ -850,8 +850,8 @@ export const AI_PLAYERS = {
     },
     'defensive-no-rng': {
         id: 'defensive-no-rng',
-        name: 'Defensive (no-rng)',
-        description: 'Considers opponent\'s potential responses',
+        name: '🎯 Det. Defensive',
+        description: 'Considers opponent\'s best response when choosing moves',
         implementation: DefensivePlayer,
         defaultConfig: {
             randomize: false,
@@ -860,8 +860,8 @@ export const AI_PLAYERS = {
     },
     'defensive-some-rng': {
         id: 'defensive-some-rng',
-        name: 'Defensive (some-rng)',
-        description: 'Considers opponent\'s potential responses with randomization',
+        name: '🎲 Rand. Defensive',
+        description: 'Like Defensive but randomly picks among good moves',
         implementation: DefensivePlayer,
         defaultConfig: {
             randomize: true,
@@ -870,8 +870,8 @@ export const AI_PLAYERS = {
     },
     'minimax-no-rng': {
         id: 'minimax-no-rng',
-        name: 'Minimax (no-rng)',
-        description: 'Uses minimax algorithm with alpha-beta pruning',
+        name: '🎯 Det. Minimax',
+        description: 'Looks ahead 4 moves using minimax with alpha-beta pruning',
         implementation: MinimaxPlayer,
         defaultConfig: {
             randomize: false,
@@ -881,8 +881,8 @@ export const AI_PLAYERS = {
     },
     'minimax-some-rng': {
         id: 'minimax-some-rng',
-        name: 'Minimax (some-rng)',
-        description: 'Uses minimax algorithm with alpha-beta pruning and randomization',
+        name: '🎲 Rand. Minimax',
+        description: 'Like Minimax but randomly picks among good moves',
         implementation: MinimaxPlayer,
         defaultConfig: {
             randomize: true,
@@ -892,8 +892,8 @@ export const AI_PLAYERS = {
     },
     'mcts-some-rng': {
         id: 'mcts-some-rng',
-        name: 'MCTS (some rng)',
-        description: 'Uses Monte Carlo Tree Search simulation with randomization',
+        name: '🎲 Monte Carlo Tree Search',
+        description: 'Uses Monte Carlo Tree Search with 2000 simulated games per move',
         implementation: MCTSPlayer,
         defaultConfig: {
             randomize: true,
@@ -903,8 +903,8 @@ export const AI_PLAYERS = {
     },
     'hybrid-strong': {
         id: 'hybrid-strong',
-        name: 'Hybrid Strong Player',
-        description: 'Combines MCTS and Minimax adaptively',
+        name: '🎲 MCTS/Minimax Hybrid',
+        description: 'Uses MCTS early game, switches to Minimax in endgame',
         implementation: HybridStrongPlayer,
         defaultConfig: {
             randomize: true,
