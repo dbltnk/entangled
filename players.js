@@ -889,21 +889,11 @@ class MCTSPlayer extends EntangledPlayer {
                     try {
                         simGame.makeMove(moveEvaluations[i].move);
                         const score = this.playRandomGame(simGame);
-                        const oldScore = moveEvaluations[i].score;
-                        // Update running average
-                        moveEvaluations[i].score = (
-                            oldScore * moveEvaluations[i].simCount + score
-                        ) / (moveEvaluations[i].simCount + 1);
-                        moveEvaluations[i].simCount++;
-
-                        // Check if score changed significantly
-                        if (Math.abs(moveEvaluations[i].score - moveEvaluations[i].lastScore) > STABILITY_THRESHOLD) {
-                            moveEvaluations[i].unchangedCount = 0;
-                            roundChanged = true;
-                        } else {
-                            moveEvaluations[i].unchangedCount++;
-                        }
-                        moveEvaluations[i].lastScore = moveEvaluations[i].score;
+                        const moveEval = moveEvaluations[i];
+                        moveEval.score = (moveEval.score * moveEval.simCount + score) / (moveEval.simCount + 1);
+                        moveEval.simCount++;
+                        moveEval.lastScore = moveEval.score;
+                        roundChanged = true;
                     } catch (error) {
                         console.error('Simulation error:', error);
                         break;
@@ -944,8 +934,12 @@ class MCTSPlayer extends EntangledPlayer {
     }
 
     playRandomGame(sim) {
-        while (!sim.isGameOver()) {
+        let maxMoves = 100; // Prevent infinite loops
+        let moveCount = 0;
+
+        while (!sim.isGameOver() && moveCount < maxMoves) {
             const currentPlayer = sim.currentPlayer;
+            moveCount++;
 
             // Consider swapping if it's the second player's first move
             if (sim.canSwapColors && !sim.colorsSwapped &&
@@ -953,22 +947,28 @@ class MCTSPlayer extends EntangledPlayer {
                 sim.playerTurns[currentPlayer === 'BLACK' ? 'WHITE' : 'BLACK'] === 1) {
                 const currentScore = sim.getScore(currentPlayer);
                 const opponentScore = sim.getScore(currentPlayer === 'BLACK' ? 'WHITE' : 'BLACK');
-                if (opponentScore > currentScore && Math.random() < 0.8) {  // 80% chance to swap if beneficial
+                if (opponentScore > currentScore && Math.random() < 0.8) {
                     try {
                         sim.swapColors();
                         continue;
                     } catch (error) {
-                        // If swap fails, just continue with normal move
-                        console.debug('Swap failed in MCTS simulation:', error);
+                        console.debug('Swap failed in simulation:', error);
                     }
                 }
             }
 
             const vm = sim.getValidMoves();
             if (!vm.length) break;
-            const rnd = vm[Math.floor(Math.random() * vm.length)];
-            sim.makeMove(rnd);
+
+            try {
+                const rnd = vm[Math.floor(Math.random() * vm.length)];
+                sim.makeMove(rnd);
+            } catch (error) {
+                console.debug('Invalid move in simulation:', error);
+                break;
+            }
         }
+
         const my = this.playerColor;
         const opp = my === 'BLACK' ? 'WHITE' : 'BLACK';
         const myScore = sim.getScore(my);
@@ -987,25 +987,292 @@ class HybridStrongPlayer extends EntangledPlayer {
         super(gameEngine, playerColor, config);
         this.mctsCount = config.simulationCount;
         this.minimaxDepth = config.lookahead;
+        this.moveTimeLimit = config.moveTimeLimit || 1000;
+        this.swapTimeLimit = config.swapTimeLimit || 1000;
+        this.startTime = 0;
+        this.shouldStop = false;
+        this.transpositionTable = new Map();
+        this.bestMove = null;
+        this.UCT_CONSTANT = Math.sqrt(2);
+        this.mctsRoot = null;
     }
 
-    decideColorSwap() {
-        if (!this.gameEngine.getGameState().canSwapColors) {
-            return false;
+    isTimeUp(timeLimit) {
+        return performance.now() - this.startTime >= (timeLimit || (this.isSwapDecision ? this.swapTimeLimit : this.moveTimeLimit));
+    }
+
+    getStateKey(game, depth, maxing) {
+        const board1Key = game.board1.map(row => row.join('')).join('');
+        const board2Key = game.board2.map(row => row.join('')).join('');
+        return `${board1Key}|${board2Key}|${depth}|${maxing}`;
+    }
+
+    // Enhanced position evaluation with phase-specific terms
+    evaluatePosition(game) {
+        const baseScore = super.evaluatePosition(game);
+        const validMoves = game.getValidMoves();
+        const isEndgame = validMoves.length <= 10;
+
+        // Phase-specific evaluation terms
+        if (isEndgame) {
+            // In endgame, prioritize connecting stones and center control
+            const connectivityScore = this.evaluateConnectivity(game, game.board1) +
+                this.evaluateConnectivity(game, game.board2);
+            const centerScore = this.evaluateCenterControl(game);
+            return baseScore + connectivityScore * 0.3 + centerScore * 0.2;
+        } else {
+            // In early game, prioritize mobility and growth potential
+            const mobilityScore = validMoves.length * 0.1;
+            const growthScore = this.evaluateGrowthPotential(game);
+            return baseScore + mobilityScore + growthScore * 0.2;
+        }
+    }
+
+    // MCTS node structure
+    createNode(parent = null) {
+        return {
+            visits: 0,
+            wins: 0,
+            children: new Map(),
+            untriedMoves: null,
+            parent: parent
+        };
+    }
+
+    // UCT selection formula
+    uctValue(totalVisits, nodeWins, nodeVisits) {
+        if (nodeVisits === 0) return Infinity;
+        return (nodeWins / nodeVisits) +
+            this.UCT_CONSTANT * Math.sqrt(Math.log(totalVisits) / nodeVisits);
+    }
+
+    // Enhanced MCTS with UCT
+    mctsChoice(moves, timeLimit) {
+        this.startTime = performance.now();
+        const rootState = this.simulateGame(this.gameEngine.getGameState());
+        this.mctsRoot = this.createNode();
+        this.mctsRoot.untriedMoves = [...moves];
+        let totalSimulations = 0;
+
+        // Track stability for early stopping
+        const STABILITY_THRESHOLD = 0.05;  // Increased from 0.01
+        const MAX_UNCHANGED_ROUNDS = 4;    // Increased from 3
+        const MIN_SIMS_BEFORE_STOP = 100;  // Minimum simulations before considering early stop
+        let roundsWithoutChange = 0;
+        let lastBestScore = null;
+        let moveEvaluations = moves.map(move => ({
+            move,
+            score: 0,
+            simCount: 0,
+            ucbScore: Infinity  // Track UCB score for progressive widening
+        }));
+
+        // Progressive widening parameters
+        const C_UCB = 1.4;     // Increased exploration constant
+        const ALPHA = 0.4;      // Progressive widening exponent
+
+        while (!this.isTimeUp(timeLimit)) {
+            let roundChanged = false;
+            const bestScoreBeforeRound = lastBestScore;
+
+            // Progressive widening: number of moves to consider this round
+            const numMovesToConsider = Math.ceil(Math.pow(totalSimulations + 1, ALPHA));
+
+            // Update UCB scores for all moves
+            moveEvaluations.forEach(moveEval => {
+                if (moveEval.simCount === 0) {
+                    moveEval.ucbScore = Infinity;
+                } else {
+                    moveEval.ucbScore = moveEval.score +
+                        C_UCB * Math.sqrt(Math.log(totalSimulations) / moveEval.simCount);
+                }
+            });
+
+            // Sort by UCB score and take top moves for this round
+            moveEvaluations.sort((a, b) => b.ucbScore - a.ucbScore);
+            const movesToExplore = moveEvaluations.slice(0, numMovesToConsider);
+
+            for (const moveEval of movesToExplore) {
+                if (this.isTimeUp(timeLimit)) break;
+
+                // Run a batch of simulations for this move
+                const numSims = Math.max(1, Math.floor(20 / numMovesToConsider));
+                for (let i = 0; i < numSims; i++) {
+                    const simGame = this.simulateGame(rootState.getGameState());
+                    try {
+                        simGame.makeMove(moveEval.move);
+                        const result = this.playRandomGame(simGame);
+                        moveEval.score = (moveEval.score * moveEval.simCount + result) /
+                            (moveEval.simCount + 1);
+                        moveEval.simCount++;
+                        roundChanged = true;
+                        totalSimulations++;
+                    } catch (error) {
+                        console.debug('Simulation error:', error);
+                        continue;
+                    }
+                }
+            }
+
+            // Sort by actual score for stability checking
+            moveEvaluations.sort((a, b) => b.score - a.score);
+            const currentBestScore = moveEvaluations[0].score;
+
+            if (lastBestScore !== null &&
+                Math.abs(currentBestScore - bestScoreBeforeRound) <= STABILITY_THRESHOLD) {
+                roundsWithoutChange++;
+            } else {
+                roundsWithoutChange = 0;
+            }
+            lastBestScore = currentBestScore;
+
+            // Early stopping conditions with minimum simulation requirement
+            if (totalSimulations >= MIN_SIMS_BEFORE_STOP) {
+                if (!roundChanged && roundsWithoutChange >= MAX_UNCHANGED_ROUNDS &&
+                    moveEvaluations[0].simCount >= 50) {
+                    console.log(`MCTS stopped early due to stable evaluations after ${totalSimulations} simulations`);
+                    break;
+                }
+
+                // Check if best move is clearly better
+                if (moveEvaluations[0].simCount >= 50 &&
+                    moveEvaluations.length > 1 &&
+                    moveEvaluations[0].score > moveEvaluations[1].score + 5.0) {
+                    console.log(`MCTS stopped early due to clear best move after ${totalSimulations} simulations`);
+                    break;
+                }
+            }
         }
 
-        // Use minimax for swap decisions since it's faster for single position evaluation
-        const currentGame = this.simulateGame(this.gameEngine.getGameState());
-        const currentScore = this.minimax(currentGame, this.minimaxDepth - 1, true, -Infinity, Infinity);
+        const endTime = performance.now();
+        const timeUsed = endTime - this.startTime;
+        console.log(`MCTS completed in ${Math.round(timeUsed)}ms with ${totalSimulations} simulations`);
+        console.log('Move evaluations:', moveEvaluations.map(e =>
+            `${e.move}: score=${e.score.toFixed(2)}, sims=${e.simCount}`).join(', '));
 
-        const swappedGame = this.simulateGame(this.gameEngine.getGameState());
-        swappedGame.swapColors();
-        const swappedScore = this.minimax(swappedGame, this.minimaxDepth - 1, true, -Infinity, Infinity);
-
-        return swappedScore > currentScore;
+        return {
+            move: moveEvaluations[0].move,
+            score: moveEvaluations[0].score,
+            evaluations: moveEvaluations,
+            timeUsed
+        };
     }
 
+    // Minimax with iterative deepening and move ordering
+    minimaxChoice(moves, timeLimit) {
+        this.startTime = performance.now();
+        this.shouldStop = false;
+        this.transpositionTable.clear();
+        let depth = 1;
+        let bestMove = moves[0];
+        let bestValue = -Infinity;
+        let lastCompletedDepth = 0;
+
+        while (!this.isTimeUp(timeLimit) && depth <= this.minimaxDepth) {
+            const orderedMoves = this.orderMoves(moves);
+            let currentBestValue = -Infinity;
+            let currentBestMove = bestMove;
+            let alpha = -Infinity;
+            const beta = Infinity;
+
+            for (const move of orderedMoves) {
+                const sim = this.simulateGame(this.gameEngine.getGameState());
+                sim.makeMove(move);
+                const value = this.minimax(sim, depth - 1, false, alpha, beta);
+
+                if (this.shouldStop) break;
+
+                if (value > currentBestValue) {
+                    currentBestValue = value;
+                    currentBestMove = move;
+                }
+                alpha = Math.max(alpha, currentBestValue);
+            }
+
+            if (!this.shouldStop) {
+                lastCompletedDepth = depth;
+                bestMove = currentBestMove;
+                bestValue = currentBestValue;
+                depth++;
+            }
+        }
+
+        console.log(`Minimax completed at depth ${lastCompletedDepth}`);
+        return { move: bestMove, score: bestValue };
+    }
+
+    // Enhanced move ordering
+    orderMoves(moves) {
+        return moves.sort((a, b) => {
+            const simA = this.simulateGame(this.gameEngine.getGameState());
+            const simB = this.simulateGame(this.gameEngine.getGameState());
+            simA.makeMove(a);
+            simB.makeMove(b);
+
+            // Quick evaluation for move ordering
+            const scoreA = this.quickEvaluate(simA);
+            const scoreB = this.quickEvaluate(simB);
+
+            return scoreB - scoreA;
+        });
+    }
+
+    // Quick evaluation for move ordering
+    quickEvaluate(game) {
+        const myScore = game.getScore(this.playerColor);
+        const oppScore = game.getScore(this.playerColor === 'BLACK' ? 'WHITE' : 'BLACK');
+        return myScore - oppScore;
+    }
+
+    minimax(game, depth, maxing, alpha, beta) {
+        if (this.isTimeUp()) {
+            this.shouldStop = true;
+            return this.evaluatePosition(game);
+        }
+
+        const stateKey = this.getStateKey(game, depth, maxing);
+        if (this.transpositionTable.has(stateKey)) {
+            return this.transpositionTable.get(stateKey);
+        }
+
+        if (depth === 0 || game.isGameOver()) {
+            const score = this.evaluatePosition(game);
+            this.transpositionTable.set(stateKey, score);
+            return score;
+        }
+
+        const moves = this.orderMoves(game.getValidMoves());
+        if (!moves.length) {
+            const score = this.evaluatePosition(game);
+            this.transpositionTable.set(stateKey, score);
+            return score;
+        }
+
+        let value = maxing ? -Infinity : Infinity;
+        const updateValue = maxing ? Math.max : Math.min;
+        const updateBound = maxing ? (v => alpha = Math.max(alpha, v)) : (v => beta = Math.min(beta, v));
+
+        for (const move of moves) {
+            if (this.shouldStop) break;
+
+            const sim = this.simulateGame(game.getGameState());
+            sim.currentPlayer = maxing ? this.playerColor : (this.playerColor === 'BLACK' ? 'WHITE' : 'BLACK');
+            sim.makeMove(move);
+
+            value = updateValue(value, this.minimax(sim, depth - 1, !maxing, alpha, beta));
+            updateBound(value);
+
+            if (beta <= alpha) break;
+        }
+
+        this.transpositionTable.set(stateKey, value);
+        return value;
+    }
+
+    // Dynamic algorithm selection with adaptive time allocation
     chooseMove() {
+        this.startTime = performance.now();
+
         if (this.gameEngine.getGameState().canSwapColors) {
             if (this.decideColorSwap()) {
                 return 'swap';
@@ -1013,72 +1280,88 @@ class HybridStrongPlayer extends EntangledPlayer {
         }
 
         const validMoves = this.gameEngine.getValidMoves();
+        const moveCount = validMoves.length;
 
-        // Use MCTS for early game (more moves) and minimax for late game (fewer moves)
-        if (validMoves.length > 10) {
-            return this.mctsChoice(validMoves);
+        // Dynamic transition between MCTS and Minimax
+        if (moveCount > 10) {
+            // Early game: pure MCTS
+            const result = this.mctsChoice(validMoves);
+            // Use evaluations for better randomization
+            return this.randomizeChoice(
+                result.evaluations.map(e => e.move),
+                result.evaluations.map(e => e.score)
+            );
+        } else if (moveCount > 5) {
+            // Mid game: adaptive time allocation
+            const initialMctsTime = this.moveTimeLimit * 0.3;  // Start with 30% for MCTS
+            const mctsResult = this.mctsChoice(validMoves, initialMctsTime);
+
+            // If MCTS found a very clear best move, use it
+            if (mctsResult.evaluations[0].score > mctsResult.evaluations[1].score + 7.0) {
+                return this.randomizeChoice(
+                    [mctsResult.evaluations[0].move],
+                    [mctsResult.evaluations[0].score]
+                );
+            }
+
+            // Otherwise, use remaining time for Minimax
+            const remainingTime = this.moveTimeLimit - mctsResult.timeUsed;
+            const minimaxResult = this.minimaxChoice(validMoves, remainingTime);
+
+            // Weight shifts from MCTS to Minimax as moves decrease
+            const mctsWeight = (moveCount - 5) / 5;
+            const minimaxWeight = 1 - mctsWeight;
+
+            // Use MCTS evaluations for better scoring
+            const combinedScores = validMoves.map(move => {
+                const mctsEval = mctsResult.evaluations.find(e => e.move === move);
+                const mctsScore = mctsEval ? mctsEval.score : 0;
+                return {
+                    move,
+                    score: (mctsWeight * mctsScore) +
+                        (minimaxWeight * (move === minimaxResult.move ? minimaxResult.score : 0))
+                };
+            });
+
+            combinedScores.sort((a, b) => b.score - a.score);
+            return this.randomizeChoice(
+                combinedScores.map(c => c.move),
+                combinedScores.map(c => c.score)
+            );
         } else {
-            return this.minimaxChoice(validMoves);
+            // End game: pure Minimax
+            const result = this.minimaxChoice(validMoves);
+            return this.randomizeChoice([result.move], [result.score]);
         }
     }
 
-    minimaxChoice(moves) {
-        const evaluations = moves.map(m => {
-            const sim = this.simulateGame(this.gameEngine.getGameState());
-            sim.makeMove(m);
-            return { move: m, score: this.minimax(sim, this.minimaxDepth - 1, false, -Infinity, Infinity) };
-        });
-        evaluations.sort((a, b) => b.score - a.score);
-        return this.randomizeChoice(evaluations.map(e => e.move), evaluations.map(e => e.score));
-    }
-
-    minimax(game, depth, maxing, alpha, beta) {
-        if (depth === 0 || game.isGameOver()) return this.evaluatePosition(game);
-        const moves = game.getValidMoves();
-        if (!moves.length) return this.evaluatePosition(game);
-        if (maxing) {
-            let val = -Infinity;
-            for (const m of moves) {
-                const sim = this.simulateGame(game.getGameState());
-                sim.currentPlayer = this.playerColor;
-                sim.makeMove(m);
-                val = Math.max(val, this.minimax(sim, depth - 1, false, alpha, beta));
-                alpha = Math.max(alpha, val);
-                if (beta <= alpha) break;
-            }
-            return val;
-        } else {
-            let val = Infinity;
-            const opp = this.playerColor === 'BLACK' ? 'WHITE' : 'BLACK';
-            for (const m of moves) {
-                const sim = this.simulateGame(game.getGameState());
-                sim.currentPlayer = opp;
-                sim.makeMove(m);
-                val = Math.min(val, this.minimax(sim, depth - 1, true, alpha, beta));
-                beta = Math.min(beta, val);
-                if (beta <= alpha) break;
-            }
-            return val;
+    decideColorSwap() {
+        if (!this.gameEngine.getGameState().canSwapColors) {
+            return false;
         }
-    }
 
-    mctsChoice(moves) {
-        const evals = moves.map(m => {
-            let total = 0;
-            for (let i = 0; i < this.mctsCount; i++) {
-                const sim = this.simulateGame(this.gameEngine.getGameState());
-                sim.makeMove(m);
-                total += this.playRandomGame(sim);
-            }
-            return { move: m, score: total / this.mctsCount };
-        });
-        evals.sort((a, b) => b.score - a.score);
-        return this.randomizeChoice(evals.map(e => e.move), evals.map(e => e.score));
+        this.isSwapDecision = true;
+        this.startTime = performance.now();
+
+        // Use Minimax for swap decisions
+        const currentGame = this.simulateGame(this.gameEngine.getGameState());
+        const currentScore = this.minimax(currentGame, this.minimaxDepth, true, -Infinity, Infinity);
+
+        const swappedGame = this.simulateGame(this.gameEngine.getGameState());
+        swappedGame.swapColors();
+        const swappedScore = this.minimax(swappedGame, this.minimaxDepth, true, -Infinity, Infinity);
+
+        this.isSwapDecision = false;
+        return swappedScore > currentScore;
     }
 
     playRandomGame(sim) {
-        while (!sim.isGameOver()) {
+        let maxMoves = 100; // Prevent infinite loops
+        let moveCount = 0;
+
+        while (!sim.isGameOver() && moveCount < maxMoves) {
             const currentPlayer = sim.currentPlayer;
+            moveCount++;
 
             // Consider swapping if it's the second player's first move
             if (sim.canSwapColors && !sim.colorsSwapped &&
@@ -1086,27 +1369,59 @@ class HybridStrongPlayer extends EntangledPlayer {
                 sim.playerTurns[currentPlayer === 'BLACK' ? 'WHITE' : 'BLACK'] === 1) {
                 const currentScore = sim.getScore(currentPlayer);
                 const opponentScore = sim.getScore(currentPlayer === 'BLACK' ? 'WHITE' : 'BLACK');
-                if (opponentScore > currentScore && Math.random() < 0.8) {  // 80% chance to swap if beneficial
+                if (opponentScore > currentScore && Math.random() < 0.8) {
                     try {
                         sim.swapColors();
                         continue;
                     } catch (error) {
-                        // If swap fails, just continue with normal move
-                        console.debug('Swap failed in Hybrid simulation:', error);
+                        console.debug('Swap failed in simulation:', error);
                     }
                 }
             }
 
             const vm = sim.getValidMoves();
             if (!vm.length) break;
-            const rnd = vm[Math.floor(Math.random() * vm.length)];
-            sim.makeMove(rnd);
+
+            try {
+                const rnd = vm[Math.floor(Math.random() * vm.length)];
+                sim.makeMove(rnd);
+            } catch (error) {
+                console.debug('Invalid move in simulation:', error);
+                break;
+            }
         }
+
         const my = this.playerColor;
         const opp = my === 'BLACK' ? 'WHITE' : 'BLACK';
         const myScore = sim.getScore(my);
         const oppScore = sim.getScore(opp);
         return myScore - oppScore;
+    }
+
+    destroy() {
+        // Clean up MCTS tree
+        const cleanupNode = (node) => {
+            if (!node) return;
+            if (node.children) {
+                for (const child of node.children.values()) {
+                    cleanupNode(child);
+                }
+                node.children.clear();
+            }
+            node.untriedMoves = null;
+            node.parent = null;
+        };
+
+        if (this.mctsRoot) {
+            cleanupNode(this.mctsRoot);
+            this.mctsRoot = null;
+        }
+
+        // Clean up transposition table
+        if (this.transpositionTable) {
+            this.transpositionTable.clear();
+            this.transpositionTable = null;
+        }
     }
 }
 
@@ -1209,7 +1524,9 @@ export const AI_PLAYERS = {
             randomize: true,
             randomThreshold: 0.1,
             simulationCount: 2000,
-            lookahead: 4
+            lookahead: 4,
+            moveTimeLimit: 1000,
+            swapTimeLimit: 1000
         }
     }
 };
