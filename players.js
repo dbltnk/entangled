@@ -464,12 +464,16 @@ class DefensivePlayer extends EntangledPlayer {
 class MinimaxPlayer extends EntangledPlayer {
     constructor(gameEngine, playerColor, config = {}) {
         super(gameEngine, playerColor, config);
-        this.moveTimeLimit = config.moveTimeLimit || 1000;    // Default 1000ms for regular moves
-        this.swapTimeLimit = config.swapTimeLimit || 1000;    // Default 1000ms for swap decisions
+        this.moveTimeLimit = config.moveTimeLimit;
+        this.swapTimeLimit = config.swapTimeLimit;
         this.startTime = 0;
         this.shouldStop = false;
         this.transpositionTable = new Map();
         this.bestMove = null;
+
+        // Validate required config values
+        if (!this.moveTimeLimit) throw new Error('moveTimeLimit is required in config');
+        if (!this.swapTimeLimit) throw new Error('swapTimeLimit is required in config');
     }
 
     isTimeUp() {
@@ -722,36 +726,23 @@ class MCTSPlayer extends EntangledPlayer {
     constructor(gameEngine, playerColor, config = {}) {
         super(gameEngine, playerColor, config);
         this.simulationCount = config.simulationCount;
+        this.moveTimeLimit = config.moveTimeLimit;
+        this.swapTimeLimit = config.swapTimeLimit;
         this.clusterCache = new Map();
         this.cacheHits = 0;
         this.cacheMisses = 0;
+        this.startTime = 0;
+        this.isSwapDecision = false;
+
+        // Validate required config values
+        if (!this.simulationCount) throw new Error('simulationCount is required in config');
+        if (!this.moveTimeLimit) throw new Error('moveTimeLimit is required in config');
+        if (!this.swapTimeLimit) throw new Error('swapTimeLimit is required in config');
     }
 
-    decideColorSwap() {
-        if (!this.gameEngine.getGameState().canSwapColors) {
-            return false;
-        }
-
-        // Evaluate current position using MCTS
-        const currentGame = this.simulateGame(this.gameEngine.getGameState());
-        let currentScore = 0;
-        for (let i = 0; i < this.simulationCount; i++) {
-            const sim = this.simulateGame(currentGame.getGameState());
-            currentScore += this.playRandomGame(sim);
-        }
-        currentScore /= this.simulationCount;
-
-        // Evaluate swapped position using MCTS
-        const swappedGame = this.simulateGame(this.gameEngine.getGameState());
-        swappedGame.swapColors();
-        let swappedScore = 0;
-        for (let i = 0; i < this.simulationCount; i++) {
-            const sim = this.simulateGame(swappedGame.getGameState());
-            swappedScore += this.playRandomGame(sim);
-        }
-        swappedScore /= this.simulationCount;
-
-        return swappedScore > currentScore;
+    isTimeUp() {
+        const timeLimit = this.isSwapDecision ? this.swapTimeLimit : this.moveTimeLimit;
+        return performance.now() - this.startTime >= timeLimit;
     }
 
     createBoardKey(board, player) {
@@ -776,44 +767,180 @@ class MCTSPlayer extends EntangledPlayer {
         return clusterSize;
     }
 
+    decideColorSwap() {
+        if (!this.gameEngine.getGameState().canSwapColors) {
+            return false;
+        }
+
+        this.isSwapDecision = true;  // Use swap time limit
+        this.startTime = performance.now();
+        const halfTimeLimit = this.swapTimeLimit / 2;
+
+        // Evaluate current position using MCTS with half the time
+        const currentGame = this.simulateGame(this.gameEngine.getGameState());
+        let currentScore = 0;
+        let simCount = 0;
+
+        while (performance.now() - this.startTime < halfTimeLimit && simCount < this.simulationCount) {
+            const sim = this.simulateGame(currentGame.getGameState());
+            currentScore += this.playRandomGame(sim);
+            simCount++;
+        }
+        currentScore /= simCount;
+
+        // Evaluate swapped position using MCTS with remaining time
+        const swappedGame = this.simulateGame(this.gameEngine.getGameState());
+        swappedGame.swapColors();
+        let swappedScore = 0;
+        simCount = 0;
+
+        const remainingTime = this.swapTimeLimit - (performance.now() - this.startTime);
+        const swapStartTime = performance.now();
+
+        while (performance.now() - swapStartTime < remainingTime && simCount < this.simulationCount) {
+            const sim = this.simulateGame(swappedGame.getGameState());
+            swappedScore += this.playRandomGame(sim);
+            simCount++;
+        }
+        swappedScore /= simCount;
+
+        this.isSwapDecision = false;  // Reset back to move time limit
+        return swappedScore > currentScore;
+    }
+
     chooseMove() {
         this.clusterCache.clear();
         this.cacheHits = 0;
         this.cacheMisses = 0;
 
-        const startTime = performance.now();
+        if (this.gameEngine.getGameState().canSwapColors) {
+            if (this.decideColorSwap()) {
+                return 'swap';
+            }
+        }
+
+        this.startTime = performance.now();
         const validMoves = this.gameEngine.getValidMoves();
+
+        // Initial quick evaluation of all moves
         const moveEvaluations = validMoves.map(move => {
             let totalScore = 0;
+            const INITIAL_SIMS = 10; // Quick initial assessment
 
-            for (let i = 0; i < this.simulationCount; i++) {
+            for (let i = 0; i < INITIAL_SIMS; i++) {
                 const simGame = this.simulateGame(this.gameEngine.getGameState());
                 try {
                     simGame.makeMove(move);
                     totalScore += this.playRandomGame(simGame);
                 } catch (error) {
                     console.error('Simulation error:', error);
-                    totalScore -= 1000; // Penalize invalid moves
+                    return { move, score: -Infinity, simCount: 0 };
                 }
             }
 
             return {
                 move,
-                score: totalScore / this.simulationCount
+                score: totalScore / INITIAL_SIMS,
+                simCount: INITIAL_SIMS,
+                lastScore: totalScore / INITIAL_SIMS, // Track last score for stability check
+                unchangedCount: 0 // Count iterations where score remains stable
             };
         });
 
+        // Sort moves by initial evaluation
         moveEvaluations.sort((a, b) => b.score - a.score);
 
-        const selectedMove = this.randomizeChoice(
+        let roundsWithoutChange = 0;
+        const STABILITY_THRESHOLD = 0.01; // Score difference threshold for stability
+        const MAX_UNCHANGED_ROUNDS = 3; // Number of rounds score must be stable
+        const DOMINANCE_THRESHOLD = 5.0; // Score difference threshold for clear dominance
+
+        // Continue simulations with remaining time, focusing more on promising moves
+        while (!this.isTimeUp()) {
+            let roundChanged = false;
+            const bestScoreBeforeRound = moveEvaluations[0].score;
+
+            // Distribute remaining simulations based on move promise
+            for (let i = 0; i < moveEvaluations.length; i++) {
+                // Skip moves that performed very poorly in initial evaluation
+                if (moveEvaluations[i].score === -Infinity) continue;
+
+                // Early stopping conditions:
+                // 1. If best move is clearly better than second best
+                if (i === 1 &&
+                    moveEvaluations[0].simCount >= 50 && // Ensure sufficient samples
+                    moveEvaluations[0].score > moveEvaluations[1].score + DOMINANCE_THRESHOLD) {
+                    const endTime = performance.now();
+                    console.log(`MCTS stopped early due to clear best move in ${Math.round(endTime - this.startTime)}ms with simulation counts:`,
+                        moveEvaluations.map(e => `${e.move}: ${e.simCount}`).join(', '));
+                    return this.randomizeChoice(
+                        moveEvaluations.map(m => m.move),
+                        moveEvaluations.map(m => m.score)
+                    );
+                }
+
+                // More promising moves get more simulations
+                const simsForThisMove = Math.max(1, Math.floor(
+                    (moveEvaluations.length - i) / moveEvaluations.length * 5
+                ));
+
+                for (let sim = 0; sim < simsForThisMove && !this.isTimeUp(); sim++) {
+                    const simGame = this.simulateGame(this.gameEngine.getGameState());
+                    try {
+                        simGame.makeMove(moveEvaluations[i].move);
+                        const score = this.playRandomGame(simGame);
+                        const oldScore = moveEvaluations[i].score;
+                        // Update running average
+                        moveEvaluations[i].score = (
+                            oldScore * moveEvaluations[i].simCount + score
+                        ) / (moveEvaluations[i].simCount + 1);
+                        moveEvaluations[i].simCount++;
+
+                        // Check if score changed significantly
+                        if (Math.abs(moveEvaluations[i].score - moveEvaluations[i].lastScore) > STABILITY_THRESHOLD) {
+                            moveEvaluations[i].unchangedCount = 0;
+                            roundChanged = true;
+                        } else {
+                            moveEvaluations[i].unchangedCount++;
+                        }
+                        moveEvaluations[i].lastScore = moveEvaluations[i].score;
+                    } catch (error) {
+                        console.error('Simulation error:', error);
+                        break;
+                    }
+                }
+            }
+
+            // Re-sort after each round to adapt to new information
+            moveEvaluations.sort((a, b) => b.score - a.score);
+
+            // Check if the best move's score changed significantly
+            if (Math.abs(moveEvaluations[0].score - bestScoreBeforeRound) <= STABILITY_THRESHOLD) {
+                roundsWithoutChange++;
+            } else {
+                roundsWithoutChange = 0;
+            }
+
+            // Early stopping condition:
+            // 2. If evaluations have stabilized for several rounds
+            if (!roundChanged && roundsWithoutChange >= MAX_UNCHANGED_ROUNDS &&
+                moveEvaluations[0].simCount >= 50) { // Ensure sufficient samples
+                const endTime = performance.now();
+                console.log(`MCTS stopped early due to stable evaluations in ${Math.round(endTime - this.startTime)}ms with simulation counts:`,
+                    moveEvaluations.map(e => `${e.move}: ${e.simCount}`).join(', '));
+                break;
+            }
+        }
+
+        const endTime = performance.now();
+        const duration = endTime - this.startTime;
+        console.log(`MCTS completed in ${Math.round(duration)}ms with simulation counts:`,
+            moveEvaluations.map(e => `${e.move}: ${e.simCount}`).join(', '));
+
+        return this.randomizeChoice(
             moveEvaluations.map(m => m.move),
             moveEvaluations.map(m => m.score)
         );
-
-        const endTime = performance.now();
-        const duration = endTime - startTime;
-
-        return selectedMove;
     }
 
     playRandomGame(sim) {
@@ -1063,12 +1190,14 @@ export const AI_PLAYERS = {
     'mcts-some-rng': {
         id: 'mcts-some-rng',
         name: '🎲 Monte Carlo Tree Search',
-        description: 'Uses Monte Carlo Tree Search with 2000 simulated games per move',
+        description: 'Uses Monte Carlo Tree Search with time limit of 1 second per move',
         implementation: MCTSPlayer,
         defaultConfig: {
             randomize: true,
             randomThreshold: 0.1,
-            simulationCount: 2000
+            simulationCount: 2000,
+            moveTimeLimit: 1000,
+            swapTimeLimit: 1000
         }
     },
     'hybrid-strong': {
