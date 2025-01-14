@@ -520,7 +520,6 @@ class MinimaxPlayer extends EntangledPlayer {
                     if (scoreDiff < 0.01) { // Score basically unchanged
                         unchangedCount++;
                         if (unchangedCount >= 3) { // Stable for 3 iterations
-                            console.log(`Stopping early - score stable at depth ${depth}`);
                             break;
                         }
                     } else {
@@ -530,13 +529,11 @@ class MinimaxPlayer extends EntangledPlayer {
 
                 // 2. If we've reached a reasonable maximum depth
                 if (depth >= maxReasonableDepth) {
-                    console.log(`Stopping at reasonable max depth ${depth}`);
                     break;
                 }
 
                 // 3. If we've found a forced win/loss
                 if (Math.abs(result.score) > 1000) {
-                    console.log(`Stopping - found decisive outcome at depth ${depth}`);
                     break;
                 }
 
@@ -548,8 +545,6 @@ class MinimaxPlayer extends EntangledPlayer {
             }
         }
 
-        const endTime = performance.now();
-        console.log(`Search completed at depth ${lastCompletedDepth} in ${Math.round(endTime - this.startTime)}ms`);
         return bestScore;
     }
 
@@ -979,8 +974,8 @@ class HybridStrongPlayer extends EntangledPlayer {
         super(gameEngine, playerColor, config);
         this.mctsCount = config.simulationCount;
         this.minimaxDepth = config.lookahead;
-        this.moveTimeLimit = config.moveTimeLimit || 1000;
-        this.swapTimeLimit = config.swapTimeLimit || 1000;
+        this.moveTimeLimit = config.moveTimeLimit;
+        this.swapTimeLimit = config.swapTimeLimit;
         this.startTime = 0;
         this.shouldStop = false;
         this.transpositionTable = new Map();
