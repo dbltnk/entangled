@@ -49,7 +49,7 @@ self.onmessage = function (e) {
                 break;
             }
         } catch (error) {
-            console.error('Error during game:', error);
+            console.error('Game error:', error.message);
             break;
         }
     }

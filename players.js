@@ -870,9 +870,6 @@ class MCTSPlayer extends EntangledPlayer {
                 if (i === 1 &&
                     moveEvaluations[0].simCount >= 50 && // Ensure sufficient samples
                     moveEvaluations[0].score > moveEvaluations[1].score + DOMINANCE_THRESHOLD) {
-                    const endTime = performance.now();
-                    console.log(`MCTS stopped early due to clear best move in ${Math.round(endTime - this.startTime)}ms with simulation counts:`,
-                        moveEvaluations.map(e => `${e.move}: ${e.simCount}`).join(', '));
                     return this.randomizeChoice(
                         moveEvaluations.map(m => m.move),
                         moveEvaluations.map(m => m.score)
@@ -915,17 +912,12 @@ class MCTSPlayer extends EntangledPlayer {
             // 2. If evaluations have stabilized for several rounds
             if (!roundChanged && roundsWithoutChange >= MAX_UNCHANGED_ROUNDS &&
                 moveEvaluations[0].simCount >= 50) { // Ensure sufficient samples
-                const endTime = performance.now();
-                console.log(`MCTS stopped early due to stable evaluations in ${Math.round(endTime - this.startTime)}ms with simulation counts:`,
-                    moveEvaluations.map(e => `${e.move}: ${e.simCount}`).join(', '));
                 break;
             }
         }
 
         const endTime = performance.now();
         const duration = endTime - this.startTime;
-        console.log(`MCTS completed in ${Math.round(duration)}ms with simulation counts:`,
-            moveEvaluations.map(e => `${e.move}: ${e.simCount}`).join(', '));
 
         return this.randomizeChoice(
             moveEvaluations.map(m => m.move),
@@ -1130,25 +1122,36 @@ class HybridStrongPlayer extends EntangledPlayer {
             if (totalSimulations >= MIN_SIMS_BEFORE_STOP) {
                 if (!roundChanged && roundsWithoutChange >= MAX_UNCHANGED_ROUNDS &&
                     moveEvaluations[0].simCount >= 50) {
-                    console.log(`MCTS stopped early due to stable evaluations after ${totalSimulations} simulations`);
-                    break;
+                    // Early stop due to stability
+                    const endTime = performance.now();
+                    const timeUsed = endTime - this.startTime;
+                    return {
+                        move: moveEvaluations[0].move,
+                        score: moveEvaluations[0].score,
+                        evaluations: moveEvaluations,
+                        timeUsed
+                    };
                 }
 
                 // Check if best move is clearly better
                 if (moveEvaluations[0].simCount >= 50 &&
                     moveEvaluations.length > 1 &&
                     moveEvaluations[0].score > moveEvaluations[1].score + 5.0) {
-                    console.log(`MCTS stopped early due to clear best move after ${totalSimulations} simulations`);
-                    break;
+                    // Early stop due to clear best move
+                    const endTime = performance.now();
+                    const timeUsed = endTime - this.startTime;
+                    return {
+                        move: moveEvaluations[0].move,
+                        score: moveEvaluations[0].score,
+                        evaluations: moveEvaluations,
+                        timeUsed
+                    };
                 }
             }
         }
 
         const endTime = performance.now();
         const timeUsed = endTime - this.startTime;
-        console.log(`MCTS completed in ${Math.round(timeUsed)}ms with ${totalSimulations} simulations`);
-        console.log('Move evaluations:', moveEvaluations.map(e =>
-            `${e.move}: score=${e.score.toFixed(2)}, sims=${e.simCount}`).join(', '));
 
         return {
             move: moveEvaluations[0].move,
@@ -1197,7 +1200,6 @@ class HybridStrongPlayer extends EntangledPlayer {
             }
         }
 
-        console.log(`Minimax completed at depth ${lastCompletedDepth}`);
         return { move: bestMove, score: bestValue };
     }
 
