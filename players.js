@@ -464,51 +464,163 @@ class DefensivePlayer extends EntangledPlayer {
 class MinimaxPlayer extends EntangledPlayer {
     constructor(gameEngine, playerColor, config = {}) {
         super(gameEngine, playerColor, config);
-        this.lookahead = config.lookahead;
+        this.moveTimeLimit = config.moveTimeLimit || 1000;    // Default 1000ms for regular moves
+        this.swapTimeLimit = config.swapTimeLimit || 1000;    // Default 1000ms for swap decisions
+        this.startTime = 0;
+        this.shouldStop = false;
+        this.transpositionTable = new Map();
+        this.bestMove = null;
     }
 
-    decideColorSwap() {
-        if (!this.gameEngine.getGameState().canSwapColors) {
-            return false;
-        }
-
-        // Evaluate current position using minimax
-        const currentGame = this.simulateGame(this.gameEngine.getGameState());
-        const currentScore = this.minimax(currentGame, this.lookahead - 1, true, -Infinity, Infinity);
-
-        // Evaluate swapped position using minimax
-        const swappedGame = this.simulateGame(this.gameEngine.getGameState());
-        swappedGame.swapColors();
-        const swappedScore = this.minimax(swappedGame, this.lookahead - 1, true, -Infinity, Infinity);
-
-        return swappedScore > currentScore;
+    isTimeUp() {
+        const timeLimit = this.isSwapDecision ? this.swapTimeLimit : this.moveTimeLimit;
+        return performance.now() - this.startTime >= timeLimit;
     }
 
-    chooseMove() {
-        if (this.gameEngine.getGameState().canSwapColors) {
-            if (this.decideColorSwap()) {
-                return 'swap';
+    // Get a unique key for the game state
+    getStateKey(game, depth, maxing) {
+        const board1Key = game.board1.map(row => row.join('')).join('');
+        const board2Key = game.board2.map(row => row.join('')).join('');
+        return `${board1Key}|${board2Key}|${depth}|${maxing}`;
+    }
+
+    iterativeDeepening(game, maxing, alpha = -Infinity, beta = Infinity) {
+        this.startTime = performance.now();
+        this.shouldStop = false;
+        this.bestMove = null;
+        let bestScore = maxing ? -Infinity : Infinity;
+        let depth = 1;
+        let lastCompletedDepth = 0;
+        let lastScore = null;
+        let unchangedCount = 0;
+
+        // Clear transposition table for new search
+        this.transpositionTable.clear();
+
+        // Get number of valid moves to help determine max depth
+        const numValidMoves = game.getValidMoves().length;
+        const maxReasonableDepth = Math.min(
+            // Fewer moves = can look deeper, but cap at reasonable limits
+            Math.max(numValidMoves * 2, 6),  // At least look 6 moves ahead
+            20  // Never go beyond depth 20
+        );
+
+        while (!this.isTimeUp()) {
+            const result = this.minimaxRoot(game, depth, maxing, alpha, beta);
+            if (!this.shouldStop) {
+                // Early stopping conditions:
+
+                // 1. If score hasn't changed significantly in last few iterations
+                if (lastScore !== null) {
+                    const scoreDiff = Math.abs(result.score - lastScore);
+                    if (scoreDiff < 0.01) { // Score basically unchanged
+                        unchangedCount++;
+                        if (unchangedCount >= 3) { // Stable for 3 iterations
+                            console.log(`Stopping early - score stable at depth ${depth}`);
+                            break;
+                        }
+                    } else {
+                        unchangedCount = 0;
+                    }
+                }
+
+                // 2. If we've reached a reasonable maximum depth
+                if (depth >= maxReasonableDepth) {
+                    console.log(`Stopping at reasonable max depth ${depth}`);
+                    break;
+                }
+
+                // 3. If we've found a forced win/loss
+                if (Math.abs(result.score) > 1000) {
+                    console.log(`Stopping - found decisive outcome at depth ${depth}`);
+                    break;
+                }
+
+                bestScore = result.score;
+                this.bestMove = result.move;
+                lastCompletedDepth = depth;
+                lastScore = result.score;
+                depth++;
             }
         }
 
-        const validMoves = this.gameEngine.getValidMoves();
-        const evaluations = validMoves.map(m => {
-            const sim = this.simulateGame(this.gameEngine.getGameState());
-            sim.makeMove(m);
-            return { move: m, score: this.minimax(sim, this.lookahead - 1, false, -Infinity, Infinity) };
+        const endTime = performance.now();
+        console.log(`Search completed at depth ${lastCompletedDepth} in ${Math.round(endTime - this.startTime)}ms`);
+        return bestScore;
+    }
+
+    minimaxRoot(game, depth, maxing, alpha, beta) {
+        if (depth === 0 || game.isGameOver() || this.isTimeUp()) {
+            return { score: this.evaluatePosition(game), move: null };
+        }
+
+        const validMoves = this.orderMoves(game, game.getValidMoves());
+        let bestMove = validMoves[0];
+        let bestScore = maxing ? -Infinity : Infinity;
+
+        for (const move of validMoves) {
+            if (this.shouldStop) break;
+
+            const sim = this.simulateGame(game.getGameState());
+            sim.makeMove(move);
+
+            const score = this.minimax(sim, depth - 1, !maxing, alpha, beta);
+
+            if (maxing) {
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestMove = move;
+                }
+                alpha = Math.max(alpha, bestScore);
+            } else {
+                if (score < bestScore) {
+                    bestScore = score;
+                    bestMove = move;
+                }
+                beta = Math.min(beta, bestScore);
+            }
+
+            if (beta <= alpha) break;
+        }
+
+        return { score: bestScore, move: bestMove };
+    }
+
+    orderMoves(game, moves) {
+        // Simple move ordering: prioritize center moves and moves that increase our score
+        return moves.sort((a, b) => {
+            const simA = this.simulateGame(game.getGameState());
+            const simB = this.simulateGame(game.getGameState());
+            simA.makeMove(a);
+            simB.makeMove(b);
+            const scoreA = this.evaluatePosition(simA);
+            const scoreB = this.evaluatePosition(simB);
+            return scoreB - scoreA;
         });
-        evaluations.sort((a, b) => b.score - a.score);
-        return this.randomizeChoice(evaluations.map(e => e.move), evaluations.map(e => e.score));
     }
 
     minimax(game, depth, maxing, alpha, beta) {
-        if (depth === 0 || game.isGameOver()) {
+        if (this.isTimeUp()) {
+            this.shouldStop = true;
             return this.evaluatePosition(game);
+        }
+
+        const stateKey = this.getStateKey(game, depth, maxing);
+        if (this.transpositionTable.has(stateKey)) {
+            return this.transpositionTable.get(stateKey);
+        }
+
+        if (depth === 0 || game.isGameOver()) {
+            const score = this.evaluatePosition(game);
+            this.transpositionTable.set(stateKey, score);
+            return score;
         }
 
         const validMoves = game.getValidMoves();
         if (!validMoves || validMoves.length === 0) {
-            return this.evaluatePosition(game);
+            const score = this.evaluatePosition(game);
+            this.transpositionTable.set(stateKey, score);
+            return score;
         }
 
         const currentPlayer = maxing ? this.playerColor : (this.playerColor === 'BLACK' ? 'WHITE' : 'BLACK');
@@ -523,30 +635,86 @@ class MinimaxPlayer extends EntangledPlayer {
             }
         }
 
+        let bestScore;
         if (maxing) {
-            let val = -Infinity;
-            for (const m of validMoves) {
+            bestScore = -Infinity;
+            for (const m of this.orderMoves(game, validMoves)) {
+                if (this.shouldStop) break;
                 const sim = this.simulateGame(game.getGameState());
                 sim.currentPlayer = this.playerColor;
                 sim.makeMove(m);
-                val = Math.max(val, this.minimax(sim, depth - 1, false, alpha, beta));
-                alpha = Math.max(alpha, val);
+                bestScore = Math.max(bestScore, this.minimax(sim, depth - 1, false, alpha, beta));
+                alpha = Math.max(alpha, bestScore);
                 if (beta <= alpha) break;
             }
-            return val;
         } else {
-            let val = Infinity;
+            bestScore = Infinity;
             const opp = this.playerColor === 'BLACK' ? 'WHITE' : 'BLACK';
-            for (const m of validMoves) {
+            for (const m of this.orderMoves(game, validMoves)) {
+                if (this.shouldStop) break;
                 const sim = this.simulateGame(game.getGameState());
                 sim.currentPlayer = opp;
                 sim.makeMove(m);
-                val = Math.min(val, this.minimax(sim, depth - 1, true, alpha, beta));
-                beta = Math.min(beta, val);
+                bestScore = Math.min(bestScore, this.minimax(sim, depth - 1, true, alpha, beta));
+                beta = Math.min(beta, bestScore);
                 if (beta <= alpha) break;
             }
-            return val;
         }
+
+        this.transpositionTable.set(stateKey, bestScore);
+        return bestScore;
+    }
+
+    decideColorSwap() {
+        if (!this.gameEngine.getGameState().canSwapColors) {
+            return false;
+        }
+
+        this.isSwapDecision = true;  // Use swap time limit
+
+        // Evaluate current position using iterative deepening
+        const currentGame = this.simulateGame(this.gameEngine.getGameState());
+        const currentScore = this.iterativeDeepening(currentGame, true);
+
+        // Evaluate swapped position using iterative deepening
+        const swappedGame = this.simulateGame(this.gameEngine.getGameState());
+        swappedGame.swapColors();
+        const swappedScore = this.iterativeDeepening(swappedGame, true);
+
+        this.isSwapDecision = false;  // Reset back to move time limit
+        return swappedScore > currentScore;
+    }
+
+    chooseMove() {
+        if (this.gameEngine.getGameState().canSwapColors) {
+            if (this.decideColorSwap()) {
+                return 'swap';
+            }
+        }
+
+        // Do one iterative deepening search to find the best move
+        const game = this.simulateGame(this.gameEngine.getGameState());
+        const score = this.iterativeDeepening(game, true);
+
+        // Get all moves that were evaluated in the last completed depth
+        const validMoves = this.gameEngine.getValidMoves();
+        const moveScores = validMoves.map(move => {
+            const sim = this.simulateGame(game.getGameState());
+            sim.makeMove(move);
+            return {
+                move,
+                score: this.evaluatePosition(sim)
+            };
+        });
+
+        // Sort by score
+        moveScores.sort((a, b) => b.score - a.score);
+
+        // Use randomizeChoice if randomization is enabled
+        return this.randomizeChoice(
+            moveScores.map(m => m.move),
+            moveScores.map(m => m.score)
+        );
     }
 }
 
@@ -871,12 +1039,13 @@ export const AI_PLAYERS = {
     'minimax-no-rng': {
         id: 'minimax-no-rng',
         name: '🎯 Det. Minimax',
-        description: 'Looks ahead 4 moves using minimax with alpha-beta pruning',
+        description: 'Uses iterative deepening minimax with alpha-beta pruning (1 second per move)',
         implementation: MinimaxPlayer,
         defaultConfig: {
             randomize: false,
             randomThreshold: 0,
-            lookahead: 4
+            moveTimeLimit: 1000,
+            swapTimeLimit: 1000
         }
     },
     'minimax-some-rng': {
@@ -887,7 +1056,8 @@ export const AI_PLAYERS = {
         defaultConfig: {
             randomize: true,
             randomThreshold: 0.1,
-            lookahead: 4
+            moveTimeLimit: 1000,
+            swapTimeLimit: 1000
         }
     },
     'mcts-some-rng': {
