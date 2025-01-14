@@ -77,8 +77,7 @@ class GameController {
                 // Check if next player is also AI
                 const nextPlayer = this.game.getCurrentPlayer();
                 if (this.players[nextPlayer]) {
-                    // Add small delay for better visualization
-                    setTimeout(() => this.makeAIMove(), 500);
+                    this.makeAIMove();
                 }
             }
         }

@@ -19,7 +19,7 @@ class EntangledGame {
         board1Layout = BOARD_LAYOUTS.board1.grid,
         board2Layout = BOARD_LAYOUTS.board2.grid,
         startingConfig = '',
-        enableTieBreaker = false
+        enableCutCake = true
     ) {
         // Store the symbol layouts and determine board size
         this.board1Layout = board1Layout;
@@ -47,13 +47,14 @@ class EntangledGame {
             [PLAYERS.WHITE]: 0
         };
         this.gameOver = false;
+        this.canSwapColors = false;
+        this.colorsSwapped = false;
+        this.enableCutCake = enableCutCake;
 
         // Parse and place starting stones
         if (startingConfig) {
             this.placeStartingStones(startingConfig);
         }
-
-        this.enableTieBreaker = enableTieBreaker;
 
         this._lastMove = null;
     }
@@ -202,6 +203,40 @@ class EntangledGame {
         return true;
     }
 
+    swapColors() {
+        if (!this.canSwapColors) {
+            throw new Error('Cannot swap colors at this time');
+        }
+
+        // After swapping colors, it should be Black's turn to play
+        // This maintains the game flow where Black always starts
+        this.currentPlayer = PLAYERS.BLACK;
+
+        // Swap all stones on both boards
+        for (let i = 0; i < this.boardSize; i++) {
+            for (let j = 0; j < this.boardSize; j++) {
+                if (this.board1[i][j] === PLAYERS.BLACK) {
+                    this.board1[i][j] = PLAYERS.WHITE;
+                } else if (this.board1[i][j] === PLAYERS.WHITE) {
+                    this.board1[i][j] = PLAYERS.BLACK;
+                }
+                if (this.board2[i][j] === PLAYERS.BLACK) {
+                    this.board2[i][j] = PLAYERS.WHITE;
+                } else if (this.board2[i][j] === PLAYERS.WHITE) {
+                    this.board2[i][j] = PLAYERS.BLACK;
+                }
+            }
+        }
+
+        // Swap the turn counts to maintain game history
+        const tempTurns = this.playerTurns[PLAYERS.BLACK];
+        this.playerTurns[PLAYERS.BLACK] = this.playerTurns[PLAYERS.WHITE];
+        this.playerTurns[PLAYERS.WHITE] = tempTurns;
+
+        this.canSwapColors = false;  // Can only swap once
+        this.colorsSwapped = true;   // Track that a swap occurred
+    }
+
     makeMove(symbol) {
         if (this.gameOver) {
             throw new Error('Game is already over');
@@ -242,6 +277,16 @@ class EntangledGame {
 
         if (isBoardFull) {
             this.gameOver = true;
+        }
+
+        // Set canSwapColors ONLY after Black's first move and ONLY if cut-cake is enabled
+        if (this.enableCutCake &&
+            this.playerTurns[PLAYERS.BLACK] === 1 &&
+            this.playerTurns[PLAYERS.WHITE] === 0 &&
+            !this.colorsSwapped) {
+            this.canSwapColors = true;
+        } else {
+            this.canSwapColors = false;  // Ensure it's false for all other moves
         }
 
         if (!this.gameOver) {
@@ -540,7 +585,9 @@ class EntangledGame {
             largestClusters: {
                 black: blackClusters,
                 white: whiteClusters
-            }
+            },
+            canSwapColors: this.canSwapColors,
+            colorsSwapped: this.colorsSwapped
         };
     }
 }

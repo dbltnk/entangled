@@ -539,3 +539,131 @@ button:disabled {
 .board {
     background-color: var(--color-background);
 }
+
+/* Swap colors button */
+.swap-colors-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 8px;
+    margin-left: 8px;
+    font-size: 0.9rem;
+    background: linear-gradient(45deg, black 0%, black 50%, white 50%, white 100%);
+    color: white;
+    text-shadow: 1px 1px 0 black;
+    border: 1px solid black;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.swap-colors-btn:hover {
+    transform: scale(1.05);
+}
+
+.swap-colors-btn:active {
+    transform: scale(0.95);
+}
+
+/* Swap notifications */
+.swap-notification {
+    background: linear-gradient(45deg, black 0%, black 50%, white 50%, white 100%);
+    color: white;
+    text-shadow: 1px 1px 0 black;
+    padding: 4px 8px;
+    margin-bottom: 8px;
+    border-radius: 4px;
+    animation: fadeIn 0.3s ease-in;
+}
+
+.swap-notification-overlay {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 16px 32px;
+    border-radius: 8px;
+    font-size: 1.5rem;
+    font-weight: bold;
+    z-index: 1000;
+    animation: fadeInOut 2s ease-in-out;
+    pointer-events: none;
+}
+
+.swap-notification-overlay.swap-yes {
+    background: linear-gradient(45deg, black 0%, black 50%, white 50%, white 100%);
+    color: white;
+    text-shadow: 1px 1px 0 black;
+}
+
+.swap-notification-overlay.swap-no {
+    background: #f0f0f0;
+    color: #333;
+    border: 2px solid #333;
+    text-shadow: none;
+}
+
+.swap-notification-overlay.swap-consider {
+    background: #e8f4f8;
+    color: #0066cc;
+    border: 2px solid #0066cc;
+    text-shadow: none;
+    font-size: 1.2rem;
+    padding: 12px 24px;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeInOut {
+    0% {
+        opacity: 0;
+        transform: translate(-50%, -60%);
+    }
+
+    15% {
+        opacity: 1;
+        transform: translate(-50%, -50%);
+    }
+
+    85% {
+        opacity: 1;
+        transform: translate(-50%, -50%);
+    }
+
+    100% {
+        opacity: 0;
+        transform: translate(-50%, -40%);
+    }
+}
+
+/* Cut the cake checkbox styling */
+.control-group .setting-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
+}
+
+.control-group .setting-item input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+}
+
+.control-group .setting-item label {
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.control-group .setting-item .fa-circle-info {
+    color: #666;
+    cursor: help;
+}

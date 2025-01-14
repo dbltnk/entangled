@@ -108,6 +108,13 @@
             </div>
 
             <div class="control-group">
+                <div class="setting-item">
+                    <input type="checkbox" id="setting-cutcake" checked>
+                    <label for="setting-cutcake">"Cut the Cake" Setup</label>
+                    <i class="fa-solid fa-circle-info"
+                        title="After first player's move, second player can choose to swap colors"></i>
+                </div>
+
                 <div class="size-select">
                     <label for="board-size">Board Size:</label>
                     <select id="board-size">
@@ -120,14 +127,12 @@
 
                 <div class="player-select">
                     <label for="board1-select">Board 1:</label>
-                    <!-- select options will be populated dynamically based on size -->
                     <select id="board1-select">
                     </select>
                 </div>
 
                 <div class="player-select">
                     <label for="board2-select">Board 2:</label>
-                    <!-- select options will be populated dynamically based on size -->
                     <select id="board2-select">
                     </select>
                 </div>
@@ -140,14 +145,12 @@
                 <div class="player-select">
                     <label for="black-player">⚫</label>
                     <select id="black-player" class="player-type">
-                        <!-- player type options will be populated dynamically -->
                     </select>
                 </div>
 
                 <div class="player-select">
                     <label for="white-player">⚪</label>
                     <select id="white-player" class="player-type">
-                        <!-- player type options will be populated dynamically -->
                     </select>
                 </div>
 

@@ -10,6 +10,87 @@ class EntangledPlayer {
         this.randomThreshold = config.randomThreshold;
     }
 
+    // Add new method to evaluate whether to swap colors
+    evaluateColorSwap() {
+        if (!this.gameEngine.getGameState().canSwapColors) {
+            return false;
+        }
+
+        try {
+            // Evaluate current position from both perspectives
+            const currentScore = this.evaluatePosition(this.gameEngine);
+
+            // Simulate swapping colors
+            const simGame = this.simulateGame(this.gameEngine.getGameState());
+            simGame.swapColors();
+            const swappedScore = -this.evaluatePosition(simGame); // Negate because we're evaluating from opposite perspective
+
+            return swappedScore > currentScore;
+        } catch (error) {
+            console.error('Error evaluating color swap:', error);
+            return false;  // Default to not swapping if there's an error
+        }
+    }
+
+    // Add new method to decide whether to swap colors
+    decideColorSwap() {
+        if (!this.gameEngine.getGameState().canSwapColors) {
+            return false;
+        }
+
+        try {
+            // Evaluate current position
+            const currentGame = this.simulateGame(this.gameEngine.getGameState());
+            const opponentColor = this.playerColor === 'BLACK' ? 'WHITE' : 'BLACK';
+
+            // Evaluate current position using our normal evaluation logic
+            const currentValidMoves = currentGame.getValidMoves();
+            const currentBestScore = currentValidMoves.reduce((best, move) => {
+                const simGame = this.simulateGame(currentGame.getGameState());
+                simGame.currentPlayer = this.playerColor;
+                simGame.makeMove(move);
+
+                const ourScore = simGame.getScore(this.playerColor);
+                const remainingMoves = simGame.getValidMoves();
+                const worstOpponentScore = remainingMoves.reduce((worst, oppMove) => {
+                    simGame.currentPlayer = opponentColor;
+                    const oppEval = new EntangledPlayer(simGame, opponentColor).evaluateMove(oppMove);
+                    return Math.max(worst, oppEval.totalScore);
+                }, -Infinity);
+
+                return Math.max(best, ourScore - worstOpponentScore);
+            }, -Infinity);
+
+            // Now evaluate swapped position
+            const swappedGame = this.simulateGame(this.gameEngine.getGameState());
+            swappedGame.canSwapColors = true;
+            swappedGame.swapColors();
+
+            // Evaluate swapped position using same logic
+            const swappedValidMoves = swappedGame.getValidMoves();
+            const swappedBestScore = swappedValidMoves.reduce((best, move) => {
+                const simGame = this.simulateGame(swappedGame.getGameState());
+                simGame.currentPlayer = this.playerColor;
+                simGame.makeMove(move);
+
+                const ourScore = simGame.getScore(this.playerColor);
+                const remainingMoves = simGame.getValidMoves();
+                const worstOpponentScore = remainingMoves.reduce((worst, oppMove) => {
+                    simGame.currentPlayer = opponentColor;
+                    const oppEval = new EntangledPlayer(simGame, opponentColor).evaluateMove(oppMove);
+                    return Math.max(worst, oppEval.totalScore);
+                }, -Infinity);
+
+                return Math.max(best, ourScore - worstOpponentScore);
+            }, -Infinity);
+
+            return swappedBestScore > currentBestScore;
+        } catch (error) {
+            console.error('Error in defensive player color swap evaluation:', error);
+            return false;  // Default to not swapping if there's an error
+        }
+    }
+
     randomizeChoice(moves, scores) {
         if (!moves || moves.length === 0) {
             return null;
@@ -58,11 +139,40 @@ class EntangledPlayer {
     }
 
     chooseMove() {
-        const validMoves = this.gameEngine.getValidMoves();
-        if (!validMoves || validMoves.length === 0) {
-            return null;
+        // First check if we can swap colors
+        if (this.gameEngine.getGameState().canSwapColors) {
+            if (this.decideColorSwap()) {
+                return 'swap';
+            }
         }
-        throw new Error('Strategy not implemented');
+
+        const validMoves = this.gameEngine.getValidMoves();
+        const moveEvaluations = validMoves.map(move => {
+            const ourEvaluation = this.evaluateMove(move);
+            const opponentColor = this.playerColor === 'BLACK' ? 'WHITE' : 'BLACK';
+            const simGame = this.simulateGame(this.gameEngine.getGameState());
+            simGame.currentPlayer = this.playerColor;
+            simGame.makeMove(move);
+
+            const remainingMoves = simGame.getValidMoves();
+            const worstOpponentScore = remainingMoves.reduce((worst, oppMove) => {
+                simGame.currentPlayer = opponentColor;
+                const oppEval = new EntangledPlayer(simGame, opponentColor).evaluateMove(oppMove);
+                return Math.max(worst, oppEval.totalScore);
+            }, -Infinity);
+
+            return {
+                move,
+                score: ourEvaluation.totalScore - worstOpponentScore
+            };
+        });
+
+        moveEvaluations.sort((a, b) => b.score - a.score);
+
+        return this.randomizeChoice(
+            moveEvaluations.map(m => m.move),
+            moveEvaluations.map(m => m.score)
+        );
     }
 
     evaluateMove(move) {
@@ -98,6 +208,8 @@ class EntangledPlayer {
         simGame.gameOver = state.gameOver;
         simGame.symbolToPosition = new Map(this.gameEngine.symbolToPosition);
         simGame._lastMove = state.lastMove;
+        simGame.canSwapColors = state.canSwapColors;
+        simGame.colorsSwapped = state.colorsSwapped;
         return simGame;
     }
 
@@ -167,14 +279,34 @@ class EntangledPlayer {
 }
 
 class DeterministicPlayer extends EntangledPlayer {
+    decideColorSwap() {
+        // Always swap colors if possible (deterministic behavior)
+        return this.gameEngine.getGameState().canSwapColors;
+    }
+
     chooseMove() {
+        // Always swap colors if possible (deterministic behavior)
+        if (this.gameEngine.getGameState().canSwapColors) {
+            return 'swap';
+        }
         const validMoves = this.gameEngine.getValidMoves();
         return validMoves[0];
     }
 }
 
 class RandomPlayer extends EntangledPlayer {
+    decideColorSwap() {
+        // Randomly decide to swap colors if possible
+        return this.gameEngine.getGameState().canSwapColors && Math.random() < 0.5;
+    }
+
     chooseMove() {
+        // Randomly decide to swap colors if possible
+        if (this.gameEngine.getGameState().canSwapColors) {
+            if (this.decideColorSwap()) {
+                return 'swap';
+            }
+        }
         const validMoves = this.gameEngine.getValidMoves();
         const randomIndex = Math.floor(Math.random() * validMoves.length);
         return validMoves[randomIndex];
@@ -182,24 +314,75 @@ class RandomPlayer extends EntangledPlayer {
 }
 
 class GreedyHighPlayer extends EntangledPlayer {
-    chooseMove() {
-        const validMoves = this.gameEngine.getValidMoves();
-        const moveEvaluations = validMoves.map(move => ({
-            move,
-            score: this.evaluateMove(move).totalScore
-        }));
+    decideColorSwap() {
+        if (!this.gameEngine.getGameState().canSwapColors) {
+            return false;
+        }
 
-        moveEvaluations.sort((a, b) => b.score - a.score);
+        // Evaluate current position
+        const currentGame = this.simulateGame(this.gameEngine.getGameState());
+        const currentScore = currentGame.getScore(this.playerColor);
 
-        return this.randomizeChoice(
-            moveEvaluations.map(m => m.move),
-            moveEvaluations.map(m => m.score)
-        );
+        // Evaluate swapped position
+        const swappedGame = this.simulateGame(this.gameEngine.getGameState());
+        swappedGame.swapColors();
+        const swappedScore = swappedGame.getScore(this.playerColor);
+
+        return swappedScore > currentScore;
+    }
+
+    evaluateMove(move) {
+        const simGame = this.simulateGame(this.gameEngine.getGameState());
+        simGame.makeMove(move);
+
+        // If this is the first move, consider opponent's swap option
+        if (simGame.playerTurns[this.playerColor] === 1) {
+            const score = simGame.getScore(this.playerColor);
+            const swappedScore = simGame.getScore(this.playerColor === 'BLACK' ? 'WHITE' : 'BLACK');
+            // If opponent would benefit from swapping, assume they will
+            if (swappedScore > score) {
+                return {
+                    move,
+                    totalScore: -swappedScore,  // Negative because it would be opponent's score after swap
+                    board1Score: simGame.findLargestCluster(simGame.board1, this.playerColor),
+                    board2Score: simGame.findLargestCluster(simGame.board2, this.playerColor),
+                    difference: Math.abs(simGame.findLargestCluster(simGame.board1, this.playerColor) -
+                        simGame.findLargestCluster(simGame.board2, this.playerColor))
+                };
+            }
+        }
+
+        return super.evaluateMove(move);
     }
 }
 
 class GreedyLowPlayer extends EntangledPlayer {
+    decideColorSwap() {
+        if (!this.gameEngine.getGameState().canSwapColors) {
+            return false;
+        }
+
+        // Evaluate current position
+        const currentGame = this.simulateGame(this.gameEngine.getGameState());
+        const currentEval = this.evaluateMove(currentGame.getValidMoves()[0]);
+        const currentDiff = currentEval.difference;
+
+        // Evaluate swapped position
+        const swappedGame = this.simulateGame(this.gameEngine.getGameState());
+        swappedGame.swapColors();
+        const swappedEval = this.evaluateMove(swappedGame.getValidMoves()[0]);
+        const swappedDiff = swappedEval.difference;
+
+        return swappedDiff < currentDiff;
+    }
+
     chooseMove() {
+        if (this.gameEngine.getGameState().canSwapColors) {
+            if (this.decideColorSwap()) {
+                return 'swap';
+            }
+        }
+
         const validMoves = this.gameEngine.getValidMoves();
         const moveEvaluations = validMoves.map(move => {
             const moveEval = this.evaluateMove(move);
@@ -219,7 +402,35 @@ class GreedyLowPlayer extends EntangledPlayer {
 }
 
 class DefensivePlayer extends EntangledPlayer {
+    evaluateWorstOpponentResponse(game) {
+        const opponentColor = this.playerColor === 'BLACK' ? 'WHITE' : 'BLACK';
+        const remainingMoves = game.getValidMoves();
+        let worstScore = Infinity;
+
+        // If this is opponent's first move, consider swapping
+        if (game.playerTurns[opponentColor] === 0) {
+            const swapScore = game.getScore(opponentColor) - game.getScore(this.playerColor);
+            worstScore = Math.min(worstScore, -swapScore);  // Negative because it's from our perspective
+        }
+
+        for (const move of remainingMoves) {
+            const simGame = this.simulateGame(game.getGameState());
+            simGame.makeMove(move);
+            const score = simGame.getScore(this.playerColor) - simGame.getScore(opponentColor);
+            worstScore = Math.min(worstScore, score);
+        }
+
+        return worstScore;
+    }
+
     chooseMove() {
+        // First check if we can swap colors
+        if (this.gameEngine.getGameState().canSwapColors) {
+            if (this.decideColorSwap()) {
+                return 'swap';
+            }
+        }
+
         const validMoves = this.gameEngine.getValidMoves();
         const moveEvaluations = validMoves.map(move => {
             const ourEvaluation = this.evaluateMove(move);
@@ -250,236 +461,91 @@ class DefensivePlayer extends EntangledPlayer {
     }
 }
 
-class EnhancedGreedyPlayer extends EntangledPlayer {
-    chooseMove() {
-        const validMoves = this.gameEngine.getValidMoves();
-        const moveEvaluations = validMoves.map(move => ({
-            move,
-            score: this.evaluateMoveWithLookahead(move)
-        }));
-
-        moveEvaluations.sort((a, b) => b.score - a.score);
-
-        return this.randomizeChoice(
-            moveEvaluations.map(m => m.move),
-            moveEvaluations.map(m => m.score)
-        );
-    }
-
-    evaluateMoveWithLookahead(move) {
-        const simGame = this.simulateGame(this.gameEngine.getGameState());
-        simGame.makeMove(move);
-
-        if (simGame.isGameOver()) {
-            return this.evaluatePosition(simGame);
-        }
-
-        let score = this.evaluatePosition(simGame);
-        const growthPotential = this.evaluateGrowthPotential(simGame);
-
-        const opponentMoves = simGame.getValidMoves();
-        const opponentColor = this.playerColor === 'BLACK' ? 'WHITE' : 'BLACK';
-
-        let bestOpponentScore = -Infinity;
-        for (const oppMove of opponentMoves) {
-            const oppGame = this.simulateGame(simGame.getGameState());
-            oppGame.makeMove(oppMove);
-            bestOpponentScore = Math.max(bestOpponentScore,
-                oppGame.getScore(opponentColor) - oppGame.getScore(this.playerColor));
-        }
-
-        return score + growthPotential - (bestOpponentScore * 0.5);
-    }
-}
-
-class EnhancedBalancedPlayer extends EntangledPlayer {
-    chooseMove() {
-        const validMoves = this.gameEngine.getValidMoves();
-        const moveEvaluations = validMoves.map(move => {
-            const evaluation = this.evaluateBalancedMove(move);
-            return {
-                move,
-                score: -evaluation.balance + (evaluation.score * 0.001)
-            };
-        });
-
-        moveEvaluations.sort((a, b) => b.score - a.score);
-
-        return this.randomizeChoice(
-            moveEvaluations.map(m => m.move),
-            moveEvaluations.map(m => m.score)
-        );
-    }
-
-    evaluateBalancedMove(move) {
-        const simGame = this.simulateGame(this.gameEngine.getGameState());
-        simGame.makeMove(move);
-
-        const board1Score = simGame.findLargestCluster(simGame.board1, this.playerColor);
-        const board2Score = simGame.findLargestCluster(simGame.board2, this.playerColor);
-
-        const balance = Math.abs(board1Score - board2Score);
-        const growthPotential = this.evaluateGrowthPotential(simGame);
-        const positionScore = this.evaluatePosition(simGame);
-
-        let opponentPressure = 0;
-        if (!simGame.isGameOver()) {
-            const opponentColor = this.playerColor === 'BLACK' ? 'WHITE' : 'BLACK';
-            const opponentMoves = simGame.getValidMoves();
-
-            for (const oppMove of opponentMoves) {
-                const oppGame = this.simulateGame(simGame.getGameState());
-                oppGame.makeMove(oppMove);
-                const oppBalance = Math.abs(
-                    oppGame.findLargestCluster(oppGame.board1, opponentColor) -
-                    oppGame.findLargestCluster(oppGame.board2, opponentColor)
-                );
-                opponentPressure = Math.max(opponentPressure, oppBalance);
-            }
-        }
-
-        return {
-            balance: balance + (opponentPressure * 0.3),
-            score: positionScore + growthPotential
-        };
-    }
-}
-
-class EnhancedDefensivePlayer extends EntangledPlayer {
-    chooseMove() {
-        const validMoves = this.gameEngine.getValidMoves();
-        const moveEvaluations = validMoves.map(move => ({
-            move,
-            score: this.evaluateDefensiveMove(move)
-        }));
-
-        moveEvaluations.sort((a, b) => b.score - a.score);
-
-        return this.randomizeChoice(
-            moveEvaluations.map(m => m.move),
-            moveEvaluations.map(m => m.score)
-        );
-    }
-
-    evaluateDefensiveMove(move) {
-        const simGame = this.simulateGame(this.gameEngine.getGameState());
-        simGame.makeMove(move);
-
-        const immediateScore = this.evaluatePosition(simGame);
-        const growthPotential = this.evaluateGrowthPotential(simGame);
-        const blockingValue = this.evaluateBlocking(simGame);
-
-        const opponentColor = this.playerColor === 'BLACK' ? 'WHITE' : 'BLACK';
-        const opponentMoves = simGame.getValidMoves();
-        let opponentBestScore = -Infinity;
-
-        for (const oppMove of opponentMoves) {
-            const oppGame = this.simulateGame(simGame.getGameState());
-            oppGame.makeMove(oppMove);
-            const oppScore = oppGame.getScore(opponentColor);
-            const oppGrowth = this.evaluateGrowthPotential(oppGame);
-            opponentBestScore = Math.max(opponentBestScore, oppScore + oppGrowth);
-        }
-
-        return immediateScore + growthPotential + blockingValue - (opponentBestScore * 0.7);
-    }
-
-    evaluateBlocking(game) {
-        let value = 0;
-        const opponentColor = this.playerColor === 'BLACK' ? 'WHITE' : 'BLACK';
-
-        for (const board of [game.board1, game.board2]) {
-            const opponentClusters = game.findLargestClusterCells(board, opponentColor);
-
-            for (const cluster of opponentClusters) {
-                let blockedDirections = 0;
-                let openDirections = 0;
-
-                for (let dr = -1; dr <= 1; dr++) {
-                    for (let dc = -1; dc <= 1; dc++) {
-                        if (dr === 0 && dc === 0) continue;
-                        const newRow = cluster.row + dr;
-                        const newCol = cluster.col + dc;
-
-                        if (newRow >= 0 && newRow < game.boardSize && newCol >= 0 && newCol < game.boardSize) {
-                            if (board[newRow][newCol] === this.playerColor) {
-                                blockedDirections++;
-                            } else if (board[newRow][newCol] === null) {
-                                openDirections++;
-                            }
-                        }
-                    }
-                }
-
-                value += blockedDirections * 0.5 - openDirections * 0.2;
-            }
-        }
-
-        return value;
-    }
-}
-
 class MinimaxPlayer extends EntangledPlayer {
     constructor(gameEngine, playerColor, config = {}) {
         super(gameEngine, playerColor, config);
         this.lookahead = config.lookahead;
     }
 
-    chooseMove() {
-        const validMoves = this.gameEngine.getValidMoves();
-        const moveEvaluations = validMoves.map(move => {
-            const simGame = this.simulateGame(this.gameEngine.getGameState());
-            simGame.makeMove(move);
-            return {
-                move,
-                score: this.minimax(simGame, this.lookahead - 1, false, -Infinity, Infinity)
-            };
-        });
+    decideColorSwap() {
+        if (!this.gameEngine.getGameState().canSwapColors) {
+            return false;
+        }
 
-        moveEvaluations.sort((a, b) => b.score - a.score);
+        // Evaluate current position using minimax
+        const currentGame = this.simulateGame(this.gameEngine.getGameState());
+        const currentScore = this.minimax(currentGame, this.lookahead - 1, true, -Infinity, Infinity);
 
-        return this.randomizeChoice(
-            moveEvaluations.map(m => m.move),
-            moveEvaluations.map(m => m.score)
-        );
+        // Evaluate swapped position using minimax
+        const swappedGame = this.simulateGame(this.gameEngine.getGameState());
+        swappedGame.swapColors();
+        const swappedScore = this.minimax(swappedGame, this.lookahead - 1, true, -Infinity, Infinity);
+
+        return swappedScore > currentScore;
     }
 
-    minimax(game, depth, isMaximizing, alpha, beta) {
+    chooseMove() {
+        if (this.gameEngine.getGameState().canSwapColors) {
+            if (this.decideColorSwap()) {
+                return 'swap';
+            }
+        }
+
+        const validMoves = this.gameEngine.getValidMoves();
+        const evaluations = validMoves.map(m => {
+            const sim = this.simulateGame(this.gameEngine.getGameState());
+            sim.makeMove(m);
+            return { move: m, score: this.minimax(sim, this.lookahead - 1, false, -Infinity, Infinity) };
+        });
+        evaluations.sort((a, b) => b.score - a.score);
+        return this.randomizeChoice(evaluations.map(e => e.move), evaluations.map(e => e.score));
+    }
+
+    minimax(game, depth, maxing, alpha, beta) {
         if (depth === 0 || game.isGameOver()) {
             return this.evaluatePosition(game);
         }
 
         const validMoves = game.getValidMoves();
-
         if (!validMoves || validMoves.length === 0) {
             return this.evaluatePosition(game);
         }
 
-        if (isMaximizing) {
-            let maxScore = -Infinity;
-            for (const move of validMoves) {
-                const simGame = this.simulateGame(game.getGameState());
-                simGame.currentPlayer = this.playerColor;
-                simGame.makeMove(move);
-                const score = this.minimax(simGame, depth - 1, false, alpha, beta);
-                maxScore = Math.max(maxScore, score);
-                alpha = Math.max(alpha, score);
+        const currentPlayer = maxing ? this.playerColor : (this.playerColor === 'BLACK' ? 'WHITE' : 'BLACK');
+
+        // Consider swapping if it's the second player's first move
+        if (game.playerTurns[currentPlayer] === 0 && game.playerTurns[currentPlayer === 'BLACK' ? 'WHITE' : 'BLACK'] === 1) {
+            const swapScore = maxing ? -this.evaluatePosition(game) : this.evaluatePosition(game);
+            if (maxing) {
+                alpha = Math.max(alpha, swapScore);
+            } else {
+                beta = Math.min(beta, swapScore);
+            }
+        }
+
+        if (maxing) {
+            let val = -Infinity;
+            for (const m of validMoves) {
+                const sim = this.simulateGame(game.getGameState());
+                sim.currentPlayer = this.playerColor;
+                sim.makeMove(m);
+                val = Math.max(val, this.minimax(sim, depth - 1, false, alpha, beta));
+                alpha = Math.max(alpha, val);
                 if (beta <= alpha) break;
             }
-            return maxScore;
+            return val;
         } else {
-            let minScore = Infinity;
-            for (const move of validMoves) {
-                const simGame = this.simulateGame(game.getGameState());
-                const opponentColor = this.playerColor === 'BLACK' ? 'WHITE' : 'BLACK';
-                simGame.currentPlayer = opponentColor;
-                simGame.makeMove(move);
-                const score = this.minimax(simGame, depth - 1, true, alpha, beta);
-                minScore = Math.min(minScore, score);
-                beta = Math.min(beta, score);
+            let val = Infinity;
+            const opp = this.playerColor === 'BLACK' ? 'WHITE' : 'BLACK';
+            for (const m of validMoves) {
+                const sim = this.simulateGame(game.getGameState());
+                sim.currentPlayer = opp;
+                sim.makeMove(m);
+                val = Math.min(val, this.minimax(sim, depth - 1, true, alpha, beta));
+                beta = Math.min(beta, val);
                 if (beta <= alpha) break;
             }
-            return minScore;
+            return val;
         }
     }
 }
@@ -491,6 +557,33 @@ class MCTSPlayer extends EntangledPlayer {
         this.clusterCache = new Map();
         this.cacheHits = 0;
         this.cacheMisses = 0;
+    }
+
+    decideColorSwap() {
+        if (!this.gameEngine.getGameState().canSwapColors) {
+            return false;
+        }
+
+        // Evaluate current position using MCTS
+        const currentGame = this.simulateGame(this.gameEngine.getGameState());
+        let currentScore = 0;
+        for (let i = 0; i < this.simulationCount; i++) {
+            const sim = this.simulateGame(currentGame.getGameState());
+            currentScore += this.playRandomGame(sim);
+        }
+        currentScore /= this.simulationCount;
+
+        // Evaluate swapped position using MCTS
+        const swappedGame = this.simulateGame(this.gameEngine.getGameState());
+        swappedGame.swapColors();
+        let swappedScore = 0;
+        for (let i = 0; i < this.simulationCount; i++) {
+            const sim = this.simulateGame(swappedGame.getGameState());
+            swappedScore += this.playRandomGame(sim);
+        }
+        swappedScore /= this.simulationCount;
+
+        return swappedScore > currentScore;
     }
 
     createBoardKey(board, player) {
@@ -555,41 +648,37 @@ class MCTSPlayer extends EntangledPlayer {
         return selectedMove;
     }
 
-    playRandomGame(simGame) {
-        const maxMoves = simGame.boardSize * simGame.boardSize;
-        const validMoves = new Array(maxMoves);
-        let moveCount = 0;
+    playRandomGame(sim) {
+        while (!sim.isGameOver()) {
+            const currentPlayer = sim.currentPlayer;
 
-        while (!simGame.isGameOver() && moveCount < maxMoves) {
-            let validMoveCount = 0;
-            const symbols = simGame.symbolToPosition.keys();
-            for (const symbol of symbols) {
-                if (simGame.isValidMove(symbol)) {
-                    validMoves[validMoveCount++] = symbol;
+            // Consider swapping if it's the second player's first move
+            if (sim.canSwapColors && !sim.colorsSwapped &&
+                sim.playerTurns[currentPlayer] === 0 &&
+                sim.playerTurns[currentPlayer === 'BLACK' ? 'WHITE' : 'BLACK'] === 1) {
+                const currentScore = sim.getScore(currentPlayer);
+                const opponentScore = sim.getScore(currentPlayer === 'BLACK' ? 'WHITE' : 'BLACK');
+                if (opponentScore > currentScore && Math.random() < 0.8) {  // 80% chance to swap if beneficial
+                    try {
+                        sim.swapColors();
+                        continue;
+                    } catch (error) {
+                        // If swap fails, just continue with normal move
+                        console.debug('Swap failed in MCTS simulation:', error);
+                    }
                 }
             }
 
-            if (validMoveCount === 0) break;
-
-            const randomMove = validMoves[Math.floor(Math.random() * validMoveCount)];
-
-            try {
-                simGame.makeMove(randomMove);
-                moveCount++;
-            } catch (error) {
-                break;
-            }
+            const vm = sim.getValidMoves();
+            if (!vm.length) break;
+            const rnd = vm[Math.floor(Math.random() * vm.length)];
+            sim.makeMove(rnd);
         }
-
-        const blackScore =
-            this.getCachedLargestCluster(simGame, simGame.board1, 'BLACK') +
-            this.getCachedLargestCluster(simGame, simGame.board2, 'BLACK');
-
-        const whiteScore =
-            this.getCachedLargestCluster(simGame, simGame.board1, 'WHITE') +
-            this.getCachedLargestCluster(simGame, simGame.board2, 'WHITE');
-
-        return this.playerColor === 'BLACK' ? blackScore - whiteScore : whiteScore - blackScore;
+        const my = this.playerColor;
+        const opp = my === 'BLACK' ? 'WHITE' : 'BLACK';
+        const myScore = sim.getScore(my);
+        const oppScore = sim.getScore(opp);
+        return myScore - oppScore;
     }
 
     destroy() {
@@ -605,13 +694,36 @@ class HybridStrongPlayer extends EntangledPlayer {
         this.minimaxDepth = config.lookahead;
     }
 
+    decideColorSwap() {
+        if (!this.gameEngine.getGameState().canSwapColors) {
+            return false;
+        }
+
+        // Use minimax for swap decisions since it's faster for single position evaluation
+        const currentGame = this.simulateGame(this.gameEngine.getGameState());
+        const currentScore = this.minimax(currentGame, this.minimaxDepth - 1, true, -Infinity, Infinity);
+
+        const swappedGame = this.simulateGame(this.gameEngine.getGameState());
+        swappedGame.swapColors();
+        const swappedScore = this.minimax(swappedGame, this.minimaxDepth - 1, true, -Infinity, Infinity);
+
+        return swappedScore > currentScore;
+    }
+
     chooseMove() {
+        if (this.gameEngine.getGameState().canSwapColors) {
+            if (this.decideColorSwap()) {
+                return 'swap';
+            }
+        }
+
         const validMoves = this.gameEngine.getValidMoves();
-        if (!validMoves.length) return null;
-        if (validMoves.length < 10) {
-            return this.minimaxChoice(validMoves);
-        } else {
+
+        // Use MCTS for early game (more moves) and minimax for late game (fewer moves)
+        if (validMoves.length > 10) {
             return this.mctsChoice(validMoves);
+        } else {
+            return this.minimaxChoice(validMoves);
         }
     }
 
@@ -671,6 +783,25 @@ class HybridStrongPlayer extends EntangledPlayer {
 
     playRandomGame(sim) {
         while (!sim.isGameOver()) {
+            const currentPlayer = sim.currentPlayer;
+
+            // Consider swapping if it's the second player's first move
+            if (sim.canSwapColors && !sim.colorsSwapped &&
+                sim.playerTurns[currentPlayer] === 0 &&
+                sim.playerTurns[currentPlayer === 'BLACK' ? 'WHITE' : 'BLACK'] === 1) {
+                const currentScore = sim.getScore(currentPlayer);
+                const opponentScore = sim.getScore(currentPlayer === 'BLACK' ? 'WHITE' : 'BLACK');
+                if (opponentScore > currentScore && Math.random() < 0.8) {  // 80% chance to swap if beneficial
+                    try {
+                        sim.swapColors();
+                        continue;
+                    } catch (error) {
+                        // If swap fails, just continue with normal move
+                        console.debug('Swap failed in Hybrid simulation:', error);
+                    }
+                }
+            }
+
             const vm = sim.getValidMoves();
             if (!vm.length) break;
             const rnd = vm[Math.floor(Math.random() * vm.length)];
@@ -744,7 +875,7 @@ export const AI_PLAYERS = {
         implementation: MinimaxPlayer,
         defaultConfig: {
             randomize: false,
-            randomThreshold: 0.1,
+            randomThreshold: 0,
             lookahead: 4
         }
     },
@@ -757,16 +888,6 @@ export const AI_PLAYERS = {
             randomize: true,
             randomThreshold: 0.1,
             lookahead: 4
-        }
-    },
-    'mcts-no-rng': {
-        id: 'mcts-no-rng',
-        name: 'MCTS (no rng)',
-        description: 'Uses Monte Carlo Tree Search simulation without randomization',
-        implementation: MCTSPlayer,
-        defaultConfig: {
-            randomize: false,
-            simulationCount: 2000
         }
     },
     'mcts-some-rng': {
@@ -787,9 +908,9 @@ export const AI_PLAYERS = {
         implementation: HybridStrongPlayer,
         defaultConfig: {
             randomize: true,
-            randomThreshold: 0.05,
-            simulationCount: 5000,
-            lookahead: 10
+            randomThreshold: 0.1,
+            simulationCount: 2000,
+            lookahead: 4
         }
     }
 };

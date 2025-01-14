@@ -13,6 +13,7 @@ let gameSettings = {
     currentPlayer: true,
     icons: true,
     symbols: false,
+    cutcake: true,
 };
 
 let game = null;
@@ -529,8 +530,36 @@ function updateDisplay() {
         currentPlayerDisplay.style.display = 'none';
     } else {
         currentPlayerDisplay.style.display = '';
-        currentPlayerDisplay.textContent =
-            `Current player: ${state.currentPlayer === PLAYERS.BLACK ? '⚫ Black' : '⚪ White'}`;
+        let displayText = `Current player: ${state.currentPlayer === PLAYERS.BLACK ? '⚫ Black' : '⚪ White'}`;
+
+        // Add swap colors button if available
+        if (gameSettings.cutcake && state.canSwapColors) {
+            displayText += ' <button id="swap-colors" class="swap-colors-btn">Swap Colors</button>';
+        }
+
+        currentPlayerDisplay.innerHTML = displayText;
+
+        // Add event listener for swap colors button if it exists
+        const swapButton = document.getElementById('swap-colors');
+        if (swapButton) {
+            swapButton.addEventListener('click', () => {
+                try {
+                    game.swapColors();
+                    // Show temporary notification with the swap-yes style
+                    const notification = document.createElement('div');
+                    notification.className = 'swap-notification-overlay swap-yes';
+                    notification.textContent = '🔄 Colors Swapped!';
+                    document.body.appendChild(notification);
+                    setTimeout(() => notification.remove(), 2000);
+
+                    updateDisplay();
+                    makeAIMove();
+                } catch (error) {
+                    console.error('Error swapping colors:', error);
+                    swapButton.remove();
+                }
+            });
+        }
     }
 
     const cells = document.querySelectorAll('.cell');
@@ -661,21 +690,84 @@ function makeAIMove() {
         setTimeout(() => {
             if (!game) return;
 
+            const cutcakeEnabled = document.getElementById('setting-cutcake').checked;
             const ai = createPlayer(playerType, game, currentPlayer);
             if (ai) {
-                const move = ai.chooseMove();
-                if (move && game) {
-                    game.makeMove(move);
-                    updateDisplay();
+                try {
+                    // Show consideration notification if AI can swap and cut-cake is enabled
+                    if (game.getGameState().canSwapColors && cutcakeEnabled) {
+                        const considerNotification = document.createElement('div');
+                        considerNotification.className = 'swap-notification-overlay swap-consider';
+                        considerNotification.textContent = '🤖 AI is considering color swap...';
+                        document.body.appendChild(considerNotification);
 
-                    if (game && game.isGameOver()) {
-                        showWinner(game.getWinner());
-                    } else if (game) {
-                        makeAIMove();
+                        // Remove the consideration notification after 1 second
+                        setTimeout(() => {
+                            considerNotification.remove();
+                            // Then make the decision
+                            const move = ai.chooseMove();
+                            if (move === 'swap' && cutcakeEnabled) {
+                                const wasSwapped = !game.getGameState().colorsSwapped;
+                                game.swapColors();
+                                if (wasSwapped) {
+                                    const notification = document.createElement('div');
+                                    notification.className = 'swap-notification-overlay swap-yes';
+                                    notification.textContent = '🔄 AI chose to swap colors!';
+                                    document.body.appendChild(notification);
+                                    setTimeout(() => notification.remove(), 2000);
+                                }
+                                updateDisplay();
+                                makeAIMove();
+                            } else if (move && game) {
+                                if (game.getGameState().canSwapColors && cutcakeEnabled) {
+                                    const notification = document.createElement('div');
+                                    notification.className = 'swap-notification-overlay swap-no';
+                                    notification.textContent = '🤖 AI decided not to swap';
+                                    document.body.appendChild(notification);
+                                    setTimeout(() => notification.remove(), 2000);
+                                }
+                                game.makeMove(move);
+                                updateDisplay();
+
+                                if (game && game.isGameOver()) {
+                                    showWinner(game.getWinner());
+                                } else if (game) {
+                                    makeAIMove();
+                                }
+                            }
+                        }, 1000);
+                    } else {
+                        // Regular move without swap consideration
+                        const move = ai.chooseMove();
+                        if (move && game) {
+                            if (move !== 'swap') {  // Ignore swap moves if cut-cake is disabled
+                                game.makeMove(move);
+                                updateDisplay();
+
+                                if (game && game.isGameOver()) {
+                                    showWinner(game.getWinner());
+                                } else if (game) {
+                                    makeAIMove();
+                                }
+                            } else {
+                                // If AI tries to swap but it's disabled, make them choose a regular move instead
+                                const validMoves = game.getValidMoves();
+                                if (validMoves.length > 0) {
+                                    game.makeMove(validMoves[0]);
+                                    updateDisplay();
+                                    if (game && !game.isGameOver()) {
+                                        makeAIMove();
+                                    }
+                                }
+                            }
+                        }
                     }
+                } catch (error) {
+                    console.error('Error during AI move:', error);
+                    updateDisplay();
                 }
             }
-        }, 500);
+        }, 10);
     }
 }
 
@@ -683,6 +775,7 @@ function initializeGame() {
     const board1Select = document.getElementById('board1-select');
     const board2Select = document.getElementById('board2-select');
     const rawConfig = document.getElementById('starting-config').value;
+    const cutcakeEnabled = document.getElementById('setting-cutcake').checked;
 
     const startingConfig = rawConfig
         .toUpperCase()
@@ -697,7 +790,8 @@ function initializeGame() {
     const board1Layout = getSelectedBoardLayout(board1Select);
     const board2Layout = getSelectedBoardLayout(board2Select);
 
-    game = new EntangledGame(board1Layout, board2Layout, startingConfig);
+    // Pass cutcakeEnabled as the fourth parameter (enableTieBreaker)
+    game = new EntangledGame(board1Layout, board2Layout, startingConfig, cutcakeEnabled);
 
     const existingWinner = document.querySelector('.winner');
     if (existingWinner) {
@@ -719,12 +813,18 @@ function init() {
         icon.classList.toggle('rotated');
     });
 
-    ['hover', 'groups', 'size', 'score', 'currentPlayer', 'icons', 'symbols'].forEach(setting => {
+    ['hover', 'groups', 'size', 'score', 'currentPlayer', 'icons', 'symbols', 'cutcake'].forEach(setting => {
         const checkbox = document.getElementById(`setting-${setting}`);
         if (checkbox) {
             checkbox.addEventListener('change', (e) => {
                 gameSettings[setting] = e.target.checked;
                 saveSettings();
+                if (setting === 'cutcake' && game) {
+                    game.canSwapColors = e.target.checked &&
+                        game.playerTurns[PLAYERS.BLACK] === 1 &&
+                        game.playerTurns[PLAYERS.WHITE] === 0 &&
+                        !game.colorsSwapped;
+                }
                 applySettings();
                 if (game) {
                     updateDisplay();
