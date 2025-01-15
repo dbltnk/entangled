@@ -1,4 +1,5 @@
 import { EntangledGame } from './gameplay.js';
+import BOARD_LAYOUTS from './boards.js';
 
 class GameReplay {
     constructor() {
@@ -10,20 +11,79 @@ class GameReplay {
     }
 
     initialize(data) {
-        this.matchInfo = data.matchInfo;
-        this.boardSize = data.boardSize;
+        console.log('Initializing replay with data:', {
+            hasHistory: !!data.history,
+            hasMoves: !!data.moves,
+            hasResults: !!data.results,
+            metadata: data.metadata,
+            matchInfo: data.matchInfo
+        });
+
+        this.matchInfo = {
+            black: data.matchInfo?.black || data.results?.[Object.keys(data.results)[0]]?.black || 'Black',
+            white: data.matchInfo?.white || data.results?.[Object.keys(data.results)[0]]?.white || 'White',
+            board1Name: data.matchInfo?.board1Name || data.metadata?.boards?.board1 || 'Board 1',
+            board2Name: data.matchInfo?.board2Name || data.metadata?.boards?.board2 || 'Board 2',
+            startingConfig: data.matchInfo?.startingConfig || data.metadata?.startingConfig || ''
+        };
+
+        // Get board layouts
+        const board1Layout = data.board1Layout || BOARD_LAYOUTS[data.metadata?.boards?.board1]?.grid;
+        const board2Layout = data.board2Layout || BOARD_LAYOUTS[data.metadata?.boards?.board2]?.grid;
+
+        console.log('Board layouts:', {
+            board1Name: this.matchInfo.board1Name,
+            board2Name: this.matchInfo.board2Name,
+            hasBoard1Layout: !!board1Layout,
+            hasBoard2Layout: !!board2Layout,
+            board1Size: board1Layout?.length,
+            board2Size: board2Layout?.length
+        });
+
+        if (!board1Layout || !board2Layout) {
+            throw new Error('Could not determine board layouts');
+        }
+
+        this.boardSize = board1Layout.length;
 
         // Handle both full state history and move-only history
         if (data.history && Array.isArray(data.history) && data.history[0].board1) {
+            console.log('Using full state history');
             // Full state history from live tournament
             this.history = data.history;
-        } else if (data.moves || (data.history && Array.isArray(data.history) && typeof data.history[0] === 'string')) {
+        } else if (data.moves || (data.history && Array.isArray(data.history) && typeof data.history[0] === 'string') || data.results) {
+            console.log('Using move-only history');
             // Move-only history from saved tournament, reconstruct states
+            const moves = data.moves || data.history || data.results?.[Object.keys(data.results)[0]]?.games?.[0]?.moves;
+            if (!moves) {
+                throw new Error('No moves found in replay data');
+            }
+
+            console.log('Found moves:', {
+                moveCount: moves.length,
+                firstMove: moves[0],
+                lastMove: moves[moves.length - 1]
+            });
+
+            // Get cut-the-cake info from either metadata or game results
+            const gameResult = data.results?.[Object.keys(data.results)[0]]?.games?.[0];
+            const cutTheCake = gameResult?.cutTheCakeEnabled ?? data.metadata?.cutTheCake ?? true;
+            const colorsSwapped = gameResult?.colorsSwapped ?? false;
+
+            console.log('Cut-the-cake settings:', {
+                cutTheCake,
+                colorsSwapped,
+                fromGameResult: !!gameResult?.cutTheCakeEnabled,
+                fromMetadata: !!data.metadata?.cutTheCake
+            });
+
             this.reconstructHistory({
-                moves: data.moves || data.history,
-                board1Layout: data.board1Layout,
-                board2Layout: data.board2Layout,
-                initialConfig: data.initialConfig
+                moves,
+                board1Layout,
+                board2Layout,
+                initialConfig: this.matchInfo.startingConfig,
+                cutTheCake,
+                colorsSwapped
             });
         }
 
@@ -32,7 +92,27 @@ class GameReplay {
     }
 
     reconstructHistory(data) {
-        const game = new EntangledGame(data.board1Layout, data.board2Layout, data.initialConfig);
+        console.log('Starting history reconstruction with:', {
+            cutTheCake: data.cutTheCake,
+            colorsSwapped: data.colorsSwapped,
+            initialConfig: data.initialConfig,
+            totalMoves: data.moves.length,
+            moves: data.moves
+        });
+
+        const game = new EntangledGame(
+            data.board1Layout,
+            data.board2Layout,
+            data.initialConfig,
+            data.cutTheCake !== false
+        );
+
+        console.log('Initial game state:', {
+            currentPlayer: game.getCurrentPlayer(),
+            canSwapColors: game.getGameState().canSwapColors,
+            board1: game.getBoard1(),
+            board2: game.getBoard2()
+        });
 
         // Initialize history with starting state
         this.history = [{
@@ -44,26 +124,77 @@ class GameReplay {
             whiteScore: game.getScore('WHITE'),
             largestClusters: game.getGameState().largestClusters,
             board1Layout: data.board1Layout,
-            board2Layout: data.board2Layout
+            board2Layout: data.board2Layout,
+            canSwapColors: game.getGameState().canSwapColors,
+            colorsSwapped: false
         }];
 
-        // Replay each move and record state
-        for (const move of data.moves) {
-            game.makeMove(move);
-            const state = game.getGameState();
+        // If colors were swapped, we need to apply it after the first move
+        let shouldSwapAfterFirstMove = data.colorsSwapped;
+        console.log('Should swap after first move:', shouldSwapAfterFirstMove);
 
-            this.history.push({
-                move,
-                board1: game.getBoard1(),
-                board2: game.getBoard2(),
-                currentPlayer: state.currentPlayer,
-                blackScore: game.getScore('BLACK'),
-                whiteScore: game.getScore('WHITE'),
-                largestClusters: state.largestClusters,
-                board1Layout: data.board1Layout,
-                board2Layout: data.board2Layout
-            });
+        // Replay each move and record state
+        for (let i = 0; i < data.moves.length; i++) {
+            const move = data.moves[i];
+            try {
+                console.log(`Processing move ${i + 1}:`, {
+                    move,
+                    currentPlayer: game.getCurrentPlayer(),
+                    shouldSwapAfterFirstMove,
+                    gameState: game.getGameState(),
+                    validMoves: game.getGameState().validMoves
+                });
+
+                if (shouldSwapAfterFirstMove && i === 0) {
+                    console.log('Swapping colors after first move');
+                    game.swapColors();
+                    shouldSwapAfterFirstMove = false;
+                }
+
+                game.makeMove(move);
+                const state = game.getGameState();
+
+                console.log('Move processed successfully:', {
+                    move,
+                    newCurrentPlayer: state.currentPlayer,
+                    canSwapColors: state.canSwapColors,
+                    colorsSwapped: state.colorsSwapped,
+                    blackScore: game.getScore('BLACK'),
+                    whiteScore: game.getScore('WHITE')
+                });
+
+                this.history.push({
+                    move,
+                    board1: game.getBoard1(),
+                    board2: game.getBoard2(),
+                    currentPlayer: state.currentPlayer,
+                    blackScore: game.getScore('BLACK'),
+                    whiteScore: game.getScore('WHITE'),
+                    largestClusters: state.largestClusters,
+                    board1Layout: data.board1Layout,
+                    board2Layout: data.board2Layout,
+                    canSwapColors: state.canSwapColors,
+                    colorsSwapped: state.colorsSwapped || data.colorsSwapped
+                });
+            } catch (error) {
+                console.error('Error reconstructing move:', error, {
+                    move,
+                    moveIndex: i + 1,
+                    currentPlayer: game.getCurrentPlayer(),
+                    gameState: game.getGameState(),
+                    validMoves: game.getGameState().validMoves,
+                    board1: game.getBoard1(),
+                    board2: game.getBoard2()
+                });
+                throw new Error(`Failed to reconstruct game history at move: ${move}`);
+            }
         }
+
+        console.log('History reconstruction completed:', {
+            totalStates: this.history.length,
+            finalState: this.history[this.history.length - 1],
+            moves: data.moves
+        });
     }
 
     initializeUI() {
@@ -74,6 +205,17 @@ class GameReplay {
 
         const boardInfo = document.getElementById('board-info');
         boardInfo.textContent = `Board 1: ${this.matchInfo.board1Name} | Board 2: ${this.matchInfo.board2Name} | Starting: ${this.matchInfo.startingConfig}`;
+
+        const cutCakeInfo = document.getElementById('cut-cake-info');
+        if (cutCakeInfo) {
+            if (this.history[0].canSwapColors === false) {
+                cutCakeInfo.textContent = 'Cut the cake rule is disabled';
+                cutCakeInfo.classList.add('disabled');
+            } else {
+                cutCakeInfo.textContent = 'Cut the cake rule is enabled (White can swap colors after Black\'s first move)';
+                cutCakeInfo.classList.add('enabled');
+            }
+        }
 
         const board1 = document.getElementById('board1');
         const board2 = document.getElementById('board2');
@@ -95,17 +237,22 @@ class GameReplay {
         board2.style.gridTemplateRows = `repeat(${this.boardSize}, 1fr)`;
         board2.style.gridTemplateColumns = `repeat(${this.boardSize}, 1fr)`;
 
-        // Create cells (skipping dots)
+        // Create all cells, including dots
         for (let i = 0; i < this.boardSize; i++) {
             for (let j = 0; j < this.boardSize; j++) {
-                if (this.history[0].board1Layout[i][j] !== '.') {
-                    const cell1 = this.createCell(1, i, j);
-                    board1.appendChild(cell1);
+                const cell1 = this.createCell(1, i, j);
+                const cell2 = this.createCell(2, i, j);
+
+                // Add dot class for dot positions
+                if (this.history[0].board1Layout[i][j] === '.') {
+                    cell1.classList.add('dot-cell');
                 }
-                if (this.history[0].board2Layout[i][j] !== '.') {
-                    const cell2 = this.createCell(2, i, j);
-                    board2.appendChild(cell2);
+                if (this.history[0].board2Layout[i][j] === '.') {
+                    cell2.classList.add('dot-cell');
                 }
+
+                board1.appendChild(cell1);
+                board2.appendChild(cell2);
             }
         }
     }
@@ -121,9 +268,10 @@ class GameReplay {
 
         const letter = document.createElement('div');
         letter.className = 'cell-letter';
-        letter.textContent = boardNum === 1 ?
+        const symbol = boardNum === 1 ?
             this.history[0].board1Layout[row][col] :
             this.history[0].board2Layout[row][col];
+        letter.textContent = symbol === '.' ? '' : symbol;
         cell.appendChild(letter);
 
         return cell;
@@ -175,6 +323,9 @@ class GameReplay {
         } else {
             cell.classList.remove('has-stone');
         }
+
+        // Remove any existing cut-the-cake related classes
+        cell.classList.remove('can-swap-colors', 'colors-swapped');
     }
 
     updateCellHighlights(boardNum, row, col, largestClusters) {
@@ -258,6 +409,22 @@ class GameReplay {
         return bestCell;
     }
 
+    updateBoardState(boardElement, state) {
+        // Remove any existing cut-the-cake related classes
+        boardElement.classList.remove('can-swap-colors', 'colors-swapped');
+
+        // Add appropriate classes based on game state
+        if (state.canSwapColors) {
+            boardElement.classList.add('can-swap-colors');
+            boardElement.title = 'White player can choose to swap colors with Black';
+        } else if (state.colorsSwapped && this.currentMoveIndex === 1) {
+            boardElement.classList.add('colors-swapped');
+            boardElement.title = 'Colors have been swapped: Black is now White and White is now Black';
+        } else {
+            boardElement.title = ''; // Clear any existing tooltip
+        }
+    }
+
     renderState(index) {
         if (!this.history || index < 0 || index >= this.history.length) return;
 
@@ -280,6 +447,10 @@ class GameReplay {
             }
         }
 
+        // Update board states for cut-the-cake visualization
+        this.updateBoardState(board1Element, state);
+        this.updateBoardState(board2Element, state);
+
         // Update group sizes
         this.updateGroupSizes(board1Element, state.largestClusters, true);
         this.updateGroupSizes(board2Element, state.largestClusters, false);
@@ -294,59 +465,100 @@ class GameReplay {
         const scoreDisplay = document.getElementById('score-display');
         if (scoreDisplay) {
             scoreDisplay.textContent = `⚫ ${state.blackScore} vs ⚪ ${state.whiteScore}`;
+            if (state.colorsSwapped) {
+                scoreDisplay.title = 'Colors were swapped after Black\'s first move';
+            } else {
+                scoreDisplay.title = '';
+            }
         }
 
-        // Update current player/winner
+        // Update current player/winner and cut-the-cake status
         const currentPlayerDisplay = document.getElementById('current-player-display');
         if (currentPlayerDisplay) {
             if (index < this.history.length - 1) {
-                currentPlayerDisplay.textContent =
-                    `Current player: ${state.currentPlayer === 'BLACK' ? '⚫ Black' : '⚪ White'}`;
+                let displayText = `Current player: ${state.currentPlayer === 'BLACK' ? '⚫ Black' : '⚪ White'}`;
+                if (state.canSwapColors) {
+                    displayText += ' (Can swap colors)';
+                    currentPlayerDisplay.title = 'White player can choose to swap colors with Black';
+                } else if (state.colorsSwapped && index === 1) {
+                    displayText += ' (Colors swapped)';
+                    currentPlayerDisplay.title = 'White chose to swap colors with Black';
+                } else {
+                    currentPlayerDisplay.title = '';
+                }
+                currentPlayerDisplay.textContent = displayText;
             } else {
                 // Create a game instance to get final stats
-                const finalGame = new EntangledGame(state.board1Layout, state.board2Layout);
+                const finalGame = new EntangledGame(
+                    state.board1Layout,
+                    state.board2Layout,
+                    '',
+                    this.history[0].canSwapColors !== false
+                );
+
                 // Replay all moves to get to final state
                 for (let i = 1; i < this.history.length; i++) {
-                    finalGame.makeMove(this.history[i].move);
-                }
-                const endStats = finalGame.getEndGameStats();
-
-                let content = `
-                    <div class="final-state">
-                        Base scores: ⚫ ${endStats.scores.black} vs ⚪ ${endStats.scores.white}<br>`;
-
-                if (endStats.scores.black === endStats.scores.white) {
-                    content += `<table class="tiebreaker-table" style="margin-top:0.5rem; font-size:0.9em; width:100%;">
-                        <tr>
-                            <th>Lvl</th><th>⚫</th><th>=</th><th>⚪</th><th>=</th>
-                        </tr>`;
-
-                    endStats.tiebreaker.comparisonData.forEach((level, i) => {
-                        const isDeciding = (i + 1) === endStats.tiebreaker.decidingLevel;
-                        content += `
-                            <tr ${isDeciding ? 'style="background:rgba(0,0,0,0.1)"' : ''}>
-                                <td>${level.level}</td>
-                                <td>${level.black.board1}+${level.black.board2}</td>
-                                <td>${level.black.sum}</td>
-                                <td>${level.white.board1}+${level.white.board2}</td>
-                                <td>${level.white.sum}${isDeciding ? ' ←' : ''}</td>
-                            </tr>`;
-                    });
-                    content += `</table>`;
-
-                    if (endStats.tiebreaker.winner !== 'TIE') {
-                        const symbol = endStats.tiebreaker.winner === 'BLACK' ? '⚫' : '⚪';
-                        content += `<div style="margin-top:0.5rem">${symbol} wins at level ${endStats.tiebreaker.decidingLevel}!</div>`;
-                    } else {
-                        content += '<div style="margin-top:0.5rem">Complete tie!</div>';
+                    try {
+                        finalGame.makeMove(this.history[i].move);
+                    } catch (error) {
+                        console.error('Error replaying move:', error);
+                        currentPlayerDisplay.textContent = 'Error: Could not replay game moves';
+                        return;
                     }
-                } else {
-                    const winner = endStats.scores.black > endStats.scores.white ? 'BLACK' : 'WHITE';
-                    const symbol = winner === 'BLACK' ? '⚫' : '⚪';
-                    content += `<div>${symbol} wins ${Math.max(endStats.scores.black, endStats.scores.white)}-${Math.min(endStats.scores.black, endStats.scores.white)}!</div>`;
                 }
-                content += '</div>';
-                currentPlayerDisplay.innerHTML = content;
+
+                try {
+                    const endStats = finalGame.getEndGameStats();
+                    if (!endStats) {
+                        console.error('No end stats returned', {
+                            gameState: finalGame.getGameState(),
+                            isGameOver: finalGame.isGameOver(),
+                            lastMove: this.history[this.history.length - 1].move
+                        });
+                        currentPlayerDisplay.textContent = 'Error: Could not determine game outcome';
+                        return;
+                    }
+
+                    let content = `
+                        <div class="final-state">
+                            Base scores: ⚫ ${endStats.scores.black} vs ⚪ ${endStats.scores.white}<br>`;
+
+                    if (endStats.scores.black === endStats.scores.white) {
+                        content += `<table class="tiebreaker-table" style="margin-top:0.5rem; font-size:0.9em; width:100%;">
+                            <tr>
+                                <th>Lvl</th><th>⚫</th><th>=</th><th>⚪</th><th>=</th>
+                            </tr>`;
+
+                        endStats.tiebreaker.comparisonData.forEach((level, i) => {
+                            const isDeciding = (i + 1) === endStats.tiebreaker.decidingLevel;
+                            content += `
+                                <tr ${isDeciding ? 'style="background:rgba(0,0,0,0.1)"' : ''}>
+                                    <td>${level.level}</td>
+                                    <td>${level.black.board1}+${level.black.board2}</td>
+                                    <td>${level.black.sum}</td>
+                                    <td>${level.white.board1}+${level.white.board2}</td>
+                                    <td>${level.white.sum}${isDeciding ? ' ←' : ''}</td>
+                                </tr>`;
+                        });
+                        content += `</table>`;
+
+                        if (endStats.tiebreaker.winner !== 'TIE') {
+                            const symbol = endStats.tiebreaker.winner === 'BLACK' ? '⚫' : '⚪';
+                            content += `<div style="margin-top:0.5rem">${symbol} wins at level ${endStats.tiebreaker.decidingLevel}!</div>`;
+                        } else {
+                            content += '<div style="margin-top:0.5rem">Complete tie!</div>';
+                        }
+                    } else {
+                        const winner = endStats.scores.black > endStats.scores.white ? 'BLACK' : 'WHITE';
+                        const symbol = winner === 'BLACK' ? '⚫' : '⚪';
+                        content += `<div>${symbol} wins ${Math.max(endStats.scores.black, endStats.scores.white)}-${Math.min(endStats.scores.black, endStats.scores.white)}!</div>`;
+                    }
+                    content += '</div>';
+                    currentPlayerDisplay.innerHTML = content;
+                } catch (error) {
+                    console.error('Error calculating end game stats:', error);
+                    currentPlayerDisplay.textContent = 'Error: Could not calculate final game statistics';
+                }
             }
         }
 

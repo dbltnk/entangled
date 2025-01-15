@@ -242,6 +242,20 @@ class EntangledGame {
             throw new Error('Game is already over');
         }
 
+        // Special handling for 'swap' move
+        if (symbol === 'swap') {
+            if (!this.canSwapColors || this.colorsSwapped) {
+                throw new Error('Invalid move');
+            }
+            this.swapColors();
+            return {
+                valid: true,
+                gameOver: this.gameOver,
+                currentPlayer: this.currentPlayer,
+                turnNumber: this.playerTurns[this.currentPlayer] + 1
+            };
+        }
+
         if (!this.isValidMove(symbol)) {
             throw new Error('Invalid move');
         }
@@ -559,8 +573,15 @@ class EntangledGame {
     }
 
     getValidMoves() {
-        return Array.from(this.symbolToPosition.keys())
+        const moves = Array.from(this.symbolToPosition.keys())
             .filter(symbol => this.isValidMove(symbol));
+
+        // Only include 'swap' if it's actually allowed
+        if (this.canSwapColors && !this.colorsSwapped) {
+            moves.push('swap');
+        }
+
+        return moves;
     }
 
     getGameState() {

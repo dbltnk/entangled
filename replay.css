@@ -69,3 +69,124 @@
 .stats {
     text-align: right;
 }
+
+/* New styles for cut-the-cake feature */
+.can-swap-colors {
+    animation: pulse 2s infinite;
+    box-shadow: 0 0 0 2px var(--color-success);
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.6;
+    }
+
+    100% {
+        opacity: 1;
+    }
+}
+
+.colors-swapped {
+    position: relative;
+}
+
+.colors-swapped::after {
+    content: '↔';
+    position: absolute;
+    top: -1.5em;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 1.5em;
+    color: var(--color-text);
+    animation: swapIndicator 1s ease-out;
+    background: var(--color-background);
+    padding: 0.2em 0.5em;
+    border-radius: var(--border-radius);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+@keyframes swapIndicator {
+    0% {
+        opacity: 0;
+        transform: translateX(-50%) scale(0.5);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateX(-50%) scale(1);
+    }
+}
+
+.final-state {
+    padding: var(--spacing-md);
+    background: var(--color-background);
+    border-radius: var(--border-radius);
+    margin-top: var(--spacing-sm);
+}
+
+.tiebreaker-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: var(--spacing-sm);
+    font-size: 0.9em;
+}
+
+.tiebreaker-table th,
+.tiebreaker-table td {
+    padding: var(--spacing-xs);
+    text-align: center;
+    border: 1px solid var(--color-border);
+}
+
+.tiebreaker-table tr[style*="background"] {
+    font-weight: bold;
+}
+
+.game-rules {
+    margin-top: var(--spacing-xs);
+    font-size: 0.9em;
+    color: var(--color-text-secondary);
+}
+
+.cut-cake-info {
+    display: inline-block;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    background: var(--color-background);
+    border-radius: var(--border-radius);
+    border: 1px solid var(--color-border);
+}
+
+.cut-cake-info.enabled {
+    border-color: var(--color-success);
+    color: var(--color-success);
+}
+
+.cut-cake-info.disabled {
+    border-color: var(--color-text-secondary);
+    color: var(--color-text-secondary);
+    opacity: 0.8;
+}
+
+.can-swap-colors .cell {
+    cursor: help;
+}
+
+.dot-cell {
+    background-color: transparent !important;
+    border: none !important;
+    pointer-events: none;
+    opacity: 0;
+}
+
+.board {
+    display: grid;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-md);
+    border-radius: var(--border-radius);
+    background-color: var(--color-background);
+    position: relative;
+}

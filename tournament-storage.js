@@ -35,17 +35,13 @@ class TournamentStorage {
             const timestamp = new Date().toISOString();
             const config = boardConfigs[0];
 
-            // Use board IDs from the config instead of layouts
-            const board1Id = config.board1Id;  // Add this to boardConfigs when creating it
-            const board2Id = config.board2Id;
-            const startingConfig = config.startingConfig || 'empty';
-
             const configString = JSON.stringify({
                 timestamp,
                 ais: selectedAIs,
-                board1: board1Id,
-                board2: board2Id,
-                startingConfig
+                board1: config.board1Id,
+                board2: config.board2Id,
+                startingConfig: config.startingConfig || 'empty',
+                cutTheCake: config.cutTheCake
             });
             const runId = await this.hashString(configString);
 
@@ -54,10 +50,11 @@ class TournamentStorage {
                 timestamp,
                 selectedAIs,
                 boards: {
-                    board1: board1Id,
-                    board2: board2Id
+                    board1: config.board1Id,
+                    board2: config.board2Id
                 },
-                startingConfig,
+                startingConfig: config.startingConfig,
+                cutTheCake: config.cutTheCake,
                 totalGames: this.calculateTotalGames(selectedAIs)
             };
 
@@ -118,15 +115,22 @@ class TournamentStorage {
         }
 
         const result = this.stats.results[matchupKey];
-        const moves = gameData.result.history.slice(1).map(state => state.move);
+        const moves = gameData.result.history.slice(1)
+            .filter((state, index) => {
+                return index !== 0 || state.colorsSwapped || state.move !== gameData.result.history[1].move;
+            })
+            .map(state => state.move);
 
         result.games.push({
             winner: gameData.result.winner === 'TIE' ? 'draw' : gameData.result.winner.toLowerCase(),
             black: gameData.result.blackScore,
             white: gameData.result.whiteScore,
             moves: moves,
-            tiebreaker: gameData.result.tiebreaker,  // Add tiebreaker data
-            clusters: gameData.result.clusters       // Add cluster data
+            tiebreaker: gameData.result.tiebreaker,
+            clusters: gameData.result.clusters,
+            cutTheCakeEnabled: gameData.result.cutTheCakeEnabled,
+            colorsSwapped: gameData.result.colorsSwapped,
+            swapDecision: gameData.result.history.length > 1 ? gameData.result.history[1].colorsSwapped : false
         });
     }
 

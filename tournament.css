@@ -642,6 +642,7 @@
 .game-result .score {
     color: #666;
     font-size: 0.9rem;
+    margin-left: 0.5rem;
 }
 
 .game-result:hover {
@@ -826,4 +827,9 @@
 .filter-panel input:disabled {
     background-color: #f3f4f6;
     cursor: not-allowed;
+}
+
+.swap-info {
+    margin-left: 0.5rem;
+    opacity: 0.8;
 }

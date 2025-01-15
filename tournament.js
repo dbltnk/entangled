@@ -163,6 +163,10 @@ class TournamentManager {
                     <label>Starting:</label>
                     <span>${config.startingConfig || 'None'}</span>
                 </div>
+                <div class="config-row">
+                    <label>Cut the Cake:</label>
+                    <span>${config.cutTheCake ? 'Yes' : 'No'}</span>
+                </div>
             </div>
             <div class="tournament-card-progress">
                 <div class="progress-info">
@@ -233,7 +237,8 @@ class TournamentManager {
                 boardSize: parseInt(config.querySelector('.board-size').value),
                 board1: config.querySelector('.tournament-board1-select').value,
                 board2: config.querySelector('.tournament-board2-select').value,
-                startingConfig: config.querySelector('.tournament-starting-config').value
+                startingConfig: config.querySelector('.tournament-starting-config').value,
+                cutTheCake: document.getElementById('cut-the-cake').checked
             }));
 
         if (this.tournamentConfigs.length === 0) {
@@ -306,7 +311,8 @@ class TournamentManager {
             board2Layout: BOARD_LAYOUTS[config.board2].grid,
             startingConfig: config.startingConfig,
             board1Id: config.board1,
-            board2Id: config.board2
+            board2Id: config.board2,
+            cutTheCake: config.cutTheCake
         }];
 
         try {

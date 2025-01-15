@@ -8,7 +8,8 @@ self.onmessage = function (e) {
     const game = new EntangledGame(
         boardConfig.board1Layout,
         boardConfig.board2Layout,
-        boardConfig.startingConfig
+        boardConfig.startingConfig,
+        boardConfig.cutTheCake
     );
 
     // Create players
@@ -28,7 +29,8 @@ self.onmessage = function (e) {
             whiteScore: game.getScore(PLAYERS.WHITE),
             largestClusters: state.largestClusters,
             board1Layout: boardConfig.board1Layout,
-            board2Layout: boardConfig.board2Layout
+            board2Layout: boardConfig.board2Layout,
+            colorsSwapped: state.colorsSwapped
         });
     };
 
@@ -36,38 +38,70 @@ self.onmessage = function (e) {
     recordState();
 
     // Play the game
+    let gameError = null;
     while (!game.isGameOver()) {
         const currentPlayer = game.getCurrentPlayer();
         const player = currentPlayer === PLAYERS.BLACK ? blackPlayer : whitePlayer;
 
-        try {
-            const move = player.chooseMove();
-            if (move) {
-                game.makeMove(move);
-                recordState();
-            } else {
-                break;
-            }
-        } catch (error) {
-            console.error('Game error:', error.message);
-            break;
+        const move = player.chooseMove();
+        if (!move) {
+            console.error(`[Game Error] Player ${currentPlayer} (${player.constructor.name}) returned null move`);
+            continue;
         }
+
+        try {
+            game.makeMove(move);
+        } catch (error) {
+            console.error(`[Game Error] Player ${currentPlayer} (${player.constructor.name}) error:`, error.message);
+            console.error(`[Game Error] Move details:`, {
+                player: currentPlayer,
+                playerType: player.constructor.name,
+                lastMove: game.getGameState().lastMove,
+                validMoves: game.getValidMoves(),
+                gameState: game.getGameState()
+            });
+            continue;
+        }
+
+        recordState();
     }
 
     // Get final stats including detailed tiebreaker info
-    const endStats = game.getEndGameStats();
+    const endStats = gameError ? {
+        tiebreaker: {
+            winner: null,
+            reason: 'invalid_move'
+        },
+        scores: {
+            black: game.getScore(PLAYERS.BLACK),
+            white: game.getScore(PLAYERS.WHITE)
+        },
+        clusters: {
+            black: {
+                board1: game.findLargestCluster(game.board1, PLAYERS.BLACK),
+                board2: game.findLargestCluster(game.board2, PLAYERS.BLACK)
+            },
+            white: {
+                board1: game.findLargestCluster(game.board1, PLAYERS.WHITE),
+                board2: game.findLargestCluster(game.board2, PLAYERS.WHITE)
+            }
+        }
+    } : game.getEndGameStats();
 
     // Send result back to main thread
     self.postMessage({
         matchup,
         matchIndex,
         result: {
-            winner: endStats.tiebreaker.winner,
+            winner: endStats.tiebreaker.winner || 'ERROR',
             blackScore: endStats.scores.black,
             whiteScore: endStats.scores.white,
             history,
-            tiebreaker: endStats.tiebreaker,  // Add full tiebreaker data
-            clusters: endStats.clusters       // Add all cluster sizes
+            tiebreaker: endStats.tiebreaker,
+            clusters: endStats.clusters,
+            cutTheCakeEnabled: boardConfig.cutTheCake,
+            colorsSwapped: game.getGameState().colorsSwapped,
+            error: gameError ? gameError.message : null
         }
     });
 };

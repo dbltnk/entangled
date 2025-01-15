@@ -457,6 +457,7 @@ class ResultsViewer {
         const board1Layout = BOARD_LAYOUTS[this.currentTournament.metadata.boards.board1];
         const board2Layout = BOARD_LAYOUTS[this.currentTournament.metadata.boards.board2];
         const startingConfig = this.currentTournament.metadata.startingConfig;
+        const cutTheCake = this.currentTournament.metadata.cutTheCake;
         const playerNames = this.currentTournament.metadata.selectedAIs
             .map(id => AI_PLAYERS[id].name)
             .join('\n');
@@ -464,6 +465,7 @@ class ResultsViewer {
         document.getElementById('board1-name').textContent = board1Layout.name;
         document.getElementById('board2-name').textContent = board2Layout.name;
         document.getElementById('config-preview').textContent = startingConfig || 'No starting stones';
+        document.getElementById('cut-the-cake-preview').textContent = cutTheCake ? 'Yes' : 'No';
         document.getElementById('players-preview').textContent = playerNames;
     }
 
@@ -762,6 +764,9 @@ class ResultsViewer {
                             </span>
                             <span class="score">
                                 (⚫ ${game.black} - ⚪ ${game.white})
+                            </span>
+                            <span class="swap-info">
+                                ${game.colorsSwapped ? '🔄 Swapped' : '⬇️'}
                             </span>
                         </div>`;
 
