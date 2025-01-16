@@ -415,6 +415,9 @@
             container.className = 'board';
             container.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
 
+            // Pre-compute score lookup for better performance
+            const scoreMap = new Map(scores.map(s => [s.symbol, s]));
+
             for (let row = 0; row < size; row++) {
                 for (let col = 0; col < size; col++) {
                     const symbol = board.grid[row][col];
@@ -422,19 +425,26 @@
                     const cell = document.createElement('div');
                     cell.className = 'board-cell';
 
-                    const score = scores.find(s => s.symbol === symbol)?.score || 0;
-                    cell.style.backgroundColor = getScoreColor(score, minScore, maxScore);
+                    const scoreInfo = scoreMap.get(symbol);
+                    const combinedScore = scoreInfo?.score || 0;
+                    const individualScore = scoreInfo?.individualScore || 0;
+                    cell.style.backgroundColor = getScoreColor(combinedScore, minScore, maxScore);
 
-                    const ratio = (score - minScore) / (maxScore - minScore);
+                    const ratio = (combinedScore - minScore) / (maxScore - minScore);
                     cell.style.color = ratio > 0.5 ? '#fff' : '#000';
 
                     cell.innerHTML = `
-                        <div style="font-size: 1.2rem; font-weight: bold; margin-bottom: 2px;">${symbol}</div>
-                        <div style="font-size: 0.75rem; font-weight: 500;">${score.toFixed(1)}</div>
+                        <div style="font-size: 1.2rem; font-weight: bold;">${symbol}</div>
+                        <div style="font-size: 0.75rem; font-weight: 500; line-height: 1.1;">${combinedScore.toFixed(1)}</div>
+                        <div style="font-size: 0.65rem; font-weight: 400; opacity: 0.8; line-height: 1;">${individualScore.toFixed(1)}</div>
                     `;
                     cell.style.width = `${40}px`;
-                    cell.style.padding = '4px';
+                    cell.style.height = `${40}px`;
+                    cell.style.padding = '2px';
                     cell.style.textAlign = 'center';
+                    cell.style.display = 'flex';
+                    cell.style.flexDirection = 'column';
+                    cell.style.justifyContent = 'center';
                     container.appendChild(cell);
                 }
             }
@@ -447,25 +457,32 @@
             container.className = 'board';
             container.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
 
+            // Pre-compute frequency lookup for better performance
+            const frequencyMap = new Map(Object.entries(moveFrequencies));
+
             for (let row = 0; row < size; row++) {
                 for (let col = 0; col < size; col++) {
                     const symbol = board.grid[row][col];
                     if (symbol === '.') { container.appendChild(document.createElement('div')).className = 'board-cell placeholder-cell'; continue; }
                     const cell = document.createElement('div');
                     cell.className = 'board-cell';
-                    const frequency = moveFrequencies[symbol]?.percentage || 0;
+                    const frequency = frequencyMap.get(symbol)?.percentage || 0;
                     cell.style.backgroundColor = getFrequencyColor(frequency);
 
                     const normalizedRatio = Math.min(frequency / 20, 1);
                     cell.style.color = normalizedRatio > 0.5 ? '#fff' : '#000';
 
                     cell.innerHTML = `
-                       <div style="font-size: 1.2rem; font-weight: bold; margin-bottom: 2px;">${symbol}</div>
-                       <div style="font-size: 0.75rem; font-weight: 500;">${frequency.toFixed(1)}%</div>
+                        <div style="font-size: 1.2rem; font-weight: bold;">${symbol}</div>
+                        <div style="font-size: 0.75rem; font-weight: 500; line-height: 1.1;">${frequency.toFixed(1)}%</div>
                     `;
                     cell.style.width = `${40}px`;
-                    cell.style.padding = '4px';
+                    cell.style.height = `${40}px`;
+                    cell.style.padding = '2px';
                     cell.style.textAlign = 'center';
+                    cell.style.display = 'flex';
+                    cell.style.flexDirection = 'column';
+                    cell.style.justifyContent = 'center';
                     container.appendChild(cell);
                 }
             }
@@ -916,7 +933,8 @@
                         symbol,
                         board1Pos: `${row},${col}`,
                         board2Pos: `${board2Pos.row},${board2Pos.col}`,
-                        score: score1 + score2
+                        score: score1 + score2,
+                        individualScore: score1
                     });
                 }
             }
