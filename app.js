@@ -228,38 +228,106 @@ function getSelectedBoardLayout(boardSelect) {
     return BOARD_LAYOUTS[selectedValue].grid;
 }
 
-const uniqueColors = {};
+const uniqueColors = new Map();
+let currentDistances = null;
 
-function generateColorForLetter(letter) {
-    const currentSize = parseInt(document.getElementById('board-size').value);
-    let totalSymbols;
-
-    // Determine how many symbols we need for this board size
-    switch (currentSize) {
-        case 4: totalSymbols = 16; break;  // A-P
-        case 5: totalSymbols = 25; break;  // A-Y
-        case 6: totalSymbols = 36; break;  // A-Z + 0-9
-        case 7: totalSymbols = 49; break;  // A-Z + 0-9 + special chars
-        default: totalSymbols = 25;
+function calculateManhattanDistances(board, size) {
+    // If we already calculated distances for this board set, reuse them
+    if (currentDistances) {
+        return currentDistances;
     }
 
-    // Get position of letter in sequence for current board size
-    const sequence = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&*+-=/?!~";
-    const index = sequence.indexOf(letter);
+    // Step 1: Group symbols by their manhattan distance
+    const distanceGroups = new Map();  // distance -> symbols[]
+    let maxDistance = 0;
 
-    // Always use full 360 degrees but space based on needed symbols
-    const hue = (index / totalSymbols) * 360;
-    const saturation = 70;
-    const lightness = 50;
+    for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+            if (board[r][c] !== '.') {
+                const distance = r + c;
+                maxDistance = Math.max(maxDistance, distance);
+                if (!distanceGroups.has(distance)) {
+                    distanceGroups.set(distance, []);
+                }
+                distanceGroups.get(distance).push(board[r][c]);
+            }
+        }
+    }
 
-    return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+    // Step 2: Create normalized distances, keeping same-distance symbols together
+    const distances = new Map();
+    const uniqueDistances = Array.from(distanceGroups.keys()).sort((a, b) => a - b);
+    const totalGroups = uniqueDistances.length;
+
+    uniqueDistances.forEach((distance, groupIndex) => {
+        const ratio = groupIndex / (totalGroups - 1);
+        const symbols = distanceGroups.get(distance);
+        symbols.forEach(symbol => {
+            distances.set(symbol, ratio);
+        });
+    });
+
+    currentDistances = { distances, maxDistance: 1 };
+    return currentDistances;
 }
 
-function getBackgroundColor(letter) {
-    const color = generateColorForLetter(letter);
+function generateColorForLetter(letter, boardNum, row, col) {
+    if (letter === '.') return null;
+
+    // If we already computed this letter's color, reuse it
+    if (uniqueColors.has(letter)) {
+        return uniqueColors.get(letter);
+    }
+
+    // Only compute colors for board 1
+    if (boardNum === 1) {
+        const currentSize = parseInt(document.getElementById('board-size').value);
+        const board = getSelectedBoardLayout(document.getElementById('board1-select'));
+
+        const { distances } = calculateManhattanDistances(board, currentSize);
+        const ratio = distances.get(letter);
+
+        // Start with blue (240°) and end with red (0°)
+        const startHue = 240;
+        const endHue = 0;
+        const hue = startHue + (endHue - startHue) * ratio;
+
+        // Increase saturation for more vibrant colors
+        const saturation = 85;
+        const lightness = 60;
+
+        const color = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+        uniqueColors.set(letter, color);
+        return color;
+    }
+
+    // For board 2, if we haven't seen this letter in board 1, 
+    // we need to calculate its color now
+    const currentSize = parseInt(document.getElementById('board-size').value);
+    const board1 = getSelectedBoardLayout(document.getElementById('board1-select'));
+    const { distances } = calculateManhattanDistances(board1, currentSize);
+    const ratio = distances.get(letter);
+
+    // Start with blue (240°) and end with red (0°)
+    const startHue = 240;
+    const endHue = 0;
+    const hue = startHue + (endHue - startHue) * ratio;
+
+    // Increase saturation for more vibrant colors
+    const saturation = 85;
+    const lightness = 60;
+
+    const color = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+    uniqueColors.set(letter, color);
+    return color;
+}
+
+function getBackgroundColor(letter, boardNum, row, col) {
+    const color = generateColorForLetter(letter, boardNum, row, col);
+    if (!color) return { background: 'transparent', icon: 'transparent' };
     return {
-        background: color.replace('50%', '95%'),
-        icon: color.replace('50%', '35%')
+        background: color.replace('60%', '95%'),
+        icon: color.replace('60%', '35%')
     };
 }
 
@@ -275,7 +343,7 @@ function createCell(symbol, boardNum, row, col) {
     cell.style.gridColumn = (col + 1).toString();
     cell.style.gridRow = (row + 1).toString();
 
-    const colors = getBackgroundColor(symbol);
+    const colors = getBackgroundColor(symbol, boardNum, row, col);
     cell.style.backgroundColor = colors.background;
 
     // Add icon
@@ -412,6 +480,8 @@ function stopGame() {
 }
 
 function initializeBoards() {
+    currentDistances = null;
+    uniqueColors.clear();
     const board1Element = document.getElementById('board1');
     const board2Element = document.getElementById('board2');
     const board1Select = document.getElementById('board1-select');
