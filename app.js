@@ -279,43 +279,65 @@ function generateColorForLetter(letter, boardNum, row, col) {
         return uniqueColors.get(letter);
     }
 
+    // For board 2, force computation using board 1's position
+    if (boardNum === 2) {
+        return generateColorForLetter(letter, 1, row, col);
+    }
+
     // Only compute colors for board 1
-    if (boardNum === 1) {
-        const currentSize = parseInt(document.getElementById('board-size').value);
-        const board = getSelectedBoardLayout(document.getElementById('board1-select'));
+    const currentSize = parseInt(document.getElementById('board-size').value);
+    const board = getSelectedBoardLayout(document.getElementById('board1-select'));
 
-        const { distances } = calculateManhattanDistances(board, currentSize);
-        const ratio = distances.get(letter);
+    // First, collect all actual tiles and their positions
+    const tiles = [];
+    for (let r = 0; r < board.length; r++) {
+        for (let c = 0; c < board[r].length; c++) {
+            if (board[r][c] !== '.') {
+                tiles.push({
+                    symbol: board[r][c],
+                    row: r,
+                    col: c
+                });
+            }
+        }
+    }
 
-        // Start with blue (240°) and end with red (0°)
-        const startHue = 240;
-        const endHue = 0;
-        const hue = startHue + (endHue - startHue) * ratio;
-
-        // Increase saturation for more vibrant colors
-        const saturation = 85;
-        const lightness = 60;
-
-        const color = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+    // Find the position of our current letter
+    const currentTile = tiles.find(t => t.symbol === letter);
+    if (!currentTile) {
+        const color = 'hsl(240, 85%, 60%)';
         uniqueColors.set(letter, color);
         return color;
     }
 
-    // For board 2, if we haven't seen this letter in board 1, 
-    // we need to calculate its color now
-    const currentSize = parseInt(document.getElementById('board-size').value);
-    const board1 = getSelectedBoardLayout(document.getElementById('board1-select'));
-    const { distances } = calculateManhattanDistances(board1, currentSize);
-    const ratio = distances.get(letter);
+    // Calculate angle from center for each tile
+    const centerRow = (currentSize - 1) / 2;
+    const centerCol = (currentSize - 1) / 2;
 
-    // Start with blue (240°) and end with red (0°)
-    const startHue = 240;
-    const endHue = 0;
-    const hue = startHue + (endHue - startHue) * ratio;
+    tiles.forEach(tile => {
+        const deltaY = tile.row - centerRow;
+        const deltaX = tile.col - centerCol;
+        // Start from top (negative Y-axis) and go clockwise
+        tile.angle = ((-Math.atan2(deltaY, deltaX) + Math.PI / 2) * (180 / Math.PI) + 360) % 360;
 
-    // Increase saturation for more vibrant colors
-    const saturation = 85;
-    const lightness = 60;
+        // Calculate distance from center (normalized)
+        tile.dist = Math.sqrt(Math.pow(deltaY, 2) + Math.pow(deltaX, 2)) /
+            Math.sqrt(Math.pow(centerRow, 2) + Math.pow(centerCol, 2));
+    });
+
+    // Sort tiles by angle to distribute colors evenly around the spectrum
+    tiles.sort((a, b) => a.angle - b.angle);
+
+    // Find our tile's index in the sorted array
+    const index = tiles.findIndex(t => t.symbol === letter);
+
+    // Map index to hue (0-360), distribute evenly across the spectrum
+    const hue = ((index / tiles.length) * 360 + 0) % 360;  // Add offset here (e.g., 120 degrees)
+
+    // Use the distance from center to adjust saturation and lightness
+    const currentDist = tiles[index].dist;
+    const saturation = 85 + (currentDist * 15); // 85-100%
+    const lightness = 60 - (currentDist * 10);  // 50-60%
 
     const color = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
     uniqueColors.set(letter, color);
@@ -325,9 +347,13 @@ function generateColorForLetter(letter, boardNum, row, col) {
 function getBackgroundColor(letter, boardNum, row, col) {
     const color = generateColorForLetter(letter, boardNum, row, col);
     if (!color) return { background: 'transparent', icon: 'transparent' };
+
+    // Extract the hue from the HSL color
+    const hue = color.match(/hsl\((\d+)/)[1];
+
     return {
-        background: color.replace('60%', '95%'),
-        icon: color.replace('60%', '35%')
+        background: `hsl(${hue}, 100%, 93%)`,  // Light, slightly desaturated background
+        icon: `hsl(${hue}, 100%, 35%)`        // Dark, fully saturated icon
     };
 }
 

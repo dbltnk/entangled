@@ -537,5 +537,5 @@ button:disabled {
 
 /* Board background for dot positions */
 .board {
-    background-color: var(--color-background);
+    background-color: var(--color-white);
 }
