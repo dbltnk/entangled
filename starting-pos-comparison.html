@@ -327,15 +327,63 @@
             }
         }
 
-        function getTileScore(row, col, boardSize) {
-            let score = 0;
-            for (let r = 0; r < boardSize; r++) {
-                for (let c = 0; c < boardSize; c++) {
-                    if (r === row && c === col) continue;
-                    const distance = Math.abs(row - r) + Math.abs(col - c);
-                    score += 1 / distance;
+        function findShortestPath(startRow, startCol, grid) {
+            const size = grid.length;
+            const distances = Array(size).fill().map(() => Array(size).fill(Infinity));
+            distances[startRow][startCol] = 0;
+
+            const queue = [[startRow, startCol]];
+            const directions = [[0, 1], [1, 0], [0, -1], [-1, 0]]; // right, down, left, up
+
+            while (queue.length > 0) {
+                const [row, col] = queue.shift();
+                const currentDist = distances[row][col];
+
+                for (const [dr, dc] of directions) {
+                    const newRow = row + dr;
+                    const newCol = col + dc;
+
+                    if (newRow >= 0 && newRow < size &&
+                        newCol >= 0 && newCol < size &&
+                        grid[newRow][newCol] !== '.' &&
+                        distances[newRow][newCol] === Infinity) {
+
+                        distances[newRow][newCol] = currentDist + 1;
+                        queue.push([newRow, newCol]);
+                    }
                 }
             }
+
+            return distances;
+        }
+
+        function getTileScore(row, col, grid) {
+            const size = grid.length;
+            if (grid[row][col] === '.') return 0;
+
+            const distances = findShortestPath(row, col, grid);
+            let score = 0;
+            let validPaths = 0;
+
+            for (let r = 0; r < size; r++) {
+                for (let c = 0; c < size; c++) {
+                    if (r === row && c === col) continue;
+                    if (grid[r][c] === '.') continue;
+
+                    const distance = distances[r][c];
+                    if (distance !== Infinity) {
+                        score += 1 / distance;
+                        validPaths++;
+                    }
+                }
+            }
+
+            // Penalize positions that can't reach all other tiles
+            const totalTiles = grid.flat().filter(cell => cell !== '.').length - 1;
+            if (validPaths < totalTiles) {
+                score *= validPaths / totalTiles;
+            }
+
             return score;
         }
 
@@ -917,17 +965,16 @@
         }
 
         function analyzeBoards(board1, board2) {
-            const size = board1.grid.length;
             const scores = [];
 
-            for (let row = 0; row < size; row++) {
-                for (let col = 0; col < size; col++) {
+            for (let row = 0; row < board1.grid.length; row++) {
+                for (let col = 0; col < board1.grid.length; col++) {
                     const symbol = board1.grid[row][col];
                     if (symbol === '.') continue;
                     const board2Pos = findSymbolPosition(symbol, board2.grid);
                     if (!board2Pos) continue;
-                    const score1 = getTileScore(row, col, size);
-                    const score2 = getTileScore(board2Pos.row, board2Pos.col, size);
+                    const score1 = getTileScore(row, col, board1.grid);
+                    const score2 = getTileScore(board2Pos.row, board2Pos.col, board2.grid);
 
                     scores.push({
                         symbol,
