@@ -123,6 +123,7 @@
                     <!-- select options will be populated dynamically based on size -->
                     <select id="board1-select">
                     </select>
+                    <button id="custom-board1-btn" class="custom-board-btn" title="Add custom board">+</button>
                 </div>
 
                 <div class="player-select">
@@ -130,6 +131,7 @@
                     <!-- select options will be populated dynamically based on size -->
                     <select id="board2-select">
                     </select>
+                    <button id="custom-board2-btn" class="custom-board-btn" title="Add custom board">+</button>
                 </div>
 
                 <div class="setup-input">
@@ -157,6 +159,31 @@
     </div>
 
     <script type="module" src="app.js"></script>
+
+    <!-- Custom Board Modal -->
+    <div id="custom-board-modal" class="modal">
+        <div class="modal-content">
+            <h3>Add Custom Board</h3>
+            <p>Paste your board configuration below:</p>
+            <textarea id="custom-board-input" rows="10" placeholder="board1706420738only: {
+    name: 'evolved second',
+    grid: [
+        ['.', '.', 'D', 'U', 'E', '.', '.'],
+        ['.', 'S', 'B', 'K', 'A', 'R', '.'],
+        ['I', 'Z', 'W', '3', 'Y', '2', 'J'],
+        ['M', 'P', 'C', '.', '1', 'X', 'G'],
+        ['4', 'F', '0', '7', 'O', '5', 'H'],
+        ['.', 'N', '9', '8', 'Q', '6', '.'],
+        ['.', '.', 'T', 'L', 'V', '.', '.'],
+    ]
+},"></textarea>
+            <div class="modal-buttons">
+                <button id="custom-board-cancel">Cancel</button>
+                <button id="custom-board-save">Save</button>
+            </div>
+        </div>
+    </div>
+
 </body>
 
 </html>

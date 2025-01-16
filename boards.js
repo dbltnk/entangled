@@ -466,4 +466,5 @@ const BOARD_LAYOUTS = {
     }
 };
 
+export { getSymbolsForSize };
 export default BOARD_LAYOUTS;

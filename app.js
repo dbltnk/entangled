@@ -1,4 +1,4 @@
-import BOARD_LAYOUTS from './boards.js';
+import BOARD_LAYOUTS, { getSymbolsForSize } from './boards.js';
 import { EntangledGame, PLAYERS } from './gameplay.js';
 import { createPlayer, AI_PLAYERS } from './players.js';
 import { GameController } from './game-controller.js';
@@ -20,6 +20,7 @@ let currentRandomBoards = {
     board1: null,
     board2: null
 };
+let customBoards = new Map();
 
 // Icon mappings for all possible symbols
 const ICON_MAPPINGS = {
@@ -185,12 +186,25 @@ function populateBoardsBySize(size) {
     const board2Select = document.getElementById('board2-select');
     const startingConfigInput = document.getElementById('starting-config');
 
+    // Store current selections if any
+    const currentBoard1 = board1Select.value;
+    const currentBoard2 = board2Select.value;
+
     board1Select.innerHTML = '';
     board2Select.innerHTML = '';
 
     Object.entries(BOARD_LAYOUTS).forEach(([id, layout]) => {
         if (layout.grid.length === size) {
             const option = new Option(layout.name, id);
+            board1Select.add(option.cloneNode(true));
+            board2Select.add(option.cloneNode(true));
+        }
+    });
+
+    // Add custom boards for this size
+    customBoards.forEach((board, id) => {
+        if (board.grid.length === size) {
+            const option = new Option(`Custom: ${board.name}`, id);
             board1Select.add(option.cloneNode(true));
             board2Select.add(option.cloneNode(true));
         }
@@ -210,8 +224,20 @@ function populateBoardsBySize(size) {
         7: ''
     };
 
-    board1Select.value = defaultBoards[size][0];
-    board2Select.value = defaultBoards[size][1];
+    // Try to restore previous selections if they're valid for this size
+    const options = Array.from(board1Select.options).map(opt => opt.value);
+    if (options.includes(currentBoard1)) {
+        board1Select.value = currentBoard1;
+    } else {
+        board1Select.value = defaultBoards[size][0];
+    }
+
+    if (options.includes(currentBoard2)) {
+        board2Select.value = currentBoard2;
+    } else {
+        board2Select.value = defaultBoards[size][1];
+    }
+
     startingConfigInput.value = defaultConfigs[size];
 }
 
@@ -225,6 +251,14 @@ function getSelectedBoardLayout(boardSelect) {
         }
         return currentRandomBoards[boardSelect.id];
     }
+
+    // Check custom boards first
+    if (customBoards.has(selectedValue)) {
+        console.log('Using custom board:', selectedValue);
+        console.log('Board data:', customBoards.get(selectedValue));
+        return customBoards.get(selectedValue).grid;
+    }
+
     return BOARD_LAYOUTS[selectedValue].grid;
 }
 
@@ -513,6 +547,7 @@ function initializeBoards() {
     const board1Select = document.getElementById('board1-select');
     const board2Select = document.getElementById('board2-select');
 
+    // Get layouts once and reuse
     const board1Layout = getSelectedBoardLayout(board1Select);
     const board2Layout = getSelectedBoardLayout(board2Select);
     const currentSize = board1Layout.length;
@@ -528,6 +563,7 @@ function initializeBoards() {
     board2Element.style.gridTemplateRows = `repeat(${currentSize}, 1fr)`;
     board2Element.style.gridTemplateColumns = `repeat(${currentSize}, 1fr)`;
 
+    // Create all cells in one pass
     for (let i = 0; i < currentSize; i++) {
         for (let j = 0; j < currentSize; j++) {
             const cell1 = createCell(board1Layout[i][j], 1, i, j);
@@ -805,8 +841,102 @@ function initializeGame() {
     makeAIMove();
 }
 
+// Custom board handling
+function parseCustomBoard(input) {
+    try {
+        // Clean up input
+        input = input.trim();
+
+        // Extract the board object part
+        const match = input.match(/^[^{]*({[\s\S]*})[^}]*$/);
+        if (!match) {
+            throw new Error('Invalid board format');
+        }
+
+        const boardStr = match[1];
+        console.log('Parsing board string:', boardStr);
+
+        // Parse the board object
+        const boardObj = Function(`return ${boardStr}`)();
+        console.log('Parsed board object:', boardObj);
+
+        if (!boardObj.name || !boardObj.grid || !Array.isArray(boardObj.grid)) {
+            throw new Error('Invalid board structure');
+        }
+
+        // Validate grid
+        const size = boardObj.grid.length;
+        const validSymbols = getSymbolsForSize(size);
+
+        for (const row of boardObj.grid) {
+            if (!Array.isArray(row) || row.length !== size) {
+                throw new Error('Invalid grid dimensions');
+            }
+
+            for (const cell of row) {
+                if (cell !== '.' && !validSymbols.includes(cell)) {
+                    throw new Error(`Invalid symbol: ${cell}`);
+                }
+            }
+        }
+
+        return boardObj;
+    } catch (error) {
+        console.error('Board parsing error:', error);
+        throw new Error(`Failed to parse board: ${error.message}`);
+    }
+}
+
+function setupCustomBoardHandling() {
+    const modal = document.getElementById('custom-board-modal');
+    const textarea = document.getElementById('custom-board-input');
+    const saveBtn = document.getElementById('custom-board-save');
+    const cancelBtn = document.getElementById('custom-board-cancel');
+    let currentTarget = null;
+
+    function showModal(targetId) {
+        currentTarget = targetId;
+        modal.classList.add('show');
+        textarea.value = '';
+    }
+
+    function hideModal() {
+        modal.classList.remove('show');
+        textarea.value = '';
+        currentTarget = null;
+    }
+
+    document.getElementById('custom-board1-btn').addEventListener('click', () => showModal('board1-select'));
+    document.getElementById('custom-board2-btn').addEventListener('click', () => showModal('board2-select'));
+    cancelBtn.addEventListener('click', hideModal);
+
+    saveBtn.addEventListener('click', () => {
+        try {
+            const boardObj = parseCustomBoard(textarea.value);
+            const id = `custom_${Date.now()}`;
+            customBoards.set(id, boardObj);
+
+            // Refresh board options
+            const currentSize = parseInt(document.getElementById('board-size').value);
+            populateBoardsBySize(currentSize);
+
+            // Select the new custom board
+            const targetSelect = document.getElementById(currentTarget);
+            targetSelect.value = id;
+
+            hideModal();
+
+            // Initialize boards once
+            initializeBoards();
+        } catch (error) {
+            alert(error.message);
+        }
+    });
+}
+
 function init() {
     loadSettings();
+    setupCustomBoardHandling();
 
     document.getElementById('toggle-settings').addEventListener('click', () => {
         const content = document.querySelector('.settings-content');
@@ -858,11 +988,16 @@ function init() {
     settingsElements.forEach(elementId => {
         const element = document.getElementById(elementId);
         element.addEventListener('change', () => {
-            stopGame();
-            if (elementId.startsWith('board') && element.value.startsWith('random')) {
-                currentRandomBoards[elementId] = null;
+            if (elementId.startsWith('board')) {
+                if (element.value.startsWith('random')) {
+                    currentRandomBoards[elementId] = null;
+                }
+                // Only reinitialize boards if a board selection changes
+                initializeBoards();
+            } else {
+                // For other settings, stop the game
+                stopGame();
             }
-            initializeBoards();
         });
     });
 
