@@ -1,5 +1,5 @@
 import { AI_PLAYERS } from './players.js';
-import BOARD_LAYOUTS from './boards.js';
+import BOARD_LAYOUTS, { getSymbolsForSize } from './boards.js';
 import ELOSystem from './elo.js';
 import TournamentStorage from './tournament-storage.js';
 
@@ -22,6 +22,8 @@ class TournamentManager {
         this.currentConfigIndex = 0;
         this.tournamentCards = new Map();
         this.isCompletingTournament = false;
+        this.customBoards = new Map();
+        this.currentCustomTarget = null;
         this.initializeUI();
         this.setupEventListeners();
         this.initializeFirstConfig();
@@ -75,6 +77,100 @@ class TournamentManager {
         });
 
         document.getElementById('start-tournament').addEventListener('click', () => this.startTournament());
+
+        // Add custom board modal handling
+        const modal = document.getElementById('custom-board-modal');
+        const textarea = document.getElementById('custom-board-input');
+        const saveBtn = document.getElementById('custom-board-save');
+        const cancelBtn = document.getElementById('custom-board-cancel');
+
+        document.querySelectorAll('.custom-board-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const configElement = e.target.closest('.tournament-config');
+                const isBoard1 = e.target.previousElementSibling.classList.contains('tournament-board1-select');
+                this.currentCustomTarget = {
+                    configElement,
+                    isBoard1
+                };
+                modal.classList.add('show');
+                textarea.value = '';
+            });
+        });
+
+        cancelBtn.addEventListener('click', () => {
+            modal.classList.remove('show');
+            this.currentCustomTarget = null;
+        });
+
+        saveBtn.addEventListener('click', () => {
+            try {
+                const boardObj = this.parseCustomBoard(textarea.value);
+                const id = `custom_${Date.now()}`;
+                this.customBoards.set(id, boardObj);
+
+                if (this.currentCustomTarget) {
+                    const { configElement, isBoard1 } = this.currentCustomTarget;
+                    const select = configElement.querySelector(
+                        isBoard1 ? '.tournament-board1-select' : '.tournament-board2-select'
+                    );
+
+                    // Add option to select
+                    const option = new Option(`Custom: ${boardObj.name}`, id);
+                    select.add(option);
+                    select.value = id;
+                }
+
+                modal.classList.remove('show');
+                this.currentCustomTarget = null;
+            } catch (error) {
+                alert(error.message);
+            }
+        });
+    }
+
+    parseCustomBoard(input) {
+        try {
+            // Clean up input
+            input = input.trim();
+
+            // Extract the board object part
+            const match = input.match(/^[^{]*({[\s\S]*})[^}]*$/);
+            if (!match) {
+                throw new Error('Invalid board format');
+            }
+
+            const boardStr = match[1];
+            console.log('Parsing board string:', boardStr);
+
+            // Parse the board object
+            const boardObj = Function(`return ${boardStr}`)();
+            console.log('Parsed board object:', boardObj);
+
+            if (!boardObj.name || !boardObj.grid || !Array.isArray(boardObj.grid)) {
+                throw new Error('Invalid board structure');
+            }
+
+            // Validate grid
+            const size = boardObj.grid.length;
+            const validSymbols = getSymbolsForSize(size);
+
+            for (const row of boardObj.grid) {
+                if (!Array.isArray(row) || row.length !== size) {
+                    throw new Error('Invalid grid dimensions');
+                }
+
+                for (const cell of row) {
+                    if (cell !== '.' && !validSymbols.includes(cell)) {
+                        throw new Error(`Invalid symbol: ${cell}`);
+                    }
+                }
+            }
+
+            return boardObj;
+        } catch (error) {
+            console.error('Board parsing error:', error);
+            throw new Error(`Failed to parse board: ${error.message}`);
+        }
     }
 
     attachConfigListeners(configElement) {
@@ -92,9 +188,19 @@ class TournamentManager {
         board1Select.innerHTML = '';
         board2Select.innerHTML = '';
 
+        // Add standard boards
         Object.entries(BOARD_LAYOUTS).forEach(([id, layout]) => {
             if (layout.grid.length === size) {
                 const option = new Option(layout.name, id);
+                board1Select.add(option.cloneNode(true));
+                board2Select.add(option.cloneNode(true));
+            }
+        });
+
+        // Add custom boards for this size
+        this.customBoards.forEach((board, id) => {
+            if (board.grid.length === size) {
+                const option = new Option(`Custom: ${board.name}`, id);
                 board1Select.add(option.cloneNode(true));
                 board2Select.add(option.cloneNode(true));
             }
@@ -145,6 +251,17 @@ class TournamentManager {
         card.dataset.index = index;
         card.dataset.state = 'pending';
 
+        // Get board layouts, handling both standard and custom boards
+        const getLayout = (boardId) => {
+            if (boardId.startsWith('custom_')) {
+                return this.customBoards.get(boardId);
+            }
+            return BOARD_LAYOUTS[boardId];
+        };
+
+        const board1Layout = getLayout(config.board1);
+        const board2Layout = getLayout(config.board2);
+
         card.innerHTML = `
             <div class="tournament-card-header">
                 <h3>Tournament ${index + 1}</h3>
@@ -153,11 +270,11 @@ class TournamentManager {
             <div class="tournament-card-config">
                 <div class="config-row">
                     <label>Board 1:</label>
-                    <span>${BOARD_LAYOUTS[config.board1].name}</span>
+                    <span>${board1Layout.name}${config.board1.startsWith('custom_') ? ' (Custom)' : ''}</span>
                 </div>
                 <div class="config-row">
                     <label>Board 2:</label>
-                    <span>${BOARD_LAYOUTS[config.board2].name}</span>
+                    <span>${board2Layout.name}${config.board2.startsWith('custom_') ? ' (Custom)' : ''}</span>
                 </div>
                 <div class="config-row">
                     <label>Starting:</label>
@@ -301,12 +418,24 @@ class TournamentManager {
         this.matchCounts = new Map();
         this.elo = new ELOSystem();
 
+        // Get board layouts, handling both standard and custom boards
+        const getLayout = (boardId) => {
+            if (boardId.startsWith('custom_')) {
+                return this.customBoards.get(boardId);
+            }
+            return BOARD_LAYOUTS[boardId];
+        };
+
         this.boardConfigs = [{
-            board1Layout: BOARD_LAYOUTS[config.board1].grid,
-            board2Layout: BOARD_LAYOUTS[config.board2].grid,
+            board1Layout: getLayout(config.board1).grid,
+            board2Layout: getLayout(config.board2).grid,
             startingConfig: config.startingConfig,
             board1Id: config.board1,
-            board2Id: config.board2
+            board2Id: config.board2,
+            board1Name: getLayout(config.board1).name,
+            board2Name: getLayout(config.board2).name,
+            isCustomBoard1: config.board1.startsWith('custom_'),
+            isCustomBoard2: config.board2.startsWith('custom_')
         }];
 
         try {

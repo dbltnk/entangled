@@ -67,66 +67,79 @@ class ResultsViewer {
     populateFilterDropdowns(additionalBoards = new Set()) {
         const board1Filter = document.getElementById('filter-board1');
         const board2Filter = document.getElementById('filter-board2');
+        const seenBoards = new Set();
 
+        // Clear existing options except "No filter"
         while (board1Filter.options.length > 1) board1Filter.remove(1);
         while (board2Filter.options.length > 1) board2Filter.remove(1);
 
-        const allBoards = new Map();
-
+        // Add standard boards
         Object.entries(BOARD_LAYOUTS).forEach(([id, layout]) => {
-            allBoards.set(id, `${layout.name} (${id})`);
-        });
-
-        additionalBoards.forEach(id => {
-            if (!allBoards.has(id)) {
-                allBoards.set(id, `Board ${id} (${id})`);
+            if (!seenBoards.has(id)) {
+                const option = new Option(layout.name, id);
+                board1Filter.add(option.cloneNode(true));
+                board2Filter.add(option.cloneNode(true));
+                seenBoards.add(id);
             }
         });
 
-        Array.from(allBoards.entries())
-            .sort((a, b) => a[0].localeCompare(b[0]))
-            .forEach(([id, name]) => {
-                const option = new Option(name, id);
+        // Add custom boards from loaded tournaments
+        this.tournamentFiles.forEach(tournament => {
+            const board1 = tournament.metadata.boards.board1;
+            const board2 = tournament.metadata.boards.board2;
+
+            if (board1.isCustom && !seenBoards.has(board1.id)) {
+                const option = new Option(`${board1.name} (Custom)`, board1.id);
                 board1Filter.add(option.cloneNode(true));
                 board2Filter.add(option.cloneNode(true));
-            });
+                seenBoards.add(board1.id);
+            }
+
+            if (board2.isCustom && !seenBoards.has(board2.id)) {
+                const option = new Option(`${board2.name} (Custom)`, board2.id);
+                board1Filter.add(option.cloneNode(true));
+                board2Filter.add(option.cloneNode(true));
+                seenBoards.add(board2.id);
+            }
+        });
+
+        // Add any additional boards
+        additionalBoards.forEach(id => {
+            if (!seenBoards.has(id)) {
+                const option = new Option(id, id);
+                board1Filter.add(option.cloneNode(true));
+                board2Filter.add(option.cloneNode(true));
+                seenBoards.add(id);
+            }
+        });
     }
 
     applyFilters() {
-        if (this.isLoading) return;
-
         const board1Filter = document.getElementById('filter-board1').value;
         const board2Filter = document.getElementById('filter-board2').value;
-        const startingFilter = document.getElementById('filter-starting').value.trim().toUpperCase();
+        const startingFilter = document.getElementById('filter-starting').value.trim();
 
-        const items = document.querySelectorAll('.tournament-item');
-        items.forEach(item => {
-            let show = true;
+        const tournamentList = document.getElementById('tournament-list');
+        tournamentList.innerHTML = '';
 
-            if (board1Filter) {
-                const board1Text = item.querySelector('.board-value')?.textContent || '';
-                if (!board1Text.includes(`(${board1Filter})`)) {
-                    show = false;
-                }
+        this.tournamentFiles.forEach(tournament => {
+            const board1 = tournament.metadata.boards.board1;
+            const board2 = tournament.metadata.boards.board2;
+            const starting = tournament.metadata.startingConfig;
+
+            if (board1Filter && board1.id !== board1Filter) return;
+            if (board2Filter && board2.id !== board2Filter) return;
+            if (startingFilter && starting !== startingFilter) return;
+
+            const item = document.createElement('div');
+            item.className = 'tournament-item';
+            if (this.currentTournament && this.currentTournament.metadata.runId === tournament.metadata.runId) {
+                item.classList.add('selected');
             }
 
-            if (board2Filter) {
-                const board2Elements = item.querySelectorAll('.board-value');
-                const board2Text = board2Elements[1]?.textContent || '';
-                if (!board2Text.includes(`(${board2Filter})`)) {
-                    show = false;
-                }
-            }
-
-            if (startingFilter) {
-                const startElements = item.querySelectorAll('.board-value');
-                const startText = startElements[2]?.textContent || '';
-                if (!startText.includes(startingFilter)) {
-                    show = false;
-                }
-            }
-
-            item.style.display = show ? '' : 'none';
+            item.innerHTML = this.createTournamentItemHTML(tournament);
+            item.addEventListener('click', () => this.selectTournament(tournament));
+            tournamentList.appendChild(item);
         });
     }
 
@@ -322,6 +335,14 @@ class ResultsViewer {
         const date = new Date(data.metadata.timestamp);
         const formattedDate = date.toLocaleTimeString('en-GB', dateOptions);
 
+        // Get board names, handling both custom and standard boards
+        const board1 = data.metadata.boards.board1;
+        const board2 = data.metadata.boards.board2;
+        const board1Name = board1.name || (BOARD_LAYOUTS[board1]?.name || 'Unknown');
+        const board2Name = board2.name || (BOARD_LAYOUTS[board2]?.name || 'Unknown');
+        const board1Custom = board1.isCustom ? ' (Custom)' : '';
+        const board2Custom = board2.isCustom ? ' (Custom)' : '';
+
         return `
             <div class="tournament-header">
                 <div class="tournament-id">Tournament: ${data.metadata.runId}</div>
@@ -330,11 +351,11 @@ class ResultsViewer {
             <div class="board-info">
                 <div class="board-row">
                     <span class="board-label">Left:</span>
-                    <span class="board-value">${BOARD_LAYOUTS[data.metadata.boards.board1]?.name || 'Unknown'} (${data.metadata.boards.board1})</span>
+                    <span class="board-value">${board1Name}${board1Custom}</span>
                 </div>
                 <div class="board-row">
                     <span class="board-label">Right:</span>
-                    <span class="board-value">${BOARD_LAYOUTS[data.metadata.boards.board2]?.name || 'Unknown'} (${data.metadata.boards.board2})</span>
+                    <span class="board-value">${board2Name}${board2Custom}</span>
                 </div>
                 <div class="board-row">
                     <span class="board-label">Start:</span>
@@ -454,15 +475,17 @@ class ResultsViewer {
     }
 
     displayTournamentConfig() {
-        const board1Layout = BOARD_LAYOUTS[this.currentTournament.metadata.boards.board1];
-        const board2Layout = BOARD_LAYOUTS[this.currentTournament.metadata.boards.board2];
+        const board1Info = this.currentTournament.metadata.boards.board1;
+        const board2Info = this.currentTournament.metadata.boards.board2;
         const startingConfig = this.currentTournament.metadata.startingConfig;
         const playerNames = this.currentTournament.metadata.selectedAIs
             .map(id => AI_PLAYERS[id].name)
             .join('\n');
 
-        document.getElementById('board1-name').textContent = board1Layout.name;
-        document.getElementById('board2-name').textContent = board2Layout.name;
+        document.getElementById('board1-name').textContent =
+            `${board1Info.name}${board1Info.isCustom ? ' (Custom)' : ''}`;
+        document.getElementById('board2-name').textContent =
+            `${board2Info.name}${board2Info.isCustom ? ' (Custom)' : ''}`;
         document.getElementById('config-preview').textContent = startingConfig || 'No starting stones';
         document.getElementById('players-preview').textContent = playerNames;
     }
@@ -802,23 +825,27 @@ class ResultsViewer {
                     Results: <strong>${result.games.filter(g => g.winner === 'black').length}-${result.games.filter(g => g.winner === 'white').length}-${result.games.filter(g => g.winner === 'draw').length}</strong>
                 </div>
                 <div class="game-moves">${gamesHtml}</div>
+                <div class="tournament-id" style="display:none;">${this.currentTournament.metadata.runId}</div>
             `;
 
             matchupDiv.querySelectorAll('.replay-button').forEach((button, index) => {
                 button.addEventListener('click', () => {
+                    const board1 = this.currentTournament.metadata.boards.board1;
+                    const board2 = this.currentTournament.metadata.boards.board2;
+
                     const gameData = {
                         moves: result.games[index].moves,
                         initialConfig: this.currentTournament.metadata.startingConfig,
-                        board1Layout: BOARD_LAYOUTS[this.currentTournament.metadata.boards.board1].grid,
-                        board2Layout: BOARD_LAYOUTS[this.currentTournament.metadata.boards.board2].grid,
+                        board1Layout: board1.grid || BOARD_LAYOUTS[board1].grid,
+                        board2Layout: board2.grid || BOARD_LAYOUTS[board2].grid,
                         matchInfo: {
                             black: AI_PLAYERS[result.black].name,
                             white: AI_PLAYERS[result.white].name,
-                            board1Layout: BOARD_LAYOUTS[this.currentTournament.metadata.boards.board1]?.grid || [],
-                            board2Layout: BOARD_LAYOUTS[this.currentTournament.metadata.boards.board2]?.grid || [],
+                            board1Name: board1.name || BOARD_LAYOUTS[board1].name,
+                            board2Name: board2.name || BOARD_LAYOUTS[board2].name,
                             startingConfig: this.currentTournament.metadata.startingConfig
                         },
-                        boardSize: BOARD_LAYOUTS[this.currentTournament.metadata.boards.board1]?.grid.length || 0
+                        boardSize: (board1.grid || BOARD_LAYOUTS[board1].grid).length
                     };
 
                     const replayWindow = window.open('replay.html', '_blank');

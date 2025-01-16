@@ -35,17 +35,27 @@ class TournamentStorage {
             const timestamp = new Date().toISOString();
             const config = boardConfigs[0];
 
-            // Use board IDs from the config instead of layouts
-            const board1Id = config.board1Id;  // Add this to boardConfigs when creating it
-            const board2Id = config.board2Id;
-            const startingConfig = config.startingConfig || 'empty';
+            // Store complete board information for custom boards
+            const board1Info = {
+                id: config.board1Id,
+                name: config.board1Name,
+                grid: config.board1Layout,
+                isCustom: config.isCustomBoard1
+            };
+
+            const board2Info = {
+                id: config.board2Id,
+                name: config.board2Name,
+                grid: config.board2Layout,
+                isCustom: config.isCustomBoard2
+            };
 
             const configString = JSON.stringify({
                 timestamp,
                 ais: selectedAIs,
-                board1: board1Id,
-                board2: board2Id,
-                startingConfig
+                board1: board1Info,
+                board2: board2Info,
+                startingConfig: config.startingConfig || 'empty'
             });
             const runId = await this.hashString(configString);
 
@@ -54,10 +64,10 @@ class TournamentStorage {
                 timestamp,
                 selectedAIs,
                 boards: {
-                    board1: board1Id,
-                    board2: board2Id
+                    board1: board1Info,
+                    board2: board2Info
                 },
-                startingConfig,
+                startingConfig: config.startingConfig || 'empty',
                 totalGames: this.calculateTotalGames(selectedAIs)
             };
 
@@ -74,11 +84,13 @@ class TournamentStorage {
     }
 
     generateFilename() {
-        const metadata = this.stats.metadata;
-        const board1Short = metadata.boards.board1.slice(0, 10);
-        const board2Short = metadata.boards.board2.slice(0, 10);
-        const configShort = metadata.startingConfig.replace(/[^a-zA-Z0-9]/g, '').slice(0, 10);
-        return `${metadata.runId}-${board1Short}-${board2Short}-${configShort}.json`;
+        const { metadata } = this.stats;
+        const timestamp = metadata.timestamp.slice(0, 19).replace(/[T:]/g, '-');
+        const board1Id = metadata.boards.board1.id || metadata.boards.board1;
+        const board2Id = metadata.boards.board2.id || metadata.boards.board2;
+        const startingConfig = metadata.startingConfig || 'empty';
+        const filename = `tournament_${timestamp}_${board1Id}_${board2Id}_${startingConfig}.json`;
+        return filename;
     }
 
     async saveData() {
