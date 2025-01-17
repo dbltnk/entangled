@@ -9,10 +9,159 @@
         #results {
             font-family: monospace;
         }
+
+        .info-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #2196F3;
+            color: white;
+            font-size: 12px;
+            cursor: help;
+            margin-left: 0.5rem;
+            vertical-align: middle;
+            position: relative;
+        }
+
+        .info-tooltip {
+            display: none;
+            position: absolute;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 0.75rem;
+            width: max-content;
+            max-width: 500px;
+            min-width: 300px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-top: 8px;
+            color: #333;
+            text-align: left;
+            font-weight: normal;
+            font-size: 0.85rem;
+            line-height: 1.4;
+        }
+
+        .info-tooltip p {
+            margin: 0 0 0.5rem 0;
+            color: #333;
+        }
+
+        .info-tooltip ul {
+            margin: 0;
+            padding-left: 1.2rem;
+            list-style-type: disc;
+        }
+
+        .info-tooltip li {
+            margin-bottom: 0.25rem;
+            color: #333;
+        }
+
+        .info-tooltip ul ul {
+            margin: 0.25rem 0;
+        }
+
+        .info-tooltip h3 {
+            margin: 0.5rem 0 0.25rem 0;
+            font-size: 0.9rem;
+        }
+
+        .info-tooltip br+br {
+            display: none;
+        }
+
+        .info-tooltip ol {
+            margin: 0;
+            padding-left: 1.2rem;
+        }
+
+        .info-tooltip ol ul {
+            margin: 0.25rem 0;
+        }
+
+        .info-tooltip li:last-child {
+            margin-bottom: 0;
+        }
+
+        .info-icon:hover .info-tooltip,
+        .info-tooltip:hover {
+            display: block;
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            color: #333;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            position: relative;
+        }
     </style>
 </head>
 
 <body style="font-family: sans-serif; margin: 1rem;">
+    <h1>
+        Board Generator
+        <span class="info-icon">i
+            <div class="info-tooltip">
+                <p>This tool uses a genetic algorithm to evolve optimal board layouts. Here's how it works:</p>
+
+                <h3>Scoring System</h3>
+                <ul>
+                    <li>
+                        <strong>Position Scoring:</strong> Each tile scores based on path length to all reachable tiles:
+                        <ul>
+                            <li>Direct neighbors: 1/1 = 1.0 points</li>
+                            <li>Two steps away: 1/2 = 0.5 points</li>
+                            <li>Three steps away: 1/3 = 0.33 points</li>
+                            <li>And so on for all reachable tiles</li>
+                        </ul>
+                        Example: A tile reaching 2 direct (2.0), 3 two-step (1.5), 4 three-step (1.33), etc. sums all
+                        scores.
+                    </li>
+                    <li>
+                        <strong>Viable Moves:</strong> Count of positions within 0.0000000001 of best score.
+                        Example: Best=5.0, others=[4.9999999999, 4.9999999998, 4.0] → 3 viable moves.
+                    </li>
+                    <li>
+                        <strong>Standard Deviation:</strong> How much scores vary. Lower is better.
+                        Example: [5.0, 4.9, 4.8] (good) vs [5.0, 3.0, 1.0] (bad).
+                    </li>
+                    <li>
+                        <strong>Combined Score = Viable Moves - Standard Deviation</strong>
+                        Example: 5 viable moves - 1.2 deviation = 3.8 score
+                    </li>
+                </ul>
+
+                <h3>Evolution Process</h3>
+                <ol>
+                    <li>Start with 100 random boards</li>
+                    <li>Each generation:
+                        <ul>
+                            <li>Score boards using above system</li>
+                            <li>Best boards become parents</li>
+                            <li>Mix parents + small mutations</li>
+                            <li>Add 5% random boards</li>
+                        </ul>
+                    </li>
+                    <li>Repeat until stopped</li>
+                </ol>
+
+                <p style="margin-top: 0.25rem; margin-bottom: 0;"><strong>Note:</strong> In matching mode, only the
+                    second board evolves.</p>
+            </div>
+        </span>
+    </h1>
+
     <label for="sizeSelect">Board Size:</label>
     <select id="sizeSelect"></select>
     <label style="margin-left:1rem;" for="boardSelect">Match Board:</label>
@@ -39,9 +188,9 @@
         let globalBestB1 = null;
         let globalBestB2 = null;
         let globalBestStats = null;
+        let globalFastStats = null;
         let totalBoardsEvaluated = 0;
         let workers = [];
-        // Track how many boards each worker has evaluated
         let workerCounts = new Array(WORKER_COUNT).fill(0);
 
         // Gather unique board sizes
@@ -54,6 +203,7 @@
             const option = document.createElement('option');
             option.value = size;
             option.textContent = `${size}x${size}`;
+            if (size === 7) option.selected = true;
             sizeSelect.appendChild(option);
         });
 
@@ -66,6 +216,7 @@
                     const option = document.createElement('option');
                     option.value = id;
                     option.textContent = layout.name;
+                    if (id === 'donut1') option.selected = true;
                     boardSelect.appendChild(option);
                 }
             });
@@ -88,37 +239,60 @@
             return (4294967296 * (2097151 & h2) + (h1 >>> 0)) >>> 0;
         }
 
-        // Updated worker script to recompute BFS for every pair we evaluate
         const unifiedWorkerScript = `
-let tileScores = [];
+// Cache for path calculations with strict size limits
+const MAX_CACHE_SIZE = 1000; // Reduced from 10000
+const pathCache = new Map();
 
-function precomputeTileScores(size) {
-    tileScores = new Array(size * size).fill(0);
-    for (let pos = 0; pos < size * size; pos++) {
-        let s = 0;
-        const row = Math.floor(pos / size);
-        const col = pos % size;
-        for (let r = 0; r < size; r++) {
-            for (let c = 0; c < size; c++) {
-                if (r === row && c === col) continue;
-                const dist = Math.abs(row - r) + Math.abs(col - c);
-                s += 1 / dist;
-            }
+// More efficient cache key generation
+function getBoardKey(grid, startRow, startCol) {
+    // Only include the relevant quadrant of the board to reduce key size
+    const size = Math.sqrt(grid.length);
+    const radius = 3; // Only cache paths within reasonable distance
+    const minRow = Math.max(0, startRow - radius);
+    const maxRow = Math.min(size - 1, startRow + radius);
+    const minCol = Math.max(0, startCol - radius);
+    const maxCol = Math.min(size - 1, startCol + radius);
+    
+    let key = startRow + "," + startCol + ":";
+    for (let r = minRow; r <= maxRow; r++) {
+        for (let c = minCol; c <= maxCol; c++) {
+            const idx = r * size + c;
+            key += grid[idx];
         }
-        tileScores[pos] = s;
+    }
+    return key;
+}
+
+// Cache cleanup that runs more frequently
+function cleanupCache() {
+    if (pathCache.size > MAX_CACHE_SIZE) {
+        const entries = Array.from(pathCache.entries());
+        // Keep only 25% of entries to be more aggressive with cleanup
+        const toKeep = entries.slice(0, MAX_CACHE_SIZE / 4);
+        pathCache.clear();
+        toKeep.forEach(([key, value]) => pathCache.set(key, value));
     }
 }
 
-let distanceCache = null;
-
-// BFS for a single board
-function calculateDistancesFromPos(pos, size, board) {
-    const distances = new Uint8Array(size * size).fill(255);
-    const queue = [[pos, 0]];
-    distances[pos] = 0;
+// BFS pathfinding with optimized memory usage
+function findShortestPath(startRow, startCol, grid) {
+    const size = Math.sqrt(grid.length);
+    const cacheKey = getBoardKey(grid, startRow, startCol);
+    
+    if (pathCache.has(cacheKey)) {
+        return pathCache.get(cacheKey);
+    }
+    
+    // Use Uint8Array for distances to reduce memory usage
+    const distances = new Uint8Array(size * size).fill(255); // 255 represents Infinity
+    const queue = [[startRow * size + startCol, 0]];
+    distances[startRow * size + startCol] = 0;
     
     while (queue.length > 0) {
         const [curPos, dist] = queue.shift();
+        if (dist >= 255) break; // Prevent overflow
+        
         const row = Math.floor(curPos / size);
         const col = curPos % size;
         
@@ -132,99 +306,49 @@ function calculateDistancesFromPos(pos, size, board) {
         for (const [newRow, newCol] of moves) {
             if (newRow < 0 || newRow >= size || newCol < 0 || newCol >= size) continue;
             const newPos = newRow * size + newCol;
-            // Only walk through actual symbol positions, treat dots as walls
-            if (board[newPos] === '.' || distances[newPos] !== 255) continue;
+            if (grid[newPos] === '.' || distances[newPos] !== 255) continue;
             distances[newPos] = dist + 1;
             queue.push([newPos, dist + 1]);
         }
     }
+    
+    // Only cache if we're within our size limit
+    if (pathCache.size < MAX_CACHE_SIZE) {
+        pathCache.set(cacheKey, distances);
+    }
+    
     return distances;
 }
 
-// Recompute BFS for the actual boards being evaluated:
-function precomputeDistances(size, board1, board2) {
-    const totalSize = size * size;
-    distanceCache = {
-        board1: new Uint8Array(totalSize * totalSize),
-        board2: new Uint8Array(totalSize * totalSize)
-    };
-    
-    for (let pos = 0; pos < totalSize; pos++) {
-        if (board1[pos] !== '.') {
-            const distances = calculateDistancesFromPos(pos, size, board1);
-            for (let toPos = 0; toPos < totalSize; toPos++) {
-                distanceCache.board1[pos * totalSize + toPos] = distances[toPos];
-            }
-        }
-        if (board2[pos] !== '.') {
-            const distances = calculateDistancesFromPos(pos, size, board2);
-            for (let toPos = 0; toPos < totalSize; toPos++) {
-                distanceCache.board2[pos * totalSize + toPos] = distances[toPos];
-            }
-        }
-    }
-}
+// Modified tile score calculation to handle Uint8Array distances
+function getTilePathScore(pos, grid) {
+    const size = Math.sqrt(grid.length);
+    if (grid[pos] === '.') return 0;
 
-function getTileScore(pos, board1, board2, isBoard1) {
-    const baseScore = tileScores[pos];
-    const currentBoard = isBoard1 ? board1 : board2;
-    const otherBoard = isBoard1 ? board2 : board1;
-    const symbol = currentBoard[pos];
-    let proximityBonus = 0;
+    const row = Math.floor(pos / size);
+    const col = pos % size;
+    const distances = findShortestPath(row, col, grid);
+    let score = 0;
+    let validPaths = 0;
 
-    // If this is a dot or not a valid position, return 0
-    if (symbol === '.' || symbol === undefined) return 0;
-
-    const row = Math.floor(pos / boardSize);
-    const col = pos % boardSize;  // Changed from size to boardSize
-
-    // Find matching symbol position in other board
-    const matchPos = otherBoard.indexOf(symbol);
-    if (matchPos === -1) return 0;
-
-    // For each valid neighbor position of our symbol
-    for (let dr = -1; dr <= 1; dr++) {
-        for (let dc = -1; dc <= 1; dc++) {
-            if (dr === 0 && dc === 0) continue;
-
-            const checkRow = row + dr;
-            const checkCol = col + dc;
-            if (checkRow < 0 || checkRow >= boardSize || checkCol < 0 || checkCol >= boardSize) continue;
-
-            const checkPos = checkRow * boardSize + checkCol;
-            const neighborSymbol = currentBoard[checkPos];
-            if (neighborSymbol === '.') continue;
-
-            // Find where this neighbor symbol is on the other board
-            const neighborMatchPos = otherBoard.indexOf(neighborSymbol);
-            if (neighborMatchPos === -1) continue;
-
-            const matchRow = Math.floor(matchPos / boardSize);
-            const matchCol = matchPos % boardSize;
-            const neighborMatchRow = Math.floor(neighborMatchPos / boardSize);
-            const neighborMatchCol = neighborMatchPos % boardSize;
-
-            // Check if these symbols are also neighbors on the other board
-            const isDirect = Math.abs(matchRow - neighborMatchRow) + Math.abs(matchCol - neighborMatchCol) === 1;
-            const isDiagonal = Math.abs(matchRow - neighborMatchRow) === 1 && Math.abs(matchCol - neighborMatchCol) === 1;
-
-            // Current position is direct neighbor
-            const isCurrentDirect = Math.abs(dr) + Math.abs(dc) === 1;
-            const isCurrentDiagonal = Math.abs(dr) === 1 && Math.abs(dc) === 1;
-
-            if (isCurrentDirect && isDirect) {
-                proximityBonus += 8;
-            } else if ((isCurrentDirect && isDiagonal) || (isCurrentDiagonal && isDirect)) {
-                proximityBonus += 4;
-            } else if (isCurrentDiagonal && isDiagonal) {
-                proximityBonus += 2;
-            }
+    for (let i = 0; i < grid.length; i++) {
+        if (i === pos || grid[i] === '.') continue;
+        const distance = distances[i];
+        if (distance !== 255) { // 255 is our Infinity
+            score += 1 / distance;
+            validPaths++;
         }
     }
 
-    return baseScore + proximityBonus;
+    const totalTiles = grid.filter(cell => cell !== '.').length - 1;
+    if (validPaths < totalTiles) {
+        score *= validPaths / totalTiles;
+    }
+
+    return score;
 }
 
+// Board generation and validation
 const getSymbolsForSize = (size) => {
     if (size === 4) return 'ABCDEFGHIJKLMNOP';
     if (size === 5) return 'ABCDEFGHIJKLMNOPQRSTUVWXY';
@@ -242,6 +366,22 @@ let bestB1 = null;
 let bestB2 = null;
 let bestStats = null;
 let population = [];
+
+function isValidBoard(board) {
+    if (!board || board.length !== boardSize * boardSize) {
+        return false;
+    }
+    const valid = getSymbolsForSize(boardSize);
+    const seen = new Set();
+    for (const ch of board) {
+        if (ch === '.') continue;
+        if (!valid.includes(ch) || seen.has(ch)) {
+            return false;
+        }
+        seen.add(ch);
+    }
+    return true;
+}
 
 function randomFullBoard() {
     const boardLength = boardSize * boardSize;
@@ -281,70 +421,6 @@ function randomBoardMatchingPinned(pin) {
         result[symbolPositions[idx]] = symbols[idx];
     }
     return result;
-}
-
-function isValidBoard(board) {
-    if (!board || board.length !== boardSize * boardSize) {
-        return false;
-    }
-    const valid = getSymbolsForSize(boardSize);
-    const seen = new Set();
-    for (const ch of board) {
-        if (ch === '.') continue;
-        if (!valid.includes(ch) || seen.has(ch)) {
-            return false;
-        }
-        seen.add(ch);
-    }
-    return true;
-}
-
-function evaluateBoards(b1, b2) {
-    if (!isValidBoard(b1) || !isValidBoard(b2)) {
-        return {
-            score: -Infinity,
-            moves: 0,
-            stdev: 0,
-            ratio: 0
-        };
-    }
-
-    const scores = [];
-    // Sum tile scores for matching symbols, now including proximity bonuses
-    for (let i = 0; i < b1.length; i++) {
-        const symbol = b1[i];
-        if (symbol === '.') continue;
-        const j = b2.indexOf(symbol);
-        if (j < 0) continue;
-        scores.push(getTileScore(i, b1, b2, true) + getTileScore(j, b1, b2, false));
-    }
-
-    if (!scores.length) {
-        return {
-            score: -Infinity,
-            moves: 0,
-            stdev: 0,
-            ratio: 0
-        };
-    }
-
-    // Compute base metrics
-    const best = Math.max(...scores);
-    const worst = Math.min(...scores);
-    const sum = scores.reduce((a, b) => a + b, 0);
-    const mean = sum / scores.length;
-    const variance = scores.reduce((a, v) => a + (v - mean) ** 2, 0) / scores.length;
-    const stdev = Math.sqrt(variance);
-    const bestCount = scores.filter(x => Math.abs(x - best) < 1e-10).length;
-    const ratio = worst / best;
-
-    // Final combined score
-    return {
-        score: bestCount - stdev - ratio,
-        moves: bestCount,
-        stdev,
-        ratio
-    };
 }
 
 function mutate(board) {
@@ -409,23 +485,230 @@ function insertImmigrants(pop) {
         const idx = Math.floor(Math.random() * pop.length);
         if (pinnedBoard) {
             const newB2 = randomBoardMatchingPinned(pinnedBoard);
-            const stats = evaluateBoards(pinnedBoard, newB2);
+            const stats = evaluateBoardsFast(pinnedBoard, newB2);
             pop[idx] = { board1: pinnedBoard, board2: newB2, stats };
         } else {
             const b1 = randomFullBoard();
             const b2 = randomFullBoard();
-            const stats = evaluateBoards(b1, b2);
+            const stats = evaluateBoardsFast(b1, b2);
             pop[idx] = { board1: b1, board2: b2, stats };
         }
     }
     return pop;
 }
 
+// Fast Manhattan distance scoring
+function getManhattanScore(pos1, pos2, size) {
+    const row1 = Math.floor(pos1 / size);
+    const col1 = pos1 % size;
+    const row2 = Math.floor(pos2 / size);
+    const col2 = pos2 % size;
+    return 1 / (1 + Math.abs(row1 - row2) + Math.abs(col1 - col2));
+}
+
+function getTileManhattanScore(pos, grid) {
+    const size = Math.sqrt(grid.length);
+    if (grid[pos] === '.') return 0;
+
+    let score = 0;
+    for (let i = 0; i < grid.length; i++) {
+        if (i === pos || grid[i] === '.') continue;
+        score += getManhattanScore(pos, i, size);
+    }
+    return score;
+}
+
+// Fast evaluation for evolution
+function evaluateBoardsFast(b1, b2) {
+    if (!isValidBoard(b1) || !isValidBoard(b2)) {
+        return {
+            score: -Infinity,
+            moves: 0,
+            stdev: 0
+        };
+    }
+
+    const scores = [];
+    for (let i = 0; i < b1.length; i++) {
+        const symbol = b1[i];
+        if (symbol === '.') continue;
+        const j = b2.indexOf(symbol);
+        if (j < 0) continue;
+        const score1 = getTileManhattanScore(i, b1);
+        const score2 = getTileManhattanScore(j, b2);
+        scores.push({
+            symbol,
+            score: score1 + score2
+        });
+    }
+
+    if (!scores.length) {
+        return {
+            score: -Infinity,
+            moves: 0,
+            stdev: 0
+        };
+    }
+
+    scores.sort((a, b) => b.score - a.score);
+    const best = scores[0].score;
+    const mean = scores.reduce((sum, s) => sum + s.score, 0) / scores.length;
+    const variance = scores.reduce((sum, s) => sum + Math.pow(s.score - mean, 2), 0) / scores.length;
+    const stdev = Math.sqrt(variance);
+    const epsilon = 1e-10;
+    const viableMoves = scores.filter(s => Math.abs(s.score - best) < epsilon).length;
+
+    return {
+        score: viableMoves - stdev,
+        moves: viableMoves,
+        stdev: stdev
+    };
+}
+
+// Thorough evaluation with pathfinding for final validation
+function evaluateBoardsAccurate(b1, b2) {
+    if (!isValidBoard(b1) || !isValidBoard(b2)) {
+        return {
+            score: -Infinity,
+            moves: 0,
+            stdev: 0
+        };
+    }
+
+    const scores = [];
+    for (let i = 0; i < b1.length; i++) {
+        const symbol = b1[i];
+        if (symbol === '.') continue;
+        const j = b2.indexOf(symbol);
+        if (j < 0) continue;
+        const score1 = getTilePathScore(i, b1);
+        const score2 = getTilePathScore(j, b2);
+        scores.push({
+            symbol,
+            score: score1 + score2
+        });
+    }
+
+    if (!scores.length) {
+        return {
+            score: -Infinity,
+            moves: 0,
+            stdev: 0
+        };
+    }
+
+    scores.sort((a, b) => b.score - a.score);
+    const best = scores[0].score;
+    const mean = scores.reduce((sum, s) => sum + s.score, 0) / scores.length;
+    const variance = scores.reduce((sum, s) => sum + Math.pow(s.score - mean, 2), 0) / scores.length;
+    const stdev = Math.sqrt(variance);
+    const epsilon = 1e-10;
+    const viableMoves = scores.filter(s => Math.abs(s.score - best) < epsilon).length;
+
+    return {
+        score: viableMoves - stdev,
+        moves: viableMoves,
+        stdev: stdev
+    };
+}
+
+let generationsSinceValidation = 0;
+const VALIDATE_EVERY_N_GENERATIONS = 20; // Increased validation frequency
+
+function evolve() {
+    if (!evolving) return;
+    for (let g = 0; g < 25; g++) {
+        const newPop = [];
+        for (let i = 0; i < ${POPULATION_SIZE}; i++) {
+            let b1, b2, stats;
+            if (pinnedBoard) {
+                b1 = [...pinnedBoard];
+                const parent1 = pickParent(population);
+                const parent2 = pickParent(population);
+                const x2 = crossover(parent1.board2, parent2.board2);
+                b2 = mutate(x2);
+                stats = evaluateBoardsFast(b1, b2);
+            } else {
+                const p1 = pickParent(population);
+                const p2 = pickParent(population);
+                const x1 = crossover(p1.board1, p2.board1);
+                const x2 = crossover(p1.board2, p2.board2);
+                b1 = mutate(x1);
+                b2 = mutate(x2);
+                stats = evaluateBoardsFast(b1, b2);
+            }
+            newPop.push({ board1: b1, board2: b2, stats });
+            boardsEvaluated++;
+            
+            // Update best score only if better than current best
+            if (stats.score > bestScore * 0.9) { // Check more candidates
+                const accurateStats = evaluateBoardsAccurate(b1, b2);
+                if (accurateStats.score > bestScore) {
+                    bestScore = accurateStats.score;
+                    bestStats = accurateStats;
+                    bestB1 = b1;
+                    bestB2 = b2;
+                }
+            }
+            
+            // Cleanup cache more frequently
+            if (pathCache.size > MAX_CACHE_SIZE * 0.9) {
+                cleanupCache();
+            }
+        }
+        population = insertImmigrants(newPop);
+        
+        generationsSinceValidation++;
+        if (generationsSinceValidation >= VALIDATE_EVERY_N_GENERATIONS) {
+            generationsSinceValidation = 0;
+            cleanupCache(); // Force cleanup before validation
+            // Validate top 10% of population
+            const sortedPop = [...population].sort((a, b) => b.stats.score - a.stats.score);
+            const topCount = Math.max(1, Math.floor(population.length * 0.1));
+            for (let i = 0; i < topCount; i++) {
+                const individual = sortedPop[i];
+                const accurateStats = evaluateBoardsAccurate(individual.board1, individual.board2);
+                if (accurateStats.score > bestScore) {
+                    bestScore = accurateStats.score;
+                    bestStats = accurateStats;
+                    bestB1 = individual.board1;
+                    bestB2 = individual.board2;
+                }
+            }
+        }
+    }
+    
+    // Post status
+    if (bestScore > -Infinity) {
+        postMessage({
+            msg: 'progress',
+            boardsEvaluated,
+            bestScore,
+            bestB1,
+            bestB2,
+            bestStats: {
+                score: bestStats.score,
+                moves: bestStats.moves,
+                stdev: bestStats.stdev
+            },
+            fastStats: evaluateBoardsFast(bestB1, bestB2)
+        });
+    } else {
+        postMessage({
+            msg: 'progress',
+            boardsEvaluated
+        });
+    }
+
+    if (evolving) {
+        setTimeout(evolve, 0);
+    }
+}
+
 onmessage = (e) => {
     const data = e.data;
     if (data.msg === "start") {
         boardSize = data.boardSize;
-        precomputeTileScores(boardSize);
         pinnedBoard = null;
         if (data.matchBoard && data.matchBoard.length) {
             pinnedBoard = data.matchBoard;
@@ -448,7 +731,7 @@ onmessage = (e) => {
                 b1 = randomFullBoard();
                 b2 = randomFullBoard();
             }
-            const stats = evaluateBoards(b1, b2);
+            const stats = evaluateBoardsFast(b1, b2);
             population.push({ board1: b1, board2: b2, stats });
             if (stats.score > bestScore) {
                 bestScore = stats.score;
@@ -463,66 +746,6 @@ onmessage = (e) => {
         evolving = false;
     }
 };
-
-function evolve() {
-    if (!evolving) return;
-    for (let g = 0; g < 50; g++) {
-        const newPop = [];
-        for (let i = 0; i < ${POPULATION_SIZE}; i++) {
-            let b1, b2, stats;
-            if (pinnedBoard) {
-                b1 = [...pinnedBoard];
-                const parent1 = pickParent(population);
-                const parent2 = pickParent(population);
-                const x2 = crossover(parent1.board2, parent2.board2);
-                b2 = mutate(x2);
-                stats = evaluateBoards(b1, b2);
-            } else {
-                const p1 = pickParent(population);
-                const p2 = pickParent(population);
-                const x1 = crossover(p1.board1, p2.board1);
-                const x2 = crossover(p1.board2, p2.board2);
-                b1 = mutate(x1);
-                b2 = mutate(x2);
-                stats = evaluateBoards(b1, b2);
-            }
-            newPop.push({ board1: b1, board2: b2, stats });
-            boardsEvaluated++;
-            if (stats.score > bestScore) {
-                bestScore = stats.score;
-                bestStats = stats;
-                bestB1 = b1;
-                bestB2 = b2;
-            }
-        }
-        population = insertImmigrants(newPop);
-    }
-    // Post status
-    if (bestScore > -Infinity) {
-        postMessage({
-            msg: 'progress',
-            boardsEvaluated,
-            bestScore,
-            bestB1,
-            bestB2,
-            bestStats: {
-                score: bestStats.score,
-                moves: bestStats.moves,
-                stdev: bestStats.stdev,
-                ratio: bestStats.ratio
-            }
-        });
-    } else {
-        postMessage({
-            msg: 'progress',
-            boardsEvaluated
-        });
-    }
-
-    if (evolving) {
-        setTimeout(evolve, 0);
-    }
-}
 `;
 
         const blob = new Blob([unifiedWorkerScript], { type: 'text/javascript' });
@@ -562,13 +785,20 @@ function evolve() {
             let status = `Time Elapsed: ${elapsedSec.toFixed(2)}s\n`;
             status += `Boards Evaluated (approx): ${Math.floor(totalBoardsEvaluated)}\n`;
             status += `Avg Boards/sec: ${boardsPerSec.toFixed(2)}\n`;
-            status += `Global Best Score: ${globalBestScore.toFixed(4)}\n\n`;
+            status += `Global Best Score (Pathfinding): ${globalBestScore.toFixed(4)}\n\n`;
 
             if (globalBestStats) {
+                status += `Pathfinding Evaluation:\n`;
                 status += `Combined Score: ${globalBestStats.score.toFixed(2)}\n`;
                 status += `Viable Moves: ${globalBestStats.moves}\n`;
-                status += `Standard Deviation: ${globalBestStats.stdev.toFixed(2)}\n`;
-                status += `Best/Worst Ratio: ${globalBestStats.ratio.toFixed(2)}\n\n`;
+                status += `Standard Deviation: ${globalBestStats.stdev.toFixed(2)}\n\n`;
+
+                if (globalFastStats) {
+                    status += `Manhattan Distance Evaluation:\n`;
+                    status += `Combined Score: ${globalFastStats.score.toFixed(2)}\n`;
+                    status += `Viable Moves: ${globalFastStats.moves}\n`;
+                    status += `Standard Deviation: ${globalFastStats.stdev.toFixed(2)}\n\n`;
+                }
 
                 if (globalBestB1 && globalBestB2) {
                     const size = Math.sqrt(globalBestB1.length);
@@ -688,6 +918,7 @@ function evolve() {
                             globalBestB1 = data.bestB1;
                             globalBestB2 = data.bestB2;
                             globalBestStats = data.bestStats;
+                            globalFastStats = data.fastStats;
                         }
                         updateStatus(); // updates all lines
                     }
