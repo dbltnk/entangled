@@ -532,9 +532,16 @@
         }
 
         function calculateMoveFrequencies(moves, board1Id, board2Id) {
-            const filteredMoves = moves.filter(m =>
-                m.boards.board1 === board1Id && m.boards.board2 === board2Id
-            );
+            const filteredMoves = moves.filter(m => {
+                // Handle both old and new formats
+                const board1Match = typeof m.boards.board1 === 'string' ?
+                    m.boards.board1 === board1Id :
+                    m.boards.board1.id === board1Id;
+                const board2Match = typeof m.boards.board2 === 'string' ?
+                    m.boards.board2 === board2Id :
+                    m.boards.board2.id === board2Id;
+                return board1Match && board2Match;
+            });
 
             const frequencies = {};
             filteredMoves.forEach(m => {
