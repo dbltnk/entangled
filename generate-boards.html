@@ -484,7 +484,8 @@ function insertImmigrants(pop) {
     for (let i = 0; i < count; i++) {
         const idx = Math.floor(Math.random() * pop.length);
         if (pinnedBoard) {
-            const newB2 = randomBoardMatchingPinned(pinnedBoard);
+            // 20% chance to use the pinned board as an immigrant
+            const newB2 = Math.random() < 0.2 ? [...pinnedBoard] : randomBoardMatchingPinned(pinnedBoard);
             const stats = evaluateBoardsFast(pinnedBoard, newB2);
             pop[idx] = { board1: pinnedBoard, board2: newB2, stats };
         } else {
@@ -726,7 +727,8 @@ onmessage = (e) => {
             let b1, b2;
             if (pinnedBoard) {
                 b1 = [...pinnedBoard];
-                b2 = randomBoardMatchingPinned(pinnedBoard);
+                // Add 20% copies of the pinned board as board 2
+                b2 = (i < ${POPULATION_SIZE} * 0.2) ? [...pinnedBoard] : randomBoardMatchingPinned(pinnedBoard);
             } else {
                 b1 = randomFullBoard();
                 b2 = randomFullBoard();
