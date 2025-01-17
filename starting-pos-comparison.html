@@ -154,6 +154,25 @@
             align-items: center;
         }
 
+        .loading-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-family: monospace;
+            color: #666;
+            font-size: 0.9rem;
+            white-space: nowrap;
+        }
+
+        .loading-status {
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .loading-indicator.hidden {
+            display: none;
+        }
+
         select,
         input {
             padding: 4px 8px;
@@ -172,6 +191,86 @@
             border-radius: 4px;
             font-size: 0.9rem;
             line-height: 1.5;
+            position: relative;
+        }
+
+        .info-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #2196F3;
+            color: white;
+            font-size: 12px;
+            cursor: help;
+            margin-left: 0.5rem;
+            vertical-align: middle;
+            position: relative;
+        }
+
+        .info-tooltip {
+            display: none;
+            position: absolute;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 1rem;
+            width: max-content;
+            max-width: 500px;
+            min-width: 300px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-top: 8px;
+            color: #333;
+            text-align: left;
+            font-weight: normal;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .info-tooltip p {
+            margin: 0 0 1rem 0;
+            color: #333;
+        }
+
+        .info-tooltip ul {
+            margin: 0;
+            padding-left: 1.2rem;
+            list-style-type: disc;
+        }
+
+        .info-tooltip li {
+            margin-bottom: 0.5rem;
+            color: #333;
+        }
+
+        .info-tooltip li strong {
+            color: #000;
+            font-weight: 600;
+        }
+
+        .info-tooltip li:last-child {
+            margin-bottom: 0;
+        }
+
+        .info-icon:hover .info-tooltip,
+        .info-tooltip:hover {
+            display: block;
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            color: #333;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            position: relative;
         }
 
         .score-plot,
@@ -228,40 +327,42 @@
 </head>
 
 <body>
-    <h1>Board Starting Position Analysis</h1>
-
-    <div class="info-box">
-        <p>
-            Left boards show position scoring: The scoring system evaluates each tile based on its proximity to all
-            other tiles.
-            Blue intensity indicates better positions, calculated as the sum of inverse Manhattan distances to other
-            tiles.
-        </p>
-        <p>
-            Right boards show opening moves: Red intensity shows how frequently each position is chosen as the first
-            move in tournament play.
-            Percentages indicate the proportion of games where that position was the opening move.
-        </p>
-        <p><strong>Metrics Explanation:</strong></p>
-        <ul>
-            <li>
-                <strong>Combined Score:</strong> Viable moves - Standard deviation - Best/worst ratio.
-                Higher values indicate better overall board balance and playability.
-            </li>
-            <li>
-                <strong>Viable Moves:</strong> Count of tiles with scores close to optimal.
-                Higher values indicate more good opening options.
-            </li>
-            <li>
-                <strong>Standard Deviation:</strong> Variation in tile scores.
-                Lower values indicate more balanced positions.
-            </li>
-            <li>
-                <strong>Best/Worst Ratio:</strong> Ratio between highest and lowest scores.
-                Lower values indicate more balanced boards.
-            </li>
-        </ul>
-    </div>
+    <h1>
+        Board Starting Position Analysis
+        <span class="info-icon">i
+            <div class="info-tooltip">
+                <p>
+                    Left boards show position scoring: The scoring system evaluates each tile based on its proximity to
+                    all
+                    other tiles.
+                    Blue intensity indicates better positions, calculated as the sum of inverse Manhattan distances to
+                    other
+                    tiles.
+                </p>
+                <p>
+                    Right boards show opening moves: Red intensity shows how frequently each position is chosen as the
+                    first
+                    move in tournament play.
+                    Percentages indicate the proportion of games where that position was the opening move.
+                </p>
+                <p><strong>Metrics Explanation:</strong></p>
+                <ul>
+                    <li>
+                        <strong>Combined Score:</strong> Viable moves - Standard deviation.
+                        Higher values indicate better overall board balance and playability.
+                    </li>
+                    <li>
+                        <strong>Viable Moves:</strong> Count of tiles with scores close to optimal.
+                        Higher values indicate more good opening options.
+                    </li>
+                    <li>
+                        <strong>Standard Deviation:</strong> Variation in tile scores.
+                        Lower values indicate more balanced positions.
+                    </li>
+                </ul>
+            </div>
+        </span>
+    </h1>
 
     <div class="controls">
         <div class="control-group">
@@ -281,6 +382,9 @@
             <label>Board 2:</label>
             <select id="board2Filter"></select>
         </div>
+        <div id="loadingIndicator" class="loading-indicator hidden">
+            <div class="loading-status">Initializing...</div>
+        </div>
     </div>
     <div class="analysis-grid" id="analysisGrid"></div>
 
@@ -288,7 +392,9 @@
         import BOARD_LAYOUTS from './boards.js';
 
         async function fetchTournamentData() {
+            const loadingStatus = document.querySelector('.loading-status');
             try {
+                loadingStatus.textContent = 'Fetching tournament index...';
                 const baseUrl = 'https://dbltnk.github.io/entangled/tournaments/';
                 const indexResponse = await fetch(baseUrl + 'tournaments.json');
                 if (!indexResponse.ok) {
@@ -297,8 +403,10 @@
                 const tournamentFiles = await indexResponse.json();
 
                 let allFirstMoves = [];
+                let processed = 0;
                 for (const filename of tournamentFiles) {
                     try {
+                        loadingStatus.textContent = `Loading tournament ${processed + 1}/${tournamentFiles.length}: ${filename}`;
                         const response = await fetch(baseUrl + filename);
                         if (!response.ok) continue;
                         const data = await response.json();
@@ -316,13 +424,16 @@
                                 }
                             });
                         });
+                        processed++;
                     } catch (error) {
                         console.warn(`Error processing tournament file ${filename}:`, error);
                     }
                 }
+                loadingStatus.textContent = `Processed ${processed} tournament files with ${allFirstMoves.length} moves`;
                 return allFirstMoves;
             } catch (error) {
                 console.error('Error fetching tournament data:', error);
+                loadingStatus.textContent = `Error: ${error.message}`;
                 return [];
             }
         }
@@ -407,14 +518,12 @@
 
             const epsilon = 1e-10;
             const viableMoves = scores.filter(s => Math.abs(s.score - best) < epsilon).length;
-            const bestWorstRatio = worst / best;
 
-            const combinedScore = viableMoves - stdDev - bestWorstRatio;
+            const combinedScore = viableMoves - stdDev;
 
             return {
                 stdDev,
                 viableMoves,
-                bestWorstRatio,
                 combinedScore,
                 mean,
                 best,
@@ -730,7 +839,15 @@
         let globalFirstMoves = [];
 
         async function initializeData() {
-            globalFirstMoves = await fetchTournamentData();
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            loadingIndicator.classList.remove('hidden');
+
+            try {
+                globalFirstMoves = await fetchTournamentData();
+            } finally {
+                await new Promise(resolve => setTimeout(resolve, 1000)); // Keep the final status visible briefly
+                loadingIndicator.classList.add('hidden');
+            }
             updateDisplay();
         }
 
@@ -856,10 +973,6 @@
                         <div class="metric-row">
                             <span>Standard Deviation:</span>
                             <span class="metric-value better-lower">${metrics.stdDev.toFixed(2)}</span>
-                        </div>
-                        <div class="metric-row">
-                            <span>Best/Worst Ratio:</span>
-                            <span class="metric-value better-lower">${metrics.bestWorstRatio.toFixed(2)}</span>
                         </div>
                     `;
                     scoreSection.appendChild(metricsDiv);
