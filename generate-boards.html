@@ -1021,7 +1021,7 @@ function evaluateBoardsFast(b1, b2) {
     const viableMoves = scores.filter(s => Math.abs(s.score - best) < epsilon).length;
 
     return {
-        score: viableMoves - stdev,
+        score: viableMoves - (stdev * 0.1),
         moves: viableMoves,
         stdev: stdev
     };
@@ -1068,7 +1068,7 @@ function evaluateBoardsAccurate(b1, b2) {
     const viableMoves = scores.filter(s => Math.abs(s.score - best) < epsilon).length;
 
     return {
-        score: viableMoves - stdev,
+        score: viableMoves - (stdev * 0.1),
         moves: viableMoves,
         stdev: stdev
     };
