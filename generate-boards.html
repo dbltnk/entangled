@@ -5,9 +5,282 @@
     <meta charset="utf-8">
     <title>Board Generator</title>
     <style>
-        #status,
+        body {
+            font-family: sans-serif;
+            margin: 2rem;
+            background: #f5f5f5;
+            color: #333;
+            min-width: 1200px;
+        }
+
+        .controls {
+            margin-bottom: 1rem;
+            display: flex;
+            gap: 1rem;
+            background: white;
+            padding: 1rem;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .control-group {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        select,
+        button {
+            padding: 4px 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+
+        button {
+            background: #fff;
+            cursor: pointer;
+            transition: all 0.2s;
+            padding: 8px 16px;
+        }
+
+        button:not(:disabled):hover {
+            background: #f0f0f0;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        #startBtn {
+            background: #2196F3;
+            color: white;
+            border: none;
+        }
+
+        #startBtn:not(:disabled):hover {
+            background: #1976D2;
+        }
+
+        #stopBtn {
+            background: #f44336;
+            color: white;
+            border: none;
+        }
+
+        #stopBtn:not(:disabled):hover {
+            background: #d32f2f;
+        }
+
+        label {
+            font-size: 0.9rem;
+        }
+
+        .results-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+        }
+
+        .status-card {
+            background: white;
+            padding: 1rem;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            grid-column: 1;
+            grid-row: 2;
+        }
+
+        .board-card {
+            background: white;
+            padding: 1rem;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .metrics-card {
+            background: white;
+            padding: 1rem;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .metrics-section {
+            flex: 1;
+            padding: 1rem;
+            background: #f8f8f8;
+            border-radius: 4px;
+            border: 1px solid #eee;
+        }
+
+        .metrics-section h4 {
+            margin: 0 0 0.5rem 0;
+            font-size: 0.9rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .meta-stats {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            padding: 1rem;
+            background: #f8f8f8;
+            border-radius: 4px;
+            border: 1px solid #eee;
+        }
+
+        .board-card h3 {
+            margin: 0 0 1rem 0;
+            font-size: 1.2rem;
+            color: #333;
+        }
+
+        .board-display {
+            display: flex;
+            gap: 2rem;
+            justify-content: center;
+            margin-bottom: 1rem;
+        }
+
+        .board {
+            display: grid;
+            gap: 1px;
+            background: #ddd;
+            padding: 1px;
+        }
+
+        .board-cell {
+            aspect-ratio: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.8rem;
+            position: relative;
+            background: #fff;
+            width: 40px;
+            height: 40px;
+            padding: 2px;
+        }
+
+        .board-cell .symbol {
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .board-cell .score {
+            font-size: 0.75rem;
+            font-weight: 500;
+            line-height: 1.1;
+        }
+
+        .board-cell .individual-score {
+            font-size: 0.65rem;
+            font-weight: 400;
+            opacity: 0.8;
+            line-height: 1;
+        }
+
+        .results-card {
+            background: white;
+            padding: 1rem;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            grid-column: span 2;
+        }
+
+        .board-output {
+            position: relative;
+            display: flex;
+            gap: 1rem;
+            align-items: flex-start;
+        }
+
+        .copy-section {
+            flex: 1;
+        }
+
+        .copy-button {
+            position: static;
+            margin-bottom: 0.5rem;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+            padding: 8px 16px;
+            font-size: 0.9rem;
+        }
+
+        .copy-button:hover {
+            background: #1976D2;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .copy-button.copied {
+            background: #4CAF50;
+        }
+
         #results {
             font-family: monospace;
+            white-space: pre;
+            background: #f8f8f8;
+            padding: 1rem;
+            border-radius: 4px;
+            border: 1px solid #eee;
+            overflow-x: auto;
+            margin: 0;
+            max-height: 200px;
+        }
+
+        .metrics {
+            flex: 1;
+            padding: 1rem;
+            background: #f8f8f8;
+            border-radius: 4px;
+            border: 1px solid #eee;
+        }
+
+        #status {
+            font-family: monospace;
+            white-space: pre;
+            line-height: 1.4;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .status-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem;
+            background: #f8f8f8;
+            border-radius: 4px;
+        }
+
+        .status-label {
+            font-weight: 500;
+            color: #666;
+        }
+
+        .status-value {
+            font-weight: bold;
+            color: #333;
         }
 
         .info-icon {
@@ -32,7 +305,7 @@
             background: white;
             border: 1px solid #ddd;
             border-radius: 4px;
-            padding: 0.75rem;
+            padding: 1rem;
             width: max-content;
             max-width: 500px;
             min-width: 300px;
@@ -65,32 +338,6 @@
             color: #333;
         }
 
-        .info-tooltip ul ul {
-            margin: 0.25rem 0;
-        }
-
-        .info-tooltip h3 {
-            margin: 0.5rem 0 0.25rem 0;
-            font-size: 0.9rem;
-        }
-
-        .info-tooltip br+br {
-            display: none;
-        }
-
-        .info-tooltip ol {
-            margin: 0;
-            padding-left: 1.2rem;
-        }
-
-        .info-tooltip ol ul {
-            margin: 0.25rem 0;
-        }
-
-        .info-tooltip li:last-child {
-            margin-bottom: 0;
-        }
-
         .info-icon:hover .info-tooltip,
         .info-tooltip:hover {
             display: block;
@@ -105,10 +352,82 @@
             gap: 0.5rem;
             position: relative;
         }
+
+        .loading-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-family: monospace;
+            color: #666;
+            font-size: 0.9rem;
+            white-space: nowrap;
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #f5f5f5;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+        }
+
+        .loading-indicator.hidden {
+            display: none;
+        }
+
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.3rem;
+            padding: 0.3rem 0;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .metric-value {
+            font-weight: bold;
+        }
+
+        .better-lower {
+            color: #2196F3;
+        }
+
+        .better-higher {
+            color: #4CAF50;
+        }
+
+        .control-group input[type="number"] {
+            width: 4rem;
+            padding: 4px 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+
+        .code-card {
+            background: white;
+            padding: 1rem;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            grid-column: 2;
+            grid-row: 2;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .copy-card {
+            background: white;
+            padding: 1rem;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            grid-column: 3;
+            grid-row: 2;
+            display: flex;
+            align-items: flex-start;
+            justify-content: flex-start;
+        }
     </style>
 </head>
 
-<body style="font-family: sans-serif; margin: 1rem;">
+<body>
     <h1>
         Board Generator
         <span class="info-icon">i
@@ -125,20 +444,15 @@
                             <li>Three steps away: 1/3 = 0.33 points</li>
                             <li>And so on for all reachable tiles</li>
                         </ul>
-                        Example: A tile reaching 2 direct (2.0), 3 two-step (1.5), 4 three-step (1.33), etc. sums all
-                        scores.
                     </li>
                     <li>
                         <strong>Viable Moves:</strong> Count of positions within 0.0000000001 of best score.
-                        Example: Best=5.0, others=[4.9999999999, 4.9999999998, 4.0] → 3 viable moves.
                     </li>
                     <li>
                         <strong>Standard Deviation:</strong> How much scores vary. Lower is better.
-                        Example: [5.0, 4.9, 4.8] (good) vs [5.0, 3.0, 1.0] (bad).
                     </li>
                     <li>
                         <strong>Combined Score = Viable Moves - Standard Deviation</strong>
-                        Example: 5 viable moves - 1.2 deviation = 3.8 score
                     </li>
                 </ul>
 
@@ -156,28 +470,110 @@
                     <li>Repeat until stopped</li>
                 </ol>
 
-                <p style="margin-top: 0.25rem; margin-bottom: 0;"><strong>Note:</strong> In matching mode, only the
-                    second board evolves.</p>
+                <p><strong>Note:</strong> In matching mode, only the second board evolves.</p>
             </div>
         </span>
+        <div id="loadingIndicator" class="loading-indicator hidden">
+            <div class="loading-status">Initializing...</div>
+        </div>
     </h1>
 
-    <label for="sizeSelect">Board Size:</label>
-    <select id="sizeSelect"></select>
-    <label style="margin-left:1rem;" for="boardSelect">Match Board:</label>
-    <select id="boardSelect">
-        <option value="none">None</option>
-    </select>
-    <button id="startBtn">Start</button>
-    <button id="stopBtn" disabled>Stop</button>
-    <div style="margin-top: 1rem;">
-        <div id="status" style="margin-bottom: 1rem; white-space: pre;"></div>
-        <pre id="results"></pre>
+    <div class="controls">
+        <div class="control-group">
+            <label for="sizeSelect">Board Size:</label>
+            <select id="sizeSelect"></select>
+        </div>
+        <div class="control-group">
+            <label for="boardSelect">Match Board:</label>
+            <select id="boardSelect">
+                <option value="none">None</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <label for="workerCount">Workers:</label>
+            <input type="number" id="workerCount" min="1" max="32" value="14" />
+        </div>
+        <div class="control-group">
+            <button id="startBtn">Start Evolution</button>
+            <button id="stopBtn" disabled>Stop</button>
+        </div>
     </div>
+
+    <div class="results-container">
+        <div class="board-card">
+            <h3>Board 1 Analysis</h3>
+            <div id="board1Display" class="board-display"></div>
+        </div>
+
+        <div class="metrics-card">
+            <div class="metrics-section">
+                <h4>Pathfinding Evaluation</h4>
+                <div class="metric-row">
+                    <span>Combined Score:</span>
+                    <span class="metric-value better-higher" id="combinedScore">-</span>
+                </div>
+                <div class="metric-row">
+                    <span>Viable Moves:</span>
+                    <span class="metric-value better-higher" id="viableMoves">-</span>
+                </div>
+                <div class="metric-row">
+                    <span>Standard Deviation:</span>
+                    <span class="metric-value better-lower" id="standardDev">-</span>
+                </div>
+            </div>
+
+            <div class="metrics-section">
+                <h4>Manhattan Distance Evaluation</h4>
+                <div class="metric-row">
+                    <span>Combined Score:</span>
+                    <span class="metric-value better-higher" id="fastCombinedScore">-</span>
+                </div>
+                <div class="metric-row">
+                    <span>Viable Moves:</span>
+                    <span class="metric-value better-higher" id="fastViableMoves">-</span>
+                </div>
+                <div class="metric-row">
+                    <span>Standard Deviation:</span>
+                    <span class="metric-value better-lower" id="fastStandardDev">-</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="board-card">
+            <h3>Board 2 Analysis</h3>
+            <div id="board2Display" class="board-display"></div>
+        </div>
+
+        <div class="status-card">
+            <div class="meta-stats">
+                <div class="status-row">
+                    <span class="status-label">Time Elapsed:</span>
+                    <span class="status-value" id="timeElapsed">0.00s</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">Boards Evaluated:</span>
+                    <span class="status-value" id="boardsEvaluated">0</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">Boards/Second:</span>
+                    <span class="status-value" id="boardsPerSecond">0.00</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="code-card">
+            <pre id="results"></pre>
+        </div>
+
+        <div class="copy-card">
+            <button class="copy-button" onclick="copyBoardOutput()">📋 Copy Code</button>
+        </div>
+    </div>
+
     <script type="module">
         import BOARD_LAYOUTS from './boards.js';
 
-        const WORKER_COUNT = 16;
+        let WORKER_COUNT = 14; // Default value
         const POPULATION_SIZE = 100;
 
         let running = false;
@@ -753,74 +1149,120 @@ onmessage = (e) => {
         const blob = new Blob([unifiedWorkerScript], { type: 'text/javascript' });
         const workerURL = URL.createObjectURL(blob);
 
-        // 
-        // NEW FUNCTION: updates ONLY the top line of the status text
-        // to show the real-time clock, ignoring the rest of the content.
-        //
+        // Add these functions before updateClockOnly
+        function findShortestPath(startRow, startCol, grid, blockedPositions = []) {
+            const size = Math.sqrt(grid.length);
+            const distances = Array(size * size).fill(Infinity);
+            distances[startRow * size + startCol] = 0;
+
+            const queue = [[startRow * size + startCol, 0]];
+            const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]]; // up, down, left, right
+
+            while (queue.length > 0) {
+                const [curPos, dist] = queue.shift();
+                const row = Math.floor(curPos / size);
+                const col = curPos % size;
+
+                for (const [dr, dc] of directions) {
+                    const newRow = row + dr;
+                    const newCol = col + dc;
+                    if (newRow < 0 || newRow >= size || newCol < 0 || newCol >= size) continue;
+                    const newPos = newRow * size + newCol;
+                    if (grid[newPos] === '.' || distances[newPos] !== Infinity) continue;
+                    if (blockedPositions.some(pos => pos.row === newRow && pos.col === newCol)) continue;
+
+                    distances[newPos] = dist + 1;
+                    queue.push([newPos, dist + 1]);
+                }
+            }
+
+            return distances;
+        }
+
+        function getTileScore(row, col, grid, blockedPositions = []) {
+            const size = Math.sqrt(grid.length);
+            if (grid[row * size + col] === '.') return 0;
+
+            const distances = findShortestPath(row, col, grid, blockedPositions);
+            let score = 0;
+            let validPaths = 0;
+
+            for (let i = 0; i < grid.length; i++) {
+                if (i === row * size + col || grid[i] === '.') continue;
+                if (blockedPositions.some(pos => pos.row === Math.floor(i / size) && pos.col === i % size)) continue;
+
+                const distance = distances[i];
+                if (distance !== Infinity) {
+                    score += 1 / distance;
+                    validPaths++;
+                }
+            }
+
+            const totalTiles = grid.filter(cell => cell !== '.').length - 1 - blockedPositions.length;
+            if (validPaths < totalTiles) {
+                score *= validPaths / totalTiles;
+            }
+
+            return score;
+        }
+
         function updateClockOnly() {
             if (!running) return; // no-op if not running
             const now = performance.now();
             const elapsedSec = (now - startTime) / 1000;
-
-            const statusEl = document.getElementById("status");
-            const oldText = statusEl.textContent || "";
-            const lines = oldText.split("\n");
-
-            // Make sure there's at least one line
-            if (lines.length === 0) {
-                lines.push("");
-            }
-
-            // Overwrite the first line with the current time
-            lines[0] = `Time Elapsed: ${elapsedSec.toFixed(2)}s`;
-
-            // Reassemble the text
-            statusEl.textContent = lines.join("\n");
+            document.getElementById('timeElapsed').textContent = `${elapsedSec.toFixed(2)}s`;
         }
 
         function updateStatus() {
             const now = performance.now();
             const elapsedSec = (now - startTime) / 1000;
             const boardsPerSec = elapsedSec > 0 ? totalBoardsEvaluated / elapsedSec : 0;
-            const pinnedUsed = (boardSelect.value !== 'none');
 
-            let status = `Time Elapsed: ${elapsedSec.toFixed(2)}s\n`;
-            status += `Boards Evaluated (approx): ${Math.floor(totalBoardsEvaluated)}\n`;
-            status += `Avg Boards/sec: ${boardsPerSec.toFixed(2)}\n`;
-            status += `Global Best Score (Pathfinding): ${globalBestScore.toFixed(4)}\n\n`;
+            document.getElementById('timeElapsed').textContent = `${elapsedSec.toFixed(2)}s`;
+            document.getElementById('boardsEvaluated').textContent = Math.floor(totalBoardsEvaluated).toLocaleString();
+            document.getElementById('boardsPerSecond').textContent = Math.floor(boardsPerSec).toLocaleString();
 
             if (globalBestStats) {
-                status += `Pathfinding Evaluation:\n`;
-                status += `Combined Score: ${globalBestStats.score.toFixed(2)}\n`;
-                status += `Viable Moves: ${globalBestStats.moves}\n`;
-                status += `Standard Deviation: ${globalBestStats.stdev.toFixed(2)}\n\n`;
-
-                if (globalFastStats) {
-                    status += `Manhattan Distance Evaluation:\n`;
-                    status += `Combined Score: ${globalFastStats.score.toFixed(2)}\n`;
-                    status += `Viable Moves: ${globalFastStats.moves}\n`;
-                    status += `Standard Deviation: ${globalFastStats.stdev.toFixed(2)}\n\n`;
-                }
+                document.getElementById('combinedScore').textContent = globalBestStats.score.toFixed(2);
+                document.getElementById('viableMoves').textContent = globalBestStats.moves;
+                document.getElementById('standardDev').textContent = globalBestStats.stdev.toFixed(2);
 
                 if (globalBestB1 && globalBestB2) {
                     const size = Math.sqrt(globalBestB1.length);
-                    status += 'Current best board(s):\n\n';
-                    if (!pinnedUsed) {
-                        status += 'Board 1:\n';
-                        status += formatBoard(globalBestB1, size) + '\n';
-                        status += 'Board 2:\n';
-                        status += formatBoard(globalBestB2, size) + '\n';
-                    } else {
-                        status += 'Pinned Board (unchanged, for reference):\n';
-                        status += formatBoard(globalBestB1, size) + '\n';
-                        status += 'Evolved Board (Board 2):\n';
-                        status += formatBoard(globalBestB2, size) + '\n';
+                    const scores = [];
+                    for (let i = 0; i < globalBestB1.length; i++) {
+                        const symbol = globalBestB1[i];
+                        if (symbol === '.') continue;
+                        const j = globalBestB2.indexOf(symbol);
+                        if (j < 0) continue;
+                        scores.push({
+                            symbol,
+                            score: getTileScore(Math.floor(i / size), i % size, globalBestB1) +
+                                getTileScore(Math.floor(j / size), j % size, globalBestB2),
+                            individualScore: getTileScore(Math.floor(i / size), i % size, globalBestB1)
+                        });
                     }
-                    status += '\nPaste into boards.js:\n\n';
-                    status += generateBoardOutput(globalBestB1, globalBestB2, globalBestScore, pinnedUsed);
+
+                    const minScore = Math.min(...scores.map(s => s.score));
+                    const maxScore = Math.max(...scores.map(s => s.score));
+
+                    const board1Display = document.getElementById('board1Display');
+                    const board2Display = document.getElementById('board2Display');
+                    board1Display.innerHTML = '';
+                    board2Display.innerHTML = '';
+                    board1Display.appendChild(createBoardDisplay(globalBestB1, scores, minScore, maxScore));
+                    board2Display.appendChild(createBoardDisplay(globalBestB2, scores, minScore, maxScore));
+
+                    const pinnedUsed = document.getElementById('boardSelect').value !== 'none';
+                    document.getElementById('results').textContent = generateBoardOutput(globalBestB1, globalBestB2, globalBestScore, pinnedUsed);
                 }
             }
-            document.getElementById("status").textContent = status;
+
+            if (globalFastStats) {
+                document.getElementById('fastCombinedScore').textContent = globalFastStats.score.toFixed(2);
+                document.getElementById('fastViableMoves').textContent = globalFastStats.moves;
+                document.getElementById('fastStandardDev').textContent = globalFastStats.stdev.toFixed(2);
+            }
         }
 
         function generateBoardOutput(b1, b2, score, pinnedUsed) {
@@ -870,8 +1312,55 @@ onmessage = (e) => {
             return result;
         }
 
+        function getScoreColor(score, minScore, maxScore) {
+            const ratio = (score - minScore) / (maxScore - minScore);
+            return `hsla(210, 100%, ${85 - (ratio * 70)}%, ${0.4 + (ratio * 0.6)})`;
+        }
+
+        function createBoardDisplay(board, scores, minScore, maxScore) {
+            const size = Math.sqrt(board.length);
+            const container = document.createElement('div');
+            container.className = 'board';
+            container.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
+
+            const scoreMap = new Map(scores.map(s => [s.symbol, s]));
+
+            for (let row = 0; row < size; row++) {
+                for (let col = 0; col < size; col++) {
+                    const symbol = board[row * size + col];
+                    const cell = document.createElement('div');
+                    cell.className = 'board-cell';
+
+                    if (symbol === '.') {
+                        cell.style.background = '#f5f5f5';
+                    } else {
+                        const scoreInfo = scoreMap.get(symbol);
+                        const combinedScore = scoreInfo?.score || 0;
+                        const individualScore = scoreInfo?.individualScore || 0;
+                        cell.style.backgroundColor = getScoreColor(combinedScore, minScore, maxScore);
+
+                        const ratio = (combinedScore - minScore) / (maxScore - minScore);
+                        cell.style.color = ratio > 0.5 ? '#fff' : '#000';
+
+                        cell.innerHTML = `
+                            <div class="symbol">${symbol}</div>
+                            <div class="score">${combinedScore.toFixed(1)}</div>
+                            <div class="individual-score">${individualScore.toFixed(1)}</div>
+                        `;
+                    }
+                    container.appendChild(cell);
+                }
+            }
+            return container;
+        }
+
         document.getElementById("startBtn").addEventListener("click", () => {
             if (running) return;
+
+            // Update worker count from input
+            WORKER_COUNT = parseInt(document.getElementById('workerCount').value) || 14;
+            WORKER_COUNT = Math.max(1, Math.min(32, WORKER_COUNT)); // Clamp between 1 and 32
+            document.getElementById('workerCount').value = WORKER_COUNT; // Update input with clamped value
 
             const size = parseInt(sizeSelect.value);
             const boardId = boardSelect.value;
@@ -889,7 +1378,7 @@ onmessage = (e) => {
             running = true;
             startTime = performance.now();
 
-            // Start the real-time clock updates every 200ms
+            // Start the real-time clock updates every 10ms
             clockInterval = setInterval(updateClockOnly, 10);
 
             globalBestScore = -Infinity;
@@ -898,8 +1387,17 @@ onmessage = (e) => {
             globalBestStats = null;
             totalBoardsEvaluated = 0;
 
-            document.getElementById("results").textContent = "";
-            document.getElementById("status").textContent = "Starting...";
+            // Reset all displays
+            document.getElementById('timeElapsed').textContent = '0.00s';
+            document.getElementById('boardsEvaluated').textContent = '0';
+            document.getElementById('boardsPerSecond').textContent = '0.00';
+            document.getElementById('combinedScore').textContent = '-';
+            document.getElementById('viableMoves').textContent = '-';
+            document.getElementById('standardDev').textContent = '-';
+            document.getElementById('results').textContent = '';
+            document.getElementById('board1Display').innerHTML = '';
+            document.getElementById('board2Display').innerHTML = '';
+
             document.getElementById("stopBtn").disabled = false;
             document.getElementById("startBtn").disabled = true;
             workers = [];
@@ -950,6 +1448,23 @@ onmessage = (e) => {
             document.getElementById("stopBtn").disabled = true;
             document.getElementById("startBtn").disabled = false;
         });
+
+        // Add the copy functionality
+        window.copyBoardOutput = function () {
+            const results = document.getElementById('results');
+            const button = document.querySelector('.copy-button');
+
+            if (results.textContent) {
+                navigator.clipboard.writeText(results.textContent).then(() => {
+                    button.textContent = 'Copied!';
+                    button.classList.add('copied');
+                    setTimeout(() => {
+                        button.textContent = 'Copy Board Code';
+                        button.classList.remove('copied');
+                    }, 2000);
+                });
+            }
+        };
     </script>
 </body>
 
