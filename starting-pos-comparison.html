@@ -10,6 +10,8 @@
             margin: 2rem;
             background: #f5f5f5;
             color: #333;
+            min-width: 1200px;
+            /* Prevent layout shifts */
         }
 
         .controls {
@@ -223,9 +225,9 @@
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
             z-index: 1000;
             top: 100%;
-            left: 50%;
-            transform: translateX(-50%);
+            left: 0;
             margin-top: 8px;
+            margin-left: 2rem;
             color: #333;
             text-align: left;
             font-weight: normal;
@@ -327,25 +329,55 @@
         .mode-toggle {
             padding: 8px 16px;
             background: #fff;
-            border: 1px solid #ddd;
+            border: 2px solid #2196F3;
             border-radius: 4px;
             cursor: pointer;
             font-size: 0.9rem;
-            margin-bottom: 1rem;
-            transition: background-color 0.2s;
-        }
-
-        .mode-toggle.counter-move-active {
-            background: #e3f2fd;
-            border-color: #2196F3;
+            transition: all 0.2s;
+            color: #2196F3;
+            font-weight: 500;
         }
 
         .mode-toggle:hover {
-            background: #f5f5f5;
+            background: #e3f2fd;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(33, 150, 243, 0.2);
+        }
+
+        .mode-toggle.counter-move-active {
+            background: #2196F3;
+            color: white;
         }
 
         .mode-toggle.counter-move-active:hover {
-            background: #bbdefb;
+            background: #1976D2;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(33, 150, 243, 0.3);
+        }
+
+        .mode-label {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #1976D2;
+            margin-right: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .loading-status {
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.9rem;
+            color: #666;
+            background: #f5f5f5;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+        }
+
+        .loading-indicator.hidden .loading-status {
+            display: none;
         }
     </style>
 </head>
@@ -368,6 +400,19 @@
                     move in tournament play.
                     Percentages indicate the proportion of games where that position was the opening move.
                 </p>
+                <p><strong>Two analysis modes are available:</strong></p>
+                <ul>
+                    <li>
+                        <strong>Standard Analysis:</strong> Evaluates each position's connectivity independently.
+                        Shows the raw potential of each starting position.
+                    </li>
+                    <li>
+                        <strong>Counter-Move Analysis:</strong> Evaluates positions considering opponent's best
+                        counter-moves.
+                        Shows which positions remain strong even after opponent's response.
+                    </li>
+                </ul>
+                <br>
                 <p><strong>Metrics Explanation:</strong></p>
                 <ul>
                     <li>
@@ -385,9 +430,18 @@
                 </ul>
             </div>
         </span>
+        <div id="loadingIndicator" class="loading-indicator hidden">
+            <div class="loading-status">Initializing...</div>
+        </div>
     </h1>
 
     <div class="controls">
+        <div class="control-group">
+            <span class="mode-label" id="modeLabel">Standard Analysis</span>
+            <button id="modeToggle" class="mode-toggle">
+                Change to Counter-Move Analysis
+            </button>
+        </div>
         <div class="control-group">
             <label>Board Size:</label>
             <select id="sizeFilter">
@@ -405,14 +459,13 @@
             <label>Board 2:</label>
             <select id="board2Filter"></select>
         </div>
-        <div id="loadingIndicator" class="loading-indicator hidden">
-            <div class="loading-status">Initializing...</div>
-        </div>
     </div>
     <div class="analysis-grid" id="analysisGrid"></div>
 
     <script type="module">
         import BOARD_LAYOUTS from './boards.js';
+
+        let useCounterMoves = false;  // Add global state
 
         async function fetchTournamentData() {
             const loadingStatus = document.querySelector('.loading-status');
@@ -889,14 +942,25 @@
 
         async function updateDisplay() {
             const size = parseInt(document.getElementById('sizeFilter').value);
-            const grid = document.getElementById('analysisGrid');
-            grid.innerHTML = '';
             const loadingIndicator = document.getElementById('loadingIndicator');
             const loadingStatus = loadingIndicator.querySelector('.loading-status');
             loadingIndicator.classList.remove('hidden');
 
+            // Update mode toggle button and label first
+            const modeToggle = document.getElementById('modeToggle');
+            const modeLabel = document.getElementById('modeLabel');
+            if (useCounterMoves) {
+                modeLabel.textContent = 'Counter-Move Analysis';
+                modeToggle.textContent = 'Change to Standard Analysis';
+            } else {
+                modeLabel.textContent = 'Standard Analysis';
+                modeToggle.textContent = 'Change to Counter-Move Analysis';
+            }
+            modeToggle.classList.toggle('counter-move-active', useCounterMoves);
+
+            // Pre-calculate everything before updating the UI
             loadingStatus.textContent = 'Filtering valid board combinations...';
-            await new Promise(resolve => setTimeout(resolve, 0)); // Let the UI update
+            await new Promise(resolve => setTimeout(resolve, 0));
 
             const validBoards = Object.entries(BOARD_LAYOUTS).filter(([id, layout]) =>
                 layout.grid.length === size && !id.includes('random') && !id.includes('Random'));
@@ -959,9 +1023,9 @@
             }
 
             loadingStatus.textContent = 'Filtering compatible board pairs...';
-            await new Promise(resolve => setTimeout(resolve, 0)); // Let the UI update
+            await new Promise(resolve => setTimeout(resolve, 0));
 
-            // Filter out board pairs with different number of tiles
+            // Filter and prepare all data before touching the DOM
             boardPairs = boardPairs.filter(([[_, board1], [__, board2]]) => {
                 const board1TileCount = countNonDotTiles(board1.grid);
                 const board2TileCount = countNonDotTiles(board2.grid);
@@ -970,17 +1034,16 @@
 
             const totalPairs = boardPairs.length;
             const analyses = [];
-            const BATCH_SIZE = 5; // Process 5 pairs at a time
+            const BATCH_SIZE = 5;
 
-            // Process board pairs in batches
             for (let i = 0; i < boardPairs.length; i += BATCH_SIZE) {
                 loadingStatus.textContent = `Analyzing board pairs ${i + 1}-${Math.min(i + BATCH_SIZE, totalPairs)}/${totalPairs}...`;
-                await new Promise(resolve => setTimeout(resolve, 0)); // Let the UI update
+                await new Promise(resolve => setTimeout(resolve, 0));
 
                 const batch = boardPairs.slice(i, i + BATCH_SIZE);
                 const batchAnalyses = batch.map(([[id1, board1], [id2, board2]], index) => {
                     if (!board1 || !board2) return null;
-                    const scores = analyzeBoards(board1, board2);
+                    const scores = analyzeBoards(board1, board2, useCounterMoves);
                     const metrics = calculateBoardMetrics(scores);
                     const moveFrequencies = calculateMoveFrequencies(globalFirstMoves, id1, id2);
                     return { board1, board2, id1, id2, scores, metrics, moveFrequencies };
@@ -988,196 +1051,163 @@
                 analyses.push(...batchAnalyses);
             }
 
-            loadingStatus.textContent = 'Sorting and rendering results...';
-            await new Promise(resolve => setTimeout(resolve, 0)); // Let the UI update
+            loadingStatus.textContent = 'Preparing results...';
+            await new Promise(resolve => setTimeout(resolve, 0));
 
-            analyses
+            // Sort analyses before touching the DOM
+            const sortedAnalyses = analyses
                 .filter(analysis => analysis !== null)
-                .sort((a, b) => b.metrics.combinedScore - a.metrics.combinedScore)
-                .forEach(({ board1, board2, id1, id2, scores, metrics, moveFrequencies }) => {
-                    const card = document.createElement('div');
-                    card.className = 'combo-card';
-                    card.innerHTML = `
-                        <h2>${board1.name} vs ${board2.name}</h2>
-                    `;
+                .sort((a, b) => b.metrics.combinedScore - a.metrics.combinedScore);
 
-                    const modeToggle = document.createElement('button');
-                    modeToggle.className = 'mode-toggle';
-                    modeToggle.textContent = 'Standard Mode';
-                    modeToggle.dataset.useCounterMoves = 'false';
-                    modeToggle.onclick = function () {
-                        const useCounterMoves = this.dataset.useCounterMoves === 'false';
-                        this.dataset.useCounterMoves = useCounterMoves.toString();
-                        this.textContent = useCounterMoves ? 'Counter-Move Mode' : 'Standard Mode';
-                        this.classList.toggle('counter-move-active', useCounterMoves);
+            // Now update the DOM all at once
+            const grid = document.getElementById('analysisGrid');
+            const newGrid = document.createElement('div');
+            newGrid.className = 'analysis-grid';
+            newGrid.id = 'analysisGrid';
 
-                        // Recalculate scores with new mode
-                        const scores = analyzeBoards(board1, board2, useCounterMoves);
-                        const metrics = calculateBoardMetrics(scores);
+            sortedAnalyses.forEach(({ board1, board2, id1, id2, scores, metrics, moveFrequencies }) => {
+                const card = document.createElement('div');
+                card.className = 'combo-card';
+                card.innerHTML = `
+                    <h2>${board1.name} vs ${board2.name}</h2>
+                `;
 
-                        // Update metrics display
-                        const metricsDiv = this.parentElement.querySelector('.metrics');
-                        metricsDiv.innerHTML = `
-                            <div class="metric-row">
-                                <span>Combined Score:</span>
-                                <span class="metric-value better-higher">${metrics.combinedScore.toFixed(2)}</span>
-                            </div>
-                            <div class="metric-row">
-                                <span>Viable Moves:</span>
-                                <span class="metric-value better-higher">${metrics.viableMoves}</span>
-                            </div>
-                            <div class="metric-row">
-                                <span>Standard Deviation:</span>
-                                <span class="metric-value better-lower">${metrics.stdDev.toFixed(2)}</span>
-                            </div>
-                        `;
+                const analysisContainer = document.createElement('div');
+                analysisContainer.className = 'analysis-container';
 
-                        // Update board display
-                        const boardDisplay = this.parentElement.querySelector('.board-display');
-                        boardDisplay.innerHTML = '';
-                        boardDisplay.appendChild(createScoreBoard(board1, scores, metrics.worst, metrics.best));
-                        boardDisplay.appendChild(createScoreBoard(board2, scores, metrics.worst, metrics.best));
+                const scoreSection = document.createElement('div');
+                scoreSection.className = 'board-section';
 
-                        // Update score plot
-                        const scorePlot = this.parentElement.querySelector('.score-plot');
-                        scorePlot.innerHTML = '';
-                        createScatterPlot(scorePlot, scores, board1.name, board2.name);
+                const scoreHeader = document.createElement('div');
+                scoreHeader.className = 'section-header';
+                scoreHeader.innerHTML = `
+                    <h3>Position Analysis</h3>
+                    <p>Blue intensity shows strength based on connectivity to other cells.</p>
+                `;
+                scoreSection.appendChild(scoreHeader);
+
+                const metricsDiv = document.createElement('div');
+                metricsDiv.className = 'metrics';
+                metricsDiv.innerHTML = `
+                    <div class="metric-row">
+                        <span>Combined Score:</span>
+                        <span class="metric-value better-higher">${metrics.combinedScore.toFixed(2)}</span>
+                    </div>
+                    <div class="metric-row">
+                        <span>Viable Moves:</span>
+                        <span class="metric-value better-higher">${metrics.viableMoves}</span>
+                    </div>
+                    <div class="metric-row">
+                        <span>Standard Deviation:</span>
+                        <span class="metric-value better-lower">${metrics.stdDev.toFixed(2)}</span>
+                    </div>
+                `;
+                scoreSection.appendChild(metricsDiv);
+
+                const scoreBoardDisplay = document.createElement('div');
+                scoreBoardDisplay.className = 'board-display';
+                scoreBoardDisplay.appendChild(createScoreBoard(board1, scores, metrics.worst, metrics.best));
+                scoreBoardDisplay.appendChild(createScoreBoard(board2, scores, metrics.worst, metrics.best));
+                scoreSection.appendChild(scoreBoardDisplay);
+
+                const scorePlot = document.createElement('div');
+                scorePlot.className = 'score-plot';
+                scoreSection.appendChild(scorePlot);
+                createScatterPlot(scorePlot, scores, board1.name, board2.name);
+
+                const frequencySection = document.createElement('div');
+                frequencySection.className = 'board-section';
+
+                const frequencyHeader = document.createElement('div');
+                frequencyHeader.className = 'section-header';
+                frequencyHeader.innerHTML = `
+                    <h3>Tournament Play Analysis</h3>
+                    <p>Red intensity shows how often each position is selected as the first move.</p>
+                `;
+                frequencySection.appendChild(frequencyHeader);
+
+                const moveFrequenciesData = calculateMoveFrequencies(globalFirstMoves, id1, id2);
+                const metricsPlayDiv = document.createElement('div');
+                metricsPlayDiv.className = 'metrics';
+
+                if (moveFrequenciesData) {
+                    const aiCounts = {
+                        'random': 0,
+                        'deterministic': 0,
+                        'aggressive': 0,
+                        'defensive': 0,
+                        'minimax': 0,
+                        'mcts': 0,
+                        'hybrid': 0
                     };
-                    card.appendChild(modeToggle);
 
-                    const analysisContainer = document.createElement('div');
-                    analysisContainer.className = 'analysis-container';
+                    moveFrequenciesData.filteredMoves.forEach(move => {
+                        const blackBase = move.black.split('-')[0];
+                        const whiteBase = move.white.split('-')[0];
+                        if (aiCounts.hasOwnProperty(blackBase)) aiCounts[blackBase] += 0.5;
+                        if (aiCounts.hasOwnProperty(whiteBase)) aiCounts[whiteBase] += 0.5;
+                    });
 
-                    const scoreSection = document.createElement('div');
-                    scoreSection.className = 'board-section';
-
-                    const scoreHeader = document.createElement('div');
-                    scoreHeader.className = 'section-header';
-                    scoreHeader.innerHTML = `
-                        <h3>Position Analysis</h3>
-                        <p>Blue intensity shows strength based on connectivity to other cells.</p>
-                    `;
-                    scoreSection.appendChild(scoreHeader);
-
-                    const metricsDiv = document.createElement('div');
-                    metricsDiv.className = 'metrics';
-                    metricsDiv.innerHTML = `
-                        <div class="metric-row">
-                            <span>Combined Score:</span>
-                            <span class="metric-value better-higher">${metrics.combinedScore.toFixed(2)}</span>
-                        </div>
-                        <div class="metric-row">
-                            <span>Viable Moves:</span>
-                            <span class="metric-value better-higher">${metrics.viableMoves}</span>
-                        </div>
-                        <div class="metric-row">
-                            <span>Standard Deviation:</span>
-                            <span class="metric-value better-lower">${metrics.stdDev.toFixed(2)}</span>
-                        </div>
-                    `;
-                    scoreSection.appendChild(metricsDiv);
-
-                    const scoreBoardDisplay = document.createElement('div');
-                    scoreBoardDisplay.className = 'board-display';
-                    scoreBoardDisplay.appendChild(createScoreBoard(board1, scores, metrics.worst, metrics.best));
-                    scoreBoardDisplay.appendChild(createScoreBoard(board2, scores, metrics.worst, metrics.best));
-                    scoreSection.appendChild(scoreBoardDisplay);
-
-                    const scorePlot = document.createElement('div');
-                    scorePlot.className = 'score-plot';
-                    scoreSection.appendChild(scorePlot);
-                    createScatterPlot(scorePlot, scores, board1.name, board2.name);
-
-                    const frequencySection = document.createElement('div');
-                    frequencySection.className = 'board-section';
-
-                    const frequencyHeader = document.createElement('div');
-                    frequencyHeader.className = 'section-header';
-                    frequencyHeader.innerHTML = `
-                        <h3>Tournament Play Analysis</h3>
-                        <p>Red intensity shows how often each position is selected as the first move.</p>
-                    `;
-                    frequencySection.appendChild(frequencyHeader);
-
-                    const moveFrequenciesData = calculateMoveFrequencies(globalFirstMoves, id1, id2);
-                    const metricsPlayDiv = document.createElement('div');
-                    metricsPlayDiv.className = 'metrics';
-
-                    if (moveFrequenciesData) {
-                        const aiCounts = {
-                            'random': 0,
-                            'deterministic': 0,
-                            'aggressive': 0,
-                            'defensive': 0,
-                            'minimax': 0,
-                            'mcts': 0,
-                            'hybrid': 0
-                        };
-
-                        moveFrequenciesData.filteredMoves.forEach(move => {
-                            const blackBase = move.black.split('-')[0];
-                            const whiteBase = move.white.split('-')[0];
-                            if (aiCounts.hasOwnProperty(blackBase)) aiCounts[blackBase] += 0.5;
-                            if (aiCounts.hasOwnProperty(whiteBase)) aiCounts[whiteBase] += 0.5;
-                        });
-
-                        const aiStatsHtml = Object.entries(aiCounts)
-                            .filter(([_, count]) => count > 0)
-                            .map(([ai, count]) => `
-                                <div class="ai-stat">
-                                    <span>${ai}</span>
-                                    <span>${Math.round(count)} games</span>
-                                </div>
-                            `).join('');
-
-                        metricsPlayDiv.innerHTML = `
-                            ${aiStatsHtml}
-                            <div class="total-games">
-                                Total Games: ${moveFrequenciesData.total}
-                            </div>
-                        `;
-                    } else {
-                        metricsPlayDiv.innerHTML = `
+                    const aiStatsHtml = Object.entries(aiCounts)
+                        .filter(([_, count]) => count > 0)
+                        .map(([ai, count]) => `
                             <div class="ai-stat">
-                                <span>No games played</span>
+                                <span>${ai}</span>
+                                <span>${Math.round(count)} games</span>
                             </div>
-                           <div class="total-games">
-                                Total Games: 0
-                            </div>
-                        `;
-                    }
-                    frequencySection.appendChild(metricsPlayDiv);
+                        `).join('');
 
-                    if (moveFrequenciesData && Object.keys(moveFrequenciesData.frequencies).length > 0) {
-                        const frequencyBoardDisplay = document.createElement('div');
-                        frequencyBoardDisplay.className = 'board-display';
-                        frequencyBoardDisplay.appendChild(createFrequencyBoard(board1, moveFrequenciesData.frequencies));
-                        frequencyBoardDisplay.appendChild(createFrequencyBoard(board2, moveFrequenciesData.frequencies));
-                        frequencySection.appendChild(frequencyBoardDisplay);
+                    metricsPlayDiv.innerHTML = `
+                        ${aiStatsHtml}
+                        <div class="total-games">
+                            Total Games: ${moveFrequenciesData.total}
+                        </div>
+                    `;
+                } else {
+                    metricsPlayDiv.innerHTML = `
+                        <div class="ai-stat">
+                            <span>No games played</span>
+                        </div>
+                       <div class="total-games">
+                            Total Games: 0
+                        </div>
+                    `;
+                }
+                frequencySection.appendChild(metricsPlayDiv);
 
-                        const frequencyPlot = document.createElement('div');
-                        frequencyPlot.className = 'frequency-plot';
-                        frequencySection.appendChild(frequencyPlot);
-                        createFrequencyPlot(frequencyPlot, moveFrequenciesData, board1.name, board2.name);
-                    } else {
-                        const noDataDiv = document.createElement('div');
-                        noDataDiv.className = 'no-data';
-                        noDataDiv.innerHTML = `
-                            <div class="no-data-icon">📊</div>
-                            <div>No tournament play data available for this board combination</div>
-                        `;
-                        frequencySection.appendChild(noDataDiv);
-                    }
+                if (moveFrequenciesData && Object.keys(moveFrequenciesData.frequencies).length > 0) {
+                    const frequencyBoardDisplay = document.createElement('div');
+                    frequencyBoardDisplay.className = 'board-display';
+                    frequencyBoardDisplay.appendChild(createFrequencyBoard(board1, moveFrequenciesData.frequencies));
+                    frequencyBoardDisplay.appendChild(createFrequencyBoard(board2, moveFrequenciesData.frequencies));
+                    frequencySection.appendChild(frequencyBoardDisplay);
 
-                    analysisContainer.appendChild(scoreSection);
-                    analysisContainer.appendChild(frequencySection);
-                    card.appendChild(analysisContainer);
+                    const frequencyPlot = document.createElement('div');
+                    frequencyPlot.className = 'frequency-plot';
+                    frequencySection.appendChild(frequencyPlot);
+                    createFrequencyPlot(frequencyPlot, moveFrequenciesData, board1.name, board2.name);
+                } else {
+                    const noDataDiv = document.createElement('div');
+                    noDataDiv.className = 'no-data';
+                    noDataDiv.innerHTML = `
+                        <div class="no-data-icon">📊</div>
+                        <div>No tournament play data available for this board combination</div>
+                    `;
+                    frequencySection.appendChild(noDataDiv);
+                }
 
-                    grid.appendChild(card);
-                });
+                analysisContainer.appendChild(scoreSection);
+                analysisContainer.appendChild(frequencySection);
+                card.appendChild(analysisContainer);
+
+                newGrid.appendChild(card);
+            });
+
+            // Replace the old grid with the new one in a single operation
+            grid.replaceWith(newGrid);
 
             loadingStatus.textContent = 'Analysis complete';
-            await new Promise(resolve => setTimeout(resolve, 1000)); // Show completion message
+            await new Promise(resolve => setTimeout(resolve, 1000));
             loadingIndicator.classList.add('hidden');
         }
 
@@ -1271,6 +1301,12 @@
 
             return scores;
         }
+
+        // Add mode toggle handler
+        document.getElementById('modeToggle').addEventListener('click', () => {
+            useCounterMoves = !useCounterMoves;
+            updateDisplay();
+        });
 
         document.getElementById('sizeFilter').addEventListener('change', updateDisplay);
         document.getElementById('board1Filter').addEventListener('change', updateDisplay);
