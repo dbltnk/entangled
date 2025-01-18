@@ -356,18 +356,18 @@
         <span class="info-icon">i
             <div class="info-tooltip">
                 <p>
-                    Left boards show position scoring: The scoring system evaluates each tile based on its connectivity
-                    to other tiles,
-                    taking into account potential opponent counter-moves. For each position, we calculate how well it
-                    stays connected
-                    to other tiles even if the opponent places their piece in the most disruptive position. Blue
-                    intensity indicates
-                    better positions that maintain good connectivity despite opponent interference.
+                    Left boards show position scoring: The scoring system evaluates each tile based on its proximity to
+                    all
+                    other tiles.
+                    Blue intensity indicates better positions, calculated as the sum of inverse Manhattan distances to
+                    other
+                    tiles.
                 </p>
                 <p>
                     Right boards show opening moves: Red intensity shows how frequently each position is chosen as the
-                    first move in tournament play. Percentages indicate the proportion of games where that position was
-                    the opening move.
+                    first
+                    move in tournament play.
+                    Percentages indicate the proportion of games where that position was the opening move.
                 </p>
                 <p><strong>Metrics Explanation:</strong></p>
                 <ul>
@@ -377,11 +377,11 @@
                     </li>
                     <li>
                         <strong>Viable Moves:</strong> Count of tiles with scores close to optimal.
-                        Higher values indicate more good opening options that remain strong against counter-moves.
+                        Higher values indicate more good opening options.
                     </li>
                     <li>
                         <strong>Standard Deviation:</strong> Variation in tile scores.
-                        Lower values indicate more balanced positions that consistently resist opponent interference.
+                        Lower values indicate more balanced positions.
                     </li>
                 </ul>
             </div>
@@ -978,6 +978,50 @@
                         <h2>${board1.name} vs ${board2.name}</h2>
                     `;
 
+                    const modeToggle = document.createElement('button');
+                    modeToggle.className = 'mode-toggle';
+                    modeToggle.textContent = 'Standard Mode';
+                    modeToggle.dataset.useCounterMoves = 'false';
+                    modeToggle.onclick = function () {
+                        const useCounterMoves = this.dataset.useCounterMoves === 'false';
+                        this.dataset.useCounterMoves = useCounterMoves.toString();
+                        this.textContent = useCounterMoves ? 'Counter-Move Mode' : 'Standard Mode';
+                        this.classList.toggle('counter-move-active', useCounterMoves);
+
+                        // Recalculate scores with new mode
+                        const scores = analyzeBoards(board1, board2, useCounterMoves);
+                        const metrics = calculateBoardMetrics(scores);
+
+                        // Update metrics display
+                        const metricsDiv = this.parentElement.querySelector('.metrics');
+                        metricsDiv.innerHTML = `
+                            <div class="metric-row">
+                                <span>Combined Score:</span>
+                                <span class="metric-value better-higher">${metrics.combinedScore.toFixed(2)}</span>
+                            </div>
+                            <div class="metric-row">
+                                <span>Viable Moves:</span>
+                                <span class="metric-value better-higher">${metrics.viableMoves}</span>
+                            </div>
+                            <div class="metric-row">
+                                <span>Standard Deviation:</span>
+                                <span class="metric-value better-lower">${metrics.stdDev.toFixed(2)}</span>
+                            </div>
+                        `;
+
+                        // Update board display
+                        const boardDisplay = this.parentElement.querySelector('.board-display');
+                        boardDisplay.innerHTML = '';
+                        boardDisplay.appendChild(createScoreBoard(board1, scores, metrics.worst, metrics.best));
+                        boardDisplay.appendChild(createScoreBoard(board2, scores, metrics.worst, metrics.best));
+
+                        // Update score plot
+                        const scorePlot = this.parentElement.querySelector('.score-plot');
+                        scorePlot.innerHTML = '';
+                        createScatterPlot(scorePlot, scores, board1.name, board2.name);
+                    };
+                    card.appendChild(modeToggle);
+
                     const analysisContainer = document.createElement('div');
                     analysisContainer.className = 'analysis-container';
 
@@ -1164,7 +1208,7 @@
             return worstScore;
         }
 
-        function analyzeBoards(board1, board2) {
+        function analyzeBoards(board1, board2, useCounterMoves = false) {
             const scores = [];
 
             for (let row = 0; row < board1.grid.length; row++) {
@@ -1174,14 +1218,27 @@
                     const board2Pos = findSymbolPosition(symbol, board2.grid);
                     if (!board2Pos) continue;
 
-                    const score = getCounterMoveScore(row, col, board1.grid, board2.grid, symbol);
-                    scores.push({
-                        symbol,
-                        board1Pos: `${row},${col}`,
-                        board2Pos: `${board2Pos.row},${board2Pos.col}`,
-                        score: score,
-                        individualScore: score / 2 // Approximate individual score
-                    });
+                    let score;
+                    if (useCounterMoves) {
+                        score = getCounterMoveScore(row, col, board1.grid, board2.grid, symbol);
+                        scores.push({
+                            symbol,
+                            board1Pos: `${row},${col}`,
+                            board2Pos: `${board2Pos.row},${board2Pos.col}`,
+                            score: score,
+                            individualScore: score / 2 // Approximate individual score
+                        });
+                    } else {
+                        const score1 = getTileScore(row, col, board1.grid);
+                        const score2 = getTileScore(board2Pos.row, board2Pos.col, board2.grid);
+                        scores.push({
+                            symbol,
+                            board1Pos: `${row},${col}`,
+                            board2Pos: `${board2Pos.row},${board2Pos.col}`,
+                            score: score1 + score2,
+                            individualScore: score1
+                        });
+                    }
                 }
             }
 
