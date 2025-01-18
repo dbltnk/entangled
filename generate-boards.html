@@ -556,11 +556,9 @@
             <button id="startBtn">Start Evolution</button>
             <button id="stopBtn" disabled>Stop</button>
             <div class="history-controls">
-                <div class="history-nav">
-                    <button class="history-button" id="prevBtn" disabled>◀</button>
-                    <button class="history-button" id="nextBtn" disabled>▶</button>
-                </div>
-                <span class="history-status" id="historyStatus">0 boards</span>
+                <button class="history-button" id="prevBtn" disabled>◀</button>
+                <span class="history-status" id="historyStatus">No boards</span>
+                <button class="history-button" id="nextBtn" disabled>▶</button>
             </div>
         </div>
     </div>
@@ -1429,7 +1427,8 @@ onmessage = (e) => {
                     fastStats: state.fastStats,
                     scores: scores,
                     minScore: minScore,
-                    maxScore: maxScore
+                    maxScore: maxScore,
+                    timestamp: new Date()
                 });
 
                 // Update navigation
@@ -1449,9 +1448,14 @@ onmessage = (e) => {
             prevBtn.disabled = currentHistoryIndex <= 0;
             nextBtn.disabled = currentHistoryIndex >= boardHistory.length - 1;
 
-            historyStatus.textContent = boardHistory.length > 0
-                ? `${currentHistoryIndex + 1} / ${boardHistory.length} boards`
-                : '0 boards';
+            if (boardHistory.length > 0) {
+                const current = boardHistory[currentHistoryIndex];
+                const time = current.timestamp;
+                const timeStr = `${time.getHours().toString().padStart(2, '0')}:${time.getMinutes().toString().padStart(2, '0')}:${time.getSeconds().toString().padStart(2, '0')}`;
+                historyStatus.textContent = `Board ${currentHistoryIndex + 1}/${boardHistory.length} (${timeStr})`;
+            } else {
+                historyStatus.textContent = 'No boards';
+            }
 
             // Update auto-follow state
             autoFollowLatest = currentHistoryIndex === boardHistory.length - 1;
