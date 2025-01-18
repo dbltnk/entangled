@@ -323,6 +323,30 @@
             border-top: 2px solid rgba(0, 0, 0, 0.1);
             font-weight: bold;
         }
+
+        .mode-toggle {
+            padding: 8px 16px;
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+            transition: background-color 0.2s;
+        }
+
+        .mode-toggle.counter-move-active {
+            background: #e3f2fd;
+            border-color: #2196F3;
+        }
+
+        .mode-toggle:hover {
+            background: #f5f5f5;
+        }
+
+        .mode-toggle.counter-move-active:hover {
+            background: #bbdefb;
+        }
     </style>
 </head>
 
@@ -438,7 +462,7 @@
             }
         }
 
-        function findShortestPath(startRow, startCol, grid) {
+        function findShortestPath(startRow, startCol, grid, blockedPositions = []) {
             const size = grid.length;
             const distances = Array(size).fill().map(() => Array(size).fill(Infinity));
             distances[startRow][startCol] = 0;
@@ -457,6 +481,7 @@
                     if (newRow >= 0 && newRow < size &&
                         newCol >= 0 && newCol < size &&
                         grid[newRow][newCol] !== '.' &&
+                        !blockedPositions.some(pos => pos.row === newRow && pos.col === newCol) &&
                         distances[newRow][newCol] === Infinity) {
 
                         distances[newRow][newCol] = currentDist + 1;
@@ -468,11 +493,11 @@
             return distances;
         }
 
-        function getTileScore(row, col, grid) {
+        function getTileScore(row, col, grid, blockedPositions = []) {
             const size = grid.length;
             if (grid[row][col] === '.') return 0;
 
-            const distances = findShortestPath(row, col, grid);
+            const distances = findShortestPath(row, col, grid, blockedPositions);
             let score = 0;
             let validPaths = 0;
 
@@ -480,6 +505,7 @@
                 for (let c = 0; c < size; c++) {
                     if (r === row && c === col) continue;
                     if (grid[r][c] === '.') continue;
+                    if (blockedPositions.some(pos => pos.row === r && pos.col === c)) continue;
 
                     const distance = distances[r][c];
                     if (distance !== Infinity) {
@@ -490,7 +516,7 @@
             }
 
             // Penalize positions that can't reach all other tiles
-            const totalTiles = grid.flat().filter(cell => cell !== '.').length - 1;
+            const totalTiles = grid.flat().filter(cell => cell !== '.').length - 1 - blockedPositions.length;
             if (validPaths < totalTiles) {
                 score *= validPaths / totalTiles;
             }
@@ -952,6 +978,50 @@
                         <h2>${board1.name} vs ${board2.name}</h2>
                     `;
 
+                    const modeToggle = document.createElement('button');
+                    modeToggle.className = 'mode-toggle';
+                    modeToggle.textContent = 'Standard Mode';
+                    modeToggle.dataset.useCounterMoves = 'false';
+                    modeToggle.onclick = function () {
+                        const useCounterMoves = this.dataset.useCounterMoves === 'false';
+                        this.dataset.useCounterMoves = useCounterMoves.toString();
+                        this.textContent = useCounterMoves ? 'Counter-Move Mode' : 'Standard Mode';
+                        this.classList.toggle('counter-move-active', useCounterMoves);
+
+                        // Recalculate scores with new mode
+                        const scores = analyzeBoards(board1, board2, useCounterMoves);
+                        const metrics = calculateBoardMetrics(scores);
+
+                        // Update metrics display
+                        const metricsDiv = this.parentElement.querySelector('.metrics');
+                        metricsDiv.innerHTML = `
+                            <div class="metric-row">
+                                <span>Combined Score:</span>
+                                <span class="metric-value better-higher">${metrics.combinedScore.toFixed(2)}</span>
+                            </div>
+                            <div class="metric-row">
+                                <span>Viable Moves:</span>
+                                <span class="metric-value better-higher">${metrics.viableMoves}</span>
+                            </div>
+                            <div class="metric-row">
+                                <span>Standard Deviation:</span>
+                                <span class="metric-value better-lower">${metrics.stdDev.toFixed(2)}</span>
+                            </div>
+                        `;
+
+                        // Update board display
+                        const boardDisplay = this.parentElement.querySelector('.board-display');
+                        boardDisplay.innerHTML = '';
+                        boardDisplay.appendChild(createScoreBoard(board1, scores, metrics.worst, metrics.best));
+                        boardDisplay.appendChild(createScoreBoard(board2, scores, metrics.worst, metrics.best));
+
+                        // Update score plot
+                        const scorePlot = this.parentElement.querySelector('.score-plot');
+                        scorePlot.innerHTML = '';
+                        createScatterPlot(scorePlot, scores, board1.name, board2.name);
+                    };
+                    card.appendChild(modeToggle);
+
                     const analysisContainer = document.createElement('div');
                     analysisContainer.className = 'analysis-container';
 
@@ -1084,7 +1154,61 @@
                 });
         }
 
-        function analyzeBoards(board1, board2) {
+        function getCounterMoveScore(row, col, grid1, grid2, symbol) {
+            // First find the corresponding position in board2 for our symbol
+            const board2Pos = findSymbolPosition(symbol, grid2);
+            if (!board2Pos) return 0;
+
+            // Get all possible counter-move positions (all symbols except the one we're evaluating)
+            const possibleCounterMoves = [];
+            for (let r = 0; r < grid1.length; r++) {
+                for (let c = 0; c < grid1.length; c++) {
+                    const counterSymbol = grid1[r][c];
+                    if (counterSymbol !== '.' && counterSymbol !== symbol) {
+                        const counterPos2 = findSymbolPosition(counterSymbol, grid2);
+                        if (counterPos2) {
+                            possibleCounterMoves.push({
+                                board1: { row: r, col: c },
+                                board2: counterPos2
+                            });
+                        }
+                    }
+                }
+            }
+
+            // If no counter moves possible, return normal score
+            if (possibleCounterMoves.length === 0) {
+                const score1 = getTileScore(row, col, grid1);
+                const score2 = getTileScore(board2Pos.row, board2Pos.col, grid2);
+                return score1 + score2;
+            }
+
+            // For each possible counter move, calculate our score with that counter move as a blocker
+            let worstScore = Infinity;
+            for (const counterMove of possibleCounterMoves) {
+                // Calculate score on board1 with the counter move blocking
+                const score1 = getTileScore(row, col, grid1, [counterMove.board1]);
+
+                // Calculate score on board2 with the counter move blocking
+                const score2 = getTileScore(board2Pos.row, board2Pos.col, grid2, [counterMove.board2]);
+
+                const totalScore = score1 + score2;
+                if (totalScore < worstScore) {
+                    worstScore = totalScore;
+                }
+            }
+
+            // If worstScore is still Infinity, something went wrong - return normal score
+            if (worstScore === Infinity) {
+                const score1 = getTileScore(row, col, grid1);
+                const score2 = getTileScore(board2Pos.row, board2Pos.col, grid2);
+                return score1 + score2;
+            }
+
+            return worstScore;
+        }
+
+        function analyzeBoards(board1, board2, useCounterMoves = false) {
             const scores = [];
 
             for (let row = 0; row < board1.grid.length; row++) {
@@ -1093,16 +1217,28 @@
                     if (symbol === '.') continue;
                     const board2Pos = findSymbolPosition(symbol, board2.grid);
                     if (!board2Pos) continue;
-                    const score1 = getTileScore(row, col, board1.grid);
-                    const score2 = getTileScore(board2Pos.row, board2Pos.col, board2.grid);
 
-                    scores.push({
-                        symbol,
-                        board1Pos: `${row},${col}`,
-                        board2Pos: `${board2Pos.row},${board2Pos.col}`,
-                        score: score1 + score2,
-                        individualScore: score1
-                    });
+                    let score;
+                    if (useCounterMoves) {
+                        score = getCounterMoveScore(row, col, board1.grid, board2.grid, symbol);
+                        scores.push({
+                            symbol,
+                            board1Pos: `${row},${col}`,
+                            board2Pos: `${board2Pos.row},${board2Pos.col}`,
+                            score: score,
+                            individualScore: score / 2 // Approximate individual score
+                        });
+                    } else {
+                        const score1 = getTileScore(row, col, board1.grid);
+                        const score2 = getTileScore(board2Pos.row, board2Pos.col, board2.grid);
+                        scores.push({
+                            symbol,
+                            board1Pos: `${row},${col}`,
+                            board2Pos: `${board2Pos.row},${board2Pos.col}`,
+                            score: score1 + score2,
+                            individualScore: score1
+                        });
+                    }
                 }
             }
 
