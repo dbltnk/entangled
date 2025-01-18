@@ -225,6 +225,7 @@
             padding: 12px 24px;
             font-size: 1.1rem;
             flex: 1;
+            height: 100%;
             min-height: 0;
             overflow: hidden;
             white-space: nowrap;
@@ -249,7 +250,7 @@
             border: 1px solid #eee;
             overflow-y: auto;
             margin: 0;
-            height: 200px;
+            flex: 1;
         }
 
         .metrics {
@@ -307,15 +308,14 @@
             background: white;
             border: 1px solid #ddd;
             border-radius: 4px;
-            padding: 1rem;
+            padding: 1.5rem;
             width: max-content;
-            max-width: 500px;
-            min-width: 300px;
+            max-width: 800px;
+            min-width: 600px;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
             z-index: 1000;
             top: 100%;
-            left: 50%;
-            transform: translateX(-50%);
+            left: 0;
             margin-top: 8px;
             color: #333;
             text-align: left;
@@ -324,8 +324,25 @@
             line-height: 1.4;
         }
 
+        .info-tooltip .two-columns {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin: 1rem 0;
+        }
+
+        .info-tooltip h3 {
+            margin: 1.5rem 0 0.75rem 0;
+            color: #2196F3;
+            font-size: 1rem;
+        }
+
+        .info-tooltip h3:first-child {
+            margin-top: 0;
+        }
+
         .info-tooltip p {
-            margin: 0 0 0.5rem 0;
+            margin: 0 0 0.75rem 0;
             color: #333;
         }
 
@@ -336,8 +353,16 @@
         }
 
         .info-tooltip li {
-            margin-bottom: 0.25rem;
+            margin-bottom: 0.5rem;
             color: #333;
+        }
+
+        .info-tooltip .config-option {
+            margin-bottom: 1rem;
+        }
+
+        .info-tooltip .config-option strong {
+            color: #1976D2;
         }
 
         .info-icon:hover .info-tooltip,
@@ -397,7 +422,7 @@
         }
 
         .control-group input[type="number"] {
-            width: 4rem;
+            width: 2.5rem;
             padding: 4px 8px;
             border: 1px solid #ddd;
             border-radius: 4px;
@@ -413,6 +438,8 @@
             grid-row: 2;
             display: flex;
             flex-direction: column;
+            min-height: 0;
+            overflow: hidden;
         }
 
         .copy-card {
@@ -423,10 +450,10 @@
             grid-column: 3;
             grid-row: 2;
             display: flex;
-            align-items: stretch;
-            justify-content: stretch;
+            align-items: center;
+            justify-content: center;
             min-height: 0;
-            overflow: hidden;
+            height: 5rem;
         }
 
         .history-controls {
@@ -493,42 +520,65 @@
             <div class="info-tooltip">
                 <p>This tool uses a genetic algorithm to evolve optimal board layouts. Here's how it works:</p>
 
-                <h3>Scoring System</h3>
-                <ul>
-                    <li>
-                        <strong>Position Scoring:</strong> Each tile scores based on path length to all reachable tiles:
-                        <ul>
-                            <li>Direct neighbors: 1/1 = 1.0 points</li>
-                            <li>Two steps away: 1/2 = 0.5 points</li>
-                            <li>Three steps away: 1/3 = 0.33 points</li>
-                            <li>And so on for all reachable tiles</li>
-                        </ul>
-                    </li>
-                    <li>
-                        <strong>Viable Moves:</strong> Count of positions within 0.0000000001 of best score
-                    </li>
-                    <li>
-                        <strong>Standard Deviation:</strong> How much scores vary (weighted at 10%)
-                    </li>
-                    <li>
-                        <strong>Combined Score = Viable Moves - (Standard Deviation × 0.1)</strong>
-                    </li>
-                </ul>
+                <div class="two-columns">
+                    <div>
+                        <h3>Configuration Options</h3>
+                        <div class="config-option">
+                            <strong>Workers:</strong> Number of parallel evolution processes.
+                            More workers = faster evolution but higher CPU usage. Default: 14.
+                        </div>
+                        <div class="config-option">
+                            <strong>Best Score Precision:</strong> How close a score must be to count as viable
+                            (default: 0.0000000001).
+                            Lower values = stricter matching, fewer viable moves.
+                        </div>
+                        <div class="config-option">
+                            <strong>Viable Moves Weight:</strong> How much to value having multiple viable moves
+                            (default: 1.0).
+                            Higher values favor boards with more equal-scoring moves.
+                        </div>
+                        <div class="config-option">
+                            <strong>Standard Dev Weight:</strong> How much to penalize score variation (default: 0.1).
+                            Higher values favor more consistent scores across moves.
+                        </div>
+                        <div class="config-option">
+                            <strong>Precise Eval:</strong> Use pathfinding instead of Manhattan distance for evolution.
+                            More accurate but much slower. Use for final validation.
+                        </div>
 
-                <h3>Evolution Process</h3>
-                <ol>
-                    <li>Start with 100 random boards</li>
-                    <li>Each generation:
+                        <h3>Scoring Formula</h3>
+                        <p>Final Score = (Viable Moves × Weight) - (Standard Deviation × Weight)</p>
+                    </div>
+
+                    <div>
+                        <h3>Position Scoring</h3>
                         <ul>
-                            <li>Score boards using fast Manhattan distance</li>
-                            <li>Best boards become parents</li>
-                            <li>Mix parents + small mutations</li>
-                            <li>Add 5% random boards</li>
-                            <li>Validate top 10% with pathfinding every 20 generations</li>
+                            <li>Each tile scores based on path length to all reachable tiles:
+                                <ul>
+                                    <li>Direct neighbors: 1/1 = 1.0 points</li>
+                                    <li>Two steps away: 1/2 = 0.5 points</li>
+                                    <li>Three steps away: 1/3 = 0.33 points</li>
+                                    <li>And so on for all reachable tiles</li>
+                                </ul>
+                            </li>
                         </ul>
-                    </li>
-                    <li>Repeat until stopped</li>
-                </ol>
+
+                        <h3>Evolution Process</h3>
+                        <ol>
+                            <li>Start with 100 random boards</li>
+                            <li>Each generation:
+                                <ul>
+                                    <li>Score boards using fast Manhattan distance</li>
+                                    <li>Best boards become parents</li>
+                                    <li>Mix parents + small mutations</li>
+                                    <li>Add 5% random boards</li>
+                                    <li>Validate top 10% with pathfinding every 20 generations</li>
+                                </ul>
+                            </li>
+                            <li>Repeat until stopped</li>
+                        </ol>
+                    </div>
+                </div>
 
                 <p><strong>Note:</strong> In matching mode, only the second board evolves while the first remains
                     pinned.</p>
@@ -541,18 +591,36 @@
 
     <div class="controls">
         <div class="control-group">
-            <label for="sizeSelect">Board Size:</label>
+            <label for="sizeSelect">Size:</label>
             <select id="sizeSelect"></select>
         </div>
         <div class="control-group">
-            <label for="boardSelect">Match Board:</label>
+            <label for="boardSelect">Pin:</label>
             <select id="boardSelect">
                 <option value="none">None</option>
             </select>
         </div>
         <div class="control-group">
             <label for="workerCount">Workers:</label>
-            <input type="number" id="workerCount" min="1" max="32" value="14" />
+            <input type="number" id="workerCount" min="1" value="14" />
+        </div>
+        <div class="control-group">
+            <label for="bestEpsilon">Best Score Prec.:</label>
+            <input type="number" id="bestEpsilon" min="0" max="1" step="0.0000000001" value="0.0000000001" />
+        </div>
+        <div class="control-group">
+            <label for="viableWeight">Viable Moves Wght:</label>
+            <input type="number" id="viableWeight" min="0" max="10" step="0.1" value="1.0" />
+        </div>
+        <div class="control-group">
+            <label for="sdWeight">Standard Dev Wght:</label>
+            <input type="number" id="sdWeight" min="0" max="1" step="0.01" value="0.1" />
+        </div>
+        <div class="control-group">
+            <label for="useSlowEval">
+                <input type="checkbox" id="useSlowEval" />
+                Precise Eval
+            </label>
         </div>
         <div class="control-group">
             <button id="startBtn">Start Evolution</button>
@@ -704,6 +772,11 @@
 // Cache for path calculations with strict size limits
 const MAX_CACHE_SIZE = 1000; // Reduced from 10000
 const pathCache = new Map();
+
+let BEST_EPSILON = 1e-10;
+let VIABLE_WEIGHT = 1.0;
+let SD_WEIGHT = 0.1;
+let USE_SLOW_EVAL = false;
 
 // More efficient cache key generation
 function getBoardKey(grid, startRow, startCol) {
@@ -1017,11 +1090,10 @@ function evaluateBoardsFast(b1, b2) {
     const mean = scores.reduce((sum, s) => sum + s.score, 0) / scores.length;
     const variance = scores.reduce((sum, s) => sum + Math.pow(s.score - mean, 2), 0) / scores.length;
     const stdev = Math.sqrt(variance);
-    const epsilon = 1e-10;
-    const viableMoves = scores.filter(s => Math.abs(s.score - best) < epsilon).length;
+    const viableMoves = scores.filter(s => Math.abs(s.score - best) < BEST_EPSILON).length;
 
     return {
-        score: viableMoves - (stdev * 0.1),
+        score: (viableMoves * VIABLE_WEIGHT) - (stdev * SD_WEIGHT),
         moves: viableMoves,
         stdev: stdev
     };
@@ -1064,11 +1136,10 @@ function evaluateBoardsAccurate(b1, b2) {
     const mean = scores.reduce((sum, s) => sum + s.score, 0) / scores.length;
     const variance = scores.reduce((sum, s) => sum + Math.pow(s.score - mean, 2), 0) / scores.length;
     const stdev = Math.sqrt(variance);
-    const epsilon = 1e-10;
-    const viableMoves = scores.filter(s => Math.abs(s.score - best) < epsilon).length;
+    const viableMoves = scores.filter(s => Math.abs(s.score - best) < BEST_EPSILON).length;
 
     return {
-        score: viableMoves - (stdev * 0.1),
+        score: (viableMoves * VIABLE_WEIGHT) - (stdev * SD_WEIGHT),
         moves: viableMoves,
         stdev: stdev
     };
@@ -1089,7 +1160,7 @@ function evolve() {
                 const parent2 = pickParent(population);
                 const x2 = crossover(parent1.board2, parent2.board2);
                 b2 = mutate(x2);
-                stats = evaluateBoardsFast(b1, b2);
+                stats = USE_SLOW_EVAL ? evaluateBoardsAccurate(b1, b2) : evaluateBoardsFast(b1, b2);
             } else {
                 const p1 = pickParent(population);
                 const p2 = pickParent(population);
@@ -1097,7 +1168,7 @@ function evolve() {
                 const x2 = crossover(p1.board2, p2.board2);
                 b1 = mutate(x1);
                 b2 = mutate(x2);
-                stats = evaluateBoardsFast(b1, b2);
+                stats = USE_SLOW_EVAL ? evaluateBoardsAccurate(b1, b2) : evaluateBoardsFast(b1, b2);
             }
             newPop.push({ board1: b1, board2: b2, stats });
             boardsEvaluated++;
@@ -1175,6 +1246,11 @@ onmessage = (e) => {
         if (data.matchBoard && data.matchBoard.length) {
             pinnedBoard = data.matchBoard;
         }
+        BEST_EPSILON = data.bestEpsilon;
+        VIABLE_WEIGHT = data.viableWeight;
+        SD_WEIGHT = data.sdWeight;
+        USE_SLOW_EVAL = data.useSlowEval;
+
         evolving = true;
         boardsEvaluated = 0;
         bestScore = -Infinity;
@@ -1516,8 +1592,8 @@ onmessage = (e) => {
 
             // Update worker count from input
             WORKER_COUNT = parseInt(document.getElementById('workerCount').value) || 14;
-            WORKER_COUNT = Math.max(1, Math.min(32, WORKER_COUNT)); // Clamp between 1 and 32
-            document.getElementById('workerCount').value = WORKER_COUNT; // Update input with clamped value
+            WORKER_COUNT = Math.max(1, WORKER_COUNT); // Only ensure it's at least 1
+            document.getElementById('workerCount').value = WORKER_COUNT; // Update input with validated value
 
             const size = parseInt(sizeSelect.value);
             const boardId = boardSelect.value;
@@ -1531,6 +1607,12 @@ onmessage = (e) => {
                     }
                 }
             }
+
+            // Get configuration values
+            const bestEpsilon = parseFloat(document.getElementById('bestEpsilon').value) || 0.0000000001;
+            const viableWeight = parseFloat(document.getElementById('viableWeight').value) || 1.0;
+            const sdWeight = parseFloat(document.getElementById('sdWeight').value) || 0.1;
+            const useSlowEval = document.getElementById('useSlowEval').checked;
 
             running = true;
             startTime = performance.now();
@@ -1613,7 +1695,11 @@ onmessage = (e) => {
                 worker.postMessage({
                     msg: "start",
                     boardSize: size,
-                    matchBoard: matchBoard
+                    matchBoard: matchBoard,
+                    bestEpsilon: bestEpsilon,
+                    viableWeight: viableWeight,
+                    sdWeight: sdWeight,
+                    useSlowEval: useSlowEval
                 });
                 workers.push(worker);
             }
