@@ -371,7 +371,7 @@
                 <p><strong>Metrics Explanation:</strong></p>
                 <ul>
                     <li>
-                        <strong>Combined Score:</strong> Viable moves - Standard deviation.
+                        <strong>Combined Score:</strong> Viable moves - (0.1 × Standard deviation).
                         Higher values indicate better overall board balance and playability.
                     </li>
                     <li>
@@ -544,7 +544,7 @@
             const epsilon = 1e-10;
             const viableMoves = scores.filter(s => Math.abs(s.score - best) < epsilon).length;
 
-            const combinedScore = viableMoves - stdDev;
+            const combinedScore = viableMoves - (0.1 * stdDev);
 
             return {
                 stdDev,
@@ -887,10 +887,16 @@
             return grid.flat().filter(cell => cell !== '.').length;
         }
 
-        function updateDisplay() {
+        async function updateDisplay() {
             const size = parseInt(document.getElementById('sizeFilter').value);
             const grid = document.getElementById('analysisGrid');
             grid.innerHTML = '';
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            const loadingStatus = loadingIndicator.querySelector('.loading-status');
+            loadingIndicator.classList.remove('hidden');
+
+            loadingStatus.textContent = 'Filtering valid board combinations...';
+            await new Promise(resolve => setTimeout(resolve, 0)); // Let the UI update
 
             const validBoards = Object.entries(BOARD_LAYOUTS).filter(([id, layout]) =>
                 layout.grid.length === size && !id.includes('random') && !id.includes('Random'));
@@ -952,6 +958,9 @@
                 );
             }
 
+            loadingStatus.textContent = 'Filtering compatible board pairs...';
+            await new Promise(resolve => setTimeout(resolve, 0)); // Let the UI update
+
             // Filter out board pairs with different number of tiles
             boardPairs = boardPairs.filter(([[_, board1], [__, board2]]) => {
                 const board1TileCount = countNonDotTiles(board1.grid);
@@ -959,15 +968,30 @@
                 return board1TileCount === board2TileCount;
             });
 
-            boardPairs
-                .map(([[id1, board1], [id2, board2]]) => {
+            const totalPairs = boardPairs.length;
+            const analyses = [];
+            const BATCH_SIZE = 5; // Process 5 pairs at a time
+
+            // Process board pairs in batches
+            for (let i = 0; i < boardPairs.length; i += BATCH_SIZE) {
+                loadingStatus.textContent = `Analyzing board pairs ${i + 1}-${Math.min(i + BATCH_SIZE, totalPairs)}/${totalPairs}...`;
+                await new Promise(resolve => setTimeout(resolve, 0)); // Let the UI update
+
+                const batch = boardPairs.slice(i, i + BATCH_SIZE);
+                const batchAnalyses = batch.map(([[id1, board1], [id2, board2]], index) => {
                     if (!board1 || !board2) return null;
                     const scores = analyzeBoards(board1, board2);
                     const metrics = calculateBoardMetrics(scores);
                     const moveFrequencies = calculateMoveFrequencies(globalFirstMoves, id1, id2);
-
                     return { board1, board2, id1, id2, scores, metrics, moveFrequencies };
-                })
+                });
+                analyses.push(...batchAnalyses);
+            }
+
+            loadingStatus.textContent = 'Sorting and rendering results...';
+            await new Promise(resolve => setTimeout(resolve, 0)); // Let the UI update
+
+            analyses
                 .filter(analysis => analysis !== null)
                 .sort((a, b) => b.metrics.combinedScore - a.metrics.combinedScore)
                 .forEach(({ board1, board2, id1, id2, scores, metrics, moveFrequencies }) => {
@@ -1151,6 +1175,10 @@
 
                     grid.appendChild(card);
                 });
+
+            loadingStatus.textContent = 'Analysis complete';
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Show completion message
+            loadingIndicator.classList.add('hidden');
         }
 
         function getCounterMoveScore(row, col, grid1, grid2, symbol) {
