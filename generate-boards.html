@@ -505,13 +505,13 @@
                         </ul>
                     </li>
                     <li>
-                        <strong>Viable Moves:</strong> Count of positions within 0.0000000001 of best score.
+                        <strong>Viable Moves:</strong> Count of positions within 0.0000000001 of best score
                     </li>
                     <li>
-                        <strong>Standard Deviation:</strong> How much scores vary. Lower is better.
+                        <strong>Standard Deviation:</strong> How much scores vary (weighted at 10%)
                     </li>
                     <li>
-                        <strong>Combined Score = Viable Moves - Standard Deviation</strong>
+                        <strong>Combined Score = Viable Moves - (Standard Deviation × 0.1)</strong>
                     </li>
                 </ul>
 
@@ -520,16 +520,18 @@
                     <li>Start with 100 random boards</li>
                     <li>Each generation:
                         <ul>
-                            <li>Score boards using above system</li>
+                            <li>Score boards using fast Manhattan distance</li>
                             <li>Best boards become parents</li>
                             <li>Mix parents + small mutations</li>
                             <li>Add 5% random boards</li>
+                            <li>Validate top 10% with pathfinding every 20 generations</li>
                         </ul>
                     </li>
                     <li>Repeat until stopped</li>
                 </ol>
 
-                <p><strong>Note:</strong> In matching mode, only the second board evolves.</p>
+                <p><strong>Note:</strong> In matching mode, only the second board evolves while the first remains
+                    pinned.</p>
             </div>
         </span>
         <div id="loadingIndicator" class="loading-indicator hidden">
