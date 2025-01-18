@@ -332,12 +332,11 @@
         <span class="info-icon">i
             <div class="info-tooltip">
                 <p>
-                    Left boards show position scoring: The scoring system evaluates each tile based on its proximity to
-                    all
-                    other tiles.
-                    Blue intensity indicates better positions, calculated as the sum of inverse Manhattan distances to
-                    other
-                    tiles.
+                    Left boards show position scoring: The scoring system evaluates each tile based on its connectivity
+                    to
+                    all other tiles. Blue intensity indicates better positions, calculated as the sum of inverse
+                    shortest path distances
+                    (found using breadth-first search) to other tiles.
                 </p>
                 <p>
                     Right boards show opening moves: Red intensity shows how frequently each position is chosen as the
