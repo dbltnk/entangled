@@ -130,6 +130,74 @@
             justify-content: space-between;
         }
 
+        .ai-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .ai-stat {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.4rem 0.6rem;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            cursor: pointer;
+            transition: all 0.2s;
+            border-radius: 3px;
+            user-select: none;
+            font-size: 0.85rem;
+        }
+
+        .ai-stat:hover {
+            background-color: #f0f7ff;
+            transform: translateY(-1px);
+        }
+
+        .ai-stat.active {
+            background-color: #e3f2fd;
+            font-weight: 500;
+        }
+
+        .ai-stat .checkbox {
+            margin-right: 0.5rem;
+            font-size: 1.1rem;
+            line-height: 1;
+        }
+
+        .ai-stat .name-section {
+            display: flex;
+            align-items: center;
+            color: #1976D2;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .ai-stat .game-count {
+            color: #666;
+            white-space: nowrap;
+            margin-left: 0.5rem;
+        }
+
+        .ai-stat.active .name-section {
+            color: #0D47A1;
+            font-weight: 600;
+        }
+
+        .ai-stat.active .game-count {
+            color: #333;
+            font-weight: 500;
+        }
+
+        .total-games {
+            margin-top: 0.5rem;
+            padding-top: 0.5rem;
+            border-top: 2px solid rgba(0, 0, 0, 0.1);
+            font-weight: bold;
+            text-align: center;
+        }
+
         .metric-row {
             display: flex;
             justify-content: space-between;
@@ -218,25 +286,41 @@
             background: white;
             border: 1px solid #ddd;
             border-radius: 4px;
-            padding: 1rem;
+            padding: 1.5rem;
             width: max-content;
-            max-width: 500px;
-            min-width: 300px;
+            max-width: 800px;
+            min-width: 600px;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
             z-index: 1000;
             top: 100%;
             left: 0;
             margin-top: 8px;
-            margin-left: 2rem;
             color: #333;
             text-align: left;
             font-weight: normal;
-            font-size: 0.9rem;
-            line-height: 1.5;
+            font-size: 0.85rem;
+            line-height: 1.4;
+        }
+
+        .info-tooltip .two-columns {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin: 1rem 0;
+        }
+
+        .info-tooltip h3 {
+            margin: 1.5rem 0 0.75rem 0;
+            color: #2196F3;
+            font-size: 1rem;
+        }
+
+        .info-tooltip h3:first-child {
+            margin-top: 0;
         }
 
         .info-tooltip p {
-            margin: 0 0 1rem 0;
+            margin: 0 0 0.75rem 0;
             color: #333;
         }
 
@@ -251,13 +335,12 @@
             color: #333;
         }
 
-        .info-tooltip li strong {
-            color: #000;
-            font-weight: 600;
+        .info-tooltip .config-option {
+            margin-bottom: 1rem;
         }
 
-        .info-tooltip li:last-child {
-            margin-bottom: 0;
+        .info-tooltip .config-option strong {
+            color: #1976D2;
         }
 
         .info-icon:hover .info-tooltip,
@@ -302,28 +385,6 @@
         .plot-container {
             position: relative;
             width: 100%;
-        }
-
-        .ai-stat {
-            display: flex;
-            justify-content: space-between;
-            padding: 0.2rem 0;
-            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-        }
-
-        .ai-stat span:first-child {
-            text-transform: capitalize;
-        }
-
-        .ai-stat span:last-child {
-            font-weight: 500;
-        }
-
-        .total-games {
-            margin-top: 0.5rem;
-            padding-top: 0.5rem;
-            border-top: 2px solid rgba(0, 0, 0, 0.1);
-            font-weight: bold;
         }
 
         .mode-toggle {
@@ -387,47 +448,59 @@
         Board Starting Position Analysis
         <span class="info-icon">i
             <div class="info-tooltip">
-                <p>
-                    Left boards show position scoring: The scoring system evaluates each tile based on its connectivity
-                    to
-                    all other tiles. Blue intensity indicates better positions, calculated as the sum of inverse
-                    shortest path distances
-                    (found using breadth-first search) to other tiles.
-                </p>
-                <p>
-                    Right boards show opening moves: Red intensity shows how frequently each position is chosen as the
-                    first
-                    move in tournament play.
-                    Percentages indicate the proportion of games where that position was the opening move.
-                </p>
-                <p><strong>Two analysis modes are available:</strong></p>
-                <ul>
-                    <li>
-                        <strong>Standard Analysis:</strong> Evaluates each position's connectivity independently.
-                        Shows the raw potential of each starting position.
-                    </li>
-                    <li>
-                        <strong>Counter-Move Analysis:</strong> Evaluates positions considering opponent's best
-                        counter-moves.
-                        Shows which positions remain strong even after opponent's response.
-                    </li>
-                </ul>
-                <br>
-                <p><strong>Metrics Explanation:</strong></p>
-                <ul>
-                    <li>
-                        <strong>Combined Score:</strong> Viable moves - (0.1 × Standard deviation).
-                        Higher values indicate better overall board balance and playability.
-                    </li>
-                    <li>
-                        <strong>Viable Moves:</strong> Count of tiles with scores close to optimal.
-                        Higher values indicate more good opening options.
-                    </li>
-                    <li>
-                        <strong>Standard Deviation:</strong> Variation in tile scores.
-                        Lower values indicate more balanced positions.
-                    </li>
-                </ul>
+                <p>This tool analyzes board starting positions using two methods: static position scoring and tournament
+                    play data analysis.</p>
+
+                <div class="two-columns">
+                    <div>
+                        <h3>Analysis Modes</h3>
+                        <ul>
+                            <li><strong>Standard Analysis:</strong> Calculates position scores based on shortest path
+                                distances to all other positions.</li>
+                            <li><strong>Counter-Move Analysis:</strong> Evaluates positions considering the opponent's
+                                best possible counter-move, showing which positions remain strong after the opponent's
+                                response.</li>
+                        </ul>
+
+                        <h3>Position Analysis (Left)</h3>
+                        <ul>
+                            <li><strong>Blue Intensity:</strong> Represents position strength. Darker blue indicates
+                                better connectivity to other positions.</li>
+                            <li><strong>Position Values:</strong> Each cell shows total score (top) and individual board
+                                score (bottom).</li>
+                        </ul>
+
+                        <h3>Tournament Play (Right)</h3>
+                        <ul>
+                            <li><strong>Red Intensity:</strong> Shows first move frequency as a percentage of filtered
+                                games.</li>
+                            <li><strong>AI Filtering:</strong> Toggle AI types using checkboxes. Only black player
+                                (first move) data is considered.</li>
+                            <li><strong>Stacked Bar Chart:</strong> Shows move distribution per AI type. Height
+                                represents number of games.</li>
+                        </ul>
+                    </div>
+
+                    <div>
+                        <h3>Metrics Explained</h3>
+                        <ul>
+                            <li><strong>Combined Score:</strong> Viable moves - (0.1 × Standard deviation). Higher
+                                values indicate better position distribution.</li>
+                            <li><strong>Viable Moves:</strong> Number of positions with scores near the maximum (within
+                                epsilon).</li>
+                            <li><strong>Standard Deviation:</strong> Measure of score spread. Lower values indicate more
+                                balanced positions.</li>
+                        </ul>
+
+                        <h3>Controls</h3>
+                        <ul>
+                            <li><strong>Board Size:</strong> Select grid dimensions (4x4 to 7x7).</li>
+                            <li><strong>Board Selection:</strong> Choose specific boards or view all combinations.</li>
+                            <li><strong>AI Types:</strong> Filter first moves by AI type. Each board combination
+                                maintains its own filter state.</li>
+                        </ul>
+                    </div>
+                </div>
             </div>
         </span>
         <div id="loadingIndicator" class="loading-indicator hidden">
@@ -466,6 +539,839 @@
         import BOARD_LAYOUTS from './boards.js';
 
         let useCounterMoves = false;  // Add global state
+        const boardFilterMap = new Map();  // Store filters for each board combination
+
+        function getBoardKey(board1Id, board2Id) {
+            return `${board1Id}_${board2Id}`;
+        }
+
+        function createBoardFilters(availableAIs) {
+            // Create a new Set with all available AIs for this board combination
+            const filters = new Set(availableAIs);
+            return filters;
+        }
+
+        function toggleAIFilter(aiType, element) {
+            // Find the current board combination card
+            const card = element.closest('.combo-card');
+            if (!card) return;
+
+            const board1Name = card.querySelector('h2').textContent.split(' vs ')[0];
+            const board2Name = card.querySelector('h2').textContent.split(' vs ')[1];
+
+            // Find the corresponding board IDs
+            const board1Id = Object.entries(BOARD_LAYOUTS).find(([_, board]) => board.name === board1Name)?.[0];
+            const board2Id = Object.entries(BOARD_LAYOUTS).find(([_, board]) => board.name === board2Name)?.[0];
+
+            if (!board1Id || !board2Id) return;
+
+            const boardKey = getBoardKey(board1Id, board2Id);
+            let boardFilters = boardFilterMap.get(boardKey);
+
+            if (!boardFilters) {
+                // Initialize filters if they don't exist
+                const moveFrequencies = calculateMoveFrequencies(globalFirstMoves, board1Id, board2Id, new Set([aiType]));
+                const availableAIs = new Set(moveFrequencies.allMovesForBoards.map(m => m.black.split('-')[0]));
+                boardFilters = createBoardFilters(Array.from(availableAIs));
+                boardFilterMap.set(boardKey, boardFilters);
+            }
+
+            // Toggle the filter
+            if (boardFilters.has(aiType)) {
+                boardFilters.delete(aiType);
+                element.classList.remove('active');
+                element.querySelector('.checkbox').textContent = '⬜';
+            } else {
+                boardFilters.add(aiType);
+                element.classList.add('active');
+                element.querySelector('.checkbox').textContent = '☑️';
+            }
+
+            // Recalculate frequencies with current filters
+            const moveFrequencies = calculateMoveFrequencies(globalFirstMoves, board1Id, board2Id, boardFilters);
+
+            // Update the frequency boards - specifically target the frequency section
+            const frequencySection = card.querySelector('.board-section:nth-child(2)'); // Get the right section
+            if (frequencySection && moveFrequencies) {
+                const frequencyBoardDisplay = frequencySection.querySelector('.board-display');
+                if (frequencyBoardDisplay) {
+                    frequencyBoardDisplay.innerHTML = '';
+                    frequencyBoardDisplay.appendChild(createFrequencyBoard(BOARD_LAYOUTS[board1Id], moveFrequencies.frequencies));
+                    frequencyBoardDisplay.appendChild(createFrequencyBoard(BOARD_LAYOUTS[board2Id], moveFrequencies.frequencies));
+                }
+
+                // Update the frequency plot
+                const frequencyPlot = frequencySection.querySelector('.frequency-plot');
+                if (frequencyPlot) {
+                    frequencyPlot.innerHTML = '';
+                    createFrequencyPlot(frequencyPlot, moveFrequencies, board1Name, board2Name, boardFilters);
+                }
+
+                // Update the total games count
+                const totalGamesDiv = frequencySection.querySelector('.total-games');
+                if (totalGamesDiv) {
+                    totalGamesDiv.textContent = `Total Games: ${moveFrequencies.total}`;
+                }
+            }
+        }
+
+        function calculateMoveFrequencies(moves, board1Id, board2Id, activeFilters) {
+            // First filter by board combination only
+            const boardFilteredMoves = moves.filter(m => {
+                // Handle both old and new formats
+                const board1Match = typeof m.boards.board1 === 'string' ?
+                    m.boards.board1 === board1Id :
+                    m.boards.board1.id === board1Id;
+                const board2Match = typeof m.boards.board2 === 'string' ?
+                    m.boards.board2 === board2Id :
+                    m.boards.board2.id === board2Id;
+
+                return board1Match && board2Match;
+            });
+
+            // Store all moves for this board combination
+            const allMovesForBoards = boardFilteredMoves;
+
+            // Filter by selected AI types (black player only since it's first move)
+            const filteredMoves = boardFilteredMoves.filter(m => {
+                const blackType = m.black.split('-')[0];
+                return activeFilters.has(blackType);
+            });
+
+            // Calculate frequencies based on filtered moves
+            const frequencies = {};
+            const symbolCounts = {};
+
+            // First count total occurrences per symbol
+            filteredMoves.forEach(m => {
+                symbolCounts[m.move] = (symbolCounts[m.move] || 0) + 1;
+            });
+
+            // Initialize frequencies for all symbols to 0
+            const allSymbols = new Set(boardFilteredMoves.map(m => m.move));
+            allSymbols.forEach(symbol => {
+                frequencies[symbol] = {
+                    count: symbolCounts[symbol] || 0,
+                    percentage: 0
+                };
+            });
+
+            // Then calculate percentages based on total filtered moves
+            const total = filteredMoves.length;
+            if (total > 0) {
+                Object.keys(frequencies).forEach(symbol => {
+                    frequencies[symbol].percentage = ((symbolCounts[symbol] || 0) / total) * 100;
+                });
+            }
+
+            return {
+                frequencies,
+                filteredMoves,
+                allMovesForBoards,
+                total
+            };
+        }
+
+        function getScoreColor(score, minScore, maxScore) {
+            const ratio = (score - minScore) / (maxScore - minScore);
+            return `hsla(210, 100%, ${85 - (ratio * 70)}%, ${0.4 + (ratio * 0.6)})`;
+        }
+
+        function getFrequencyColor(percentage) {
+            const normalizedRatio = Math.min(percentage / 20, 1);
+            return `hsla(0, 100%, ${85 - (normalizedRatio * 70)}%, ${0.4 + (normalizedRatio * 0.6)})`;
+        }
+
+        function createScoreBoard(board, scores, minScore, maxScore) {
+            const size = board.grid.length;
+            const container = document.createElement('div');
+            container.className = 'board';
+            container.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
+
+            // Pre-compute score lookup for better performance
+            const scoreMap = new Map(scores.map(s => [s.symbol, s]));
+
+            for (let row = 0; row < size; row++) {
+                for (let col = 0; col < size; col++) {
+                    const symbol = board.grid[row][col];
+                    if (symbol === '.') { container.appendChild(document.createElement('div')).className = 'board-cell placeholder-cell'; continue; }
+                    const cell = document.createElement('div');
+                    cell.className = 'board-cell';
+
+                    const scoreInfo = scoreMap.get(symbol);
+                    const combinedScore = scoreInfo?.score || 0;
+                    const individualScore = scoreInfo?.individualScore || 0;
+                    cell.style.backgroundColor = getScoreColor(combinedScore, minScore, maxScore);
+
+                    const ratio = (combinedScore - minScore) / (maxScore - minScore);
+                    cell.style.color = ratio > 0.5 ? '#fff' : '#000';
+
+                    cell.innerHTML = `
+                        <div style="font-size: 1.2rem; font-weight: bold;">${symbol}</div>
+                        <div style="font-size: 0.75rem; font-weight: 500; line-height: 1.1;">${combinedScore.toFixed(1)}</div>
+                        <div style="font-size: 0.65rem; font-weight: 400; opacity: 0.8; line-height: 1;">${individualScore.toFixed(1)}</div>
+                    `;
+                    cell.style.width = `${40}px`;
+                    cell.style.height = `${40}px`;
+                    cell.style.padding = '2px';
+                    cell.style.textAlign = 'center';
+                    cell.style.display = 'flex';
+                    cell.style.flexDirection = 'column';
+                    cell.style.justifyContent = 'center';
+                    container.appendChild(cell);
+                }
+            }
+            return container;
+        }
+
+        function createFrequencyBoard(board, moveFrequencies) {
+            const size = board.grid.length;
+            const container = document.createElement('div');
+            container.className = 'board';
+            container.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
+
+            // Pre-compute frequency lookup for better performance
+            const frequencyMap = new Map(Object.entries(moveFrequencies));
+
+            for (let row = 0; row < size; row++) {
+                for (let col = 0; col < size; col++) {
+                    const symbol = board.grid[row][col];
+                    if (symbol === '.') { container.appendChild(document.createElement('div')).className = 'board-cell placeholder-cell'; continue; }
+                    const cell = document.createElement('div');
+                    cell.className = 'board-cell';
+                    const frequency = frequencyMap.get(symbol)?.percentage || 0;
+                    cell.style.backgroundColor = getFrequencyColor(frequency);
+
+                    const normalizedRatio = Math.min(frequency / 20, 1);
+                    cell.style.color = normalizedRatio > 0.5 ? '#fff' : '#000';
+
+                    cell.innerHTML = `
+                        <div style="font-size: 1.2rem; font-weight: bold;">${symbol}</div>
+                        <div style="font-size: 0.75rem; font-weight: 500; line-height: 1.1;">${frequency.toFixed(1)}%</div>
+                    `;
+                    cell.style.width = `${40}px`;
+                    cell.style.height = `${40}px`;
+                    cell.style.padding = '2px';
+                    cell.style.textAlign = 'center';
+                    cell.style.display = 'flex';
+                    cell.style.flexDirection = 'column';
+                    cell.style.justifyContent = 'center';
+                    container.appendChild(cell);
+                }
+            }
+            return container;
+        }
+
+        function createFrequencyPlot(container, moveFrequenciesData, board1Name, board2Name, activeFilters) {
+            const canvas = document.createElement('canvas');
+            container.appendChild(canvas);
+
+            if (!moveFrequenciesData || !moveFrequenciesData.filteredMoves) return;
+
+            // First pass: identify all available AI types and symbols from all moves
+            const availableSymbols = new Set();
+            const availableAITypes = new Set();
+            moveFrequenciesData.allMovesForBoards.forEach(move => {
+                availableSymbols.add(move.move);
+                const aiType = move.black.split('-')[0];
+                availableAITypes.add(aiType);
+            });
+
+            // Initialize symbolData structure for all available symbols
+            const symbolData = {};
+            availableSymbols.forEach(symbol => {
+                symbolData[symbol] = {
+                    'random': 0,
+                    'deterministic': 0,
+                    'aggressive': 0,
+                    'defensive': 0,
+                    'minimax': 0,
+                    'mcts': 0,
+                    'hybrid': 0,
+                    'total': 0
+                };
+            });
+
+            // Second pass: count only filtered moves (black player only)
+            moveFrequenciesData.filteredMoves.forEach(move => {
+                const symbol = move.move;
+                const aiType = move.black.split('-')[0];
+                symbolData[symbol][aiType]++;
+                symbolData[symbol].total++;
+            });
+
+            const sortedSymbols = Object.entries(symbolData)
+                .sort((a, b) => b[1].total - a[1].total)
+                .map(([symbol]) => symbol);
+
+            const aiColors = {
+                'random': '#1C9941',
+                'deterministic': '#88A02C',
+                'aggressive': '#DDDD22',
+                'defensive': '#FD8D3C',
+                'minimax': '#E6550D',
+                'mcts': '#DE2D26',
+                'hybrid': '#A50F15'
+            };
+
+            // Create datasets for all available AI types
+            const datasets = Object.entries(aiColors)
+                .filter(([aiType]) => availableAITypes.has(aiType))
+                .map(([aiType, color]) => ({
+                    label: aiType,
+                    data: sortedSymbols.map(symbol => symbolData[symbol][aiType]),
+                    backgroundColor: color,
+                    borderColor: color.replace('rgb', 'rgba').replace(')', ', 1)'),
+                    borderWidth: 1,
+                    hidden: !activeFilters.has(aiType)
+                }));
+
+            const ctx = canvas.getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: sortedSymbols,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: false,
+                            text: `First Move Selection by AI Type`
+                        },
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            onClick: null  // Disable legend click handling
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => {
+                                    return `${context.dataset.label}: ${context.raw} moves`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            stacked: true,
+                            title: {
+                                display: true,
+                                text: 'Symbol'
+                            },
+                            ticks: {
+                                autoSkip: false,
+                                maxRotation: 0,
+                                minRotation: 0
+                            }
+                        },
+                        y: {
+                            stacked: true,
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Number of Selections'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createScatterPlot(container, scores, board1Name, board2Name) {
+            const canvas = document.createElement('canvas');
+            container.appendChild(canvas);
+
+            scores.sort((a, b) => b.score - a.score);
+
+            const ctx = canvas.getContext('2d');
+            new Chart(ctx, {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        data: scores.map((s, i) => ({
+                            x: i,
+                            y: s.score,
+                            symbol: s.symbol,
+                            positions: `${s.board1Pos}, ${s.board2Pos}`
+                        })),
+                        backgroundColor: 'rgba(33, 150, 243, 0.6)',
+                        borderColor: 'rgba(33, 150, 243, 0.8)',
+                        borderWidth: 1,
+                        pointRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: false,
+                            text: `${board1Name} vs ${board2Name} (higher is better)`,
+                        },
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => {
+                                    const point = context.raw;
+                                    return [
+                                        `Symbol: ${point.symbol}`,
+                                        `Score: ${point.y.toFixed(1)}`,
+                                        `Positions: ${point.positions}`
+                                    ];
+                                }
+                            }
+                        },
+                        customSymbolLabels: {
+                            display: true
+                        }
+                    },
+                    scales: {
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Position Score',
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                callback: function (value) {
+                                    return scores[value]?.symbol || '';
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Symbols (sorted by score)'
+                            }
+                        }
+                    }
+                },
+                plugins: [{
+                    id: 'customSymbolLabels',
+                    afterDatasetsDraw: (chart) => {
+                        const ctx = chart.ctx;
+                        const dataset = chart.data.datasets[0];
+                        const meta = chart.getDatasetMeta(0);
+
+                        meta.data.forEach((point, index) => {
+                            const symbol = dataset.data[index].symbol;
+                            const x = point.x;
+                            const y = point.y;
+                            const textY = y < chart.scales.y.min ? y + 10 : y - 10;
+
+                            ctx.font = '12px Arial';
+                            ctx.fillStyle = 'black';
+                            ctx.textAlign = 'center';
+                            ctx.fillText(symbol, x, textY);
+                        });
+                    }
+                }]
+            });
+        }
+
+        let globalFirstMoves = [];
+
+        async function initializeData() {
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            loadingIndicator.classList.remove('hidden');
+
+            try {
+                globalFirstMoves = await fetchTournamentData();
+            } finally {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                loadingIndicator.classList.add('hidden');
+            }
+            updateDisplay();
+        }
+
+        function countNonDotTiles(grid) {
+            return grid.flat().filter(cell => cell !== '.').length;
+        }
+
+        async function updateDisplay() {
+            const size = parseInt(document.getElementById('sizeFilter').value);
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            const loadingStatus = loadingIndicator.querySelector('.loading-status');
+            loadingIndicator.classList.remove('hidden');
+
+            // Update mode toggle button and label first
+            const modeToggle = document.getElementById('modeToggle');
+            const modeLabel = document.getElementById('modeLabel');
+            if (useCounterMoves) {
+                modeLabel.textContent = 'Counter-Move Analysis';
+                modeToggle.textContent = 'Change to Standard Analysis';
+            } else {
+                modeLabel.textContent = 'Standard Analysis';
+                modeToggle.textContent = 'Change to Counter-Move Analysis';
+            }
+            modeToggle.classList.toggle('counter-move-active', useCounterMoves);
+
+            // Pre-calculate everything before updating the UI
+            loadingStatus.textContent = 'Filtering valid board combinations...';
+            await new Promise(resolve => setTimeout(resolve, 0));
+
+            const validBoards = Object.entries(BOARD_LAYOUTS).filter(([id, layout]) =>
+                layout.grid.length === size && !id.includes('random') && !id.includes('Random'));
+
+            const board1Filter = document.getElementById('board1Filter');
+            const board2Filter = document.getElementById('board2Filter');
+            const currentBoard1 = board1Filter.value;
+            const currentBoard2 = board2Filter.value;
+
+            const options = '<option value="all">All</option>' +
+                validBoards.map(([id, board]) =>
+                    `<option value="${id}">${board.name}</option>`).join('');
+            board1Filter.innerHTML = options;
+            board2Filter.innerHTML = options;
+
+            let board1Id = currentBoard1;
+            if (size === 5 && !board1Id) {
+                board1Id = 'board1';
+                board1Filter.value = board1Id;
+                board2Filter.value = validBoards[0][0];
+                board2Filter.dispatchEvent(new Event('change'));
+                board2Filter.value = 'all';
+                board2Filter.dispatchEvent(new Event('change'));
+            } else if (validBoards.some(([id]) => id === currentBoard1)) {
+                board1Filter.value = currentBoard1;
+            }
+            if (validBoards.some(([id]) => id === currentBoard2)) {
+                board2Filter.value = currentBoard2;
+            }
+
+            const board2Id = board2Filter.value;
+
+            let boardPairs = [];
+            if (board1Id === 'all' && board2Id === 'all') {
+                boardPairs = validBoards.flatMap(board1 =>
+                    validBoards.map(board2 => [board1, board2])
+                );
+            } else if (board1Id === 'all') {
+                const board2 = validBoards.find(([id]) => id === board2Id);
+                if (board2) {
+                    boardPairs = validBoards.map(board1 => [board1, board2]);
+                }
+            } else if (board2Id === 'all') {
+                const board1 = validBoards.find(([id]) => id === board1Id);
+                if (board1) {
+                    boardPairs = validBoards.map(board2 => [board1, board2]);
+                }
+            } else {
+                const board1 = validBoards.find(([id]) => id === board1Id);
+                const board2 = validBoards.find(([id]) => id === board2Id);
+                if (board1 && board2) {
+                    boardPairs = [[board1, board2]];
+                }
+            }
+
+            if (boardPairs.length === 0) {
+                boardPairs = validBoards.flatMap(board1 =>
+                    validBoards.map(board2 => [board1, board2])
+                );
+            }
+
+            loadingStatus.textContent = 'Filtering compatible board pairs...';
+            await new Promise(resolve => setTimeout(resolve, 0));
+
+            // Filter and prepare all data before touching the DOM
+            boardPairs = boardPairs.filter(([[_, board1], [__, board2]]) => {
+                const board1TileCount = countNonDotTiles(board1.grid);
+                const board2TileCount = countNonDotTiles(board2.grid);
+                return board1TileCount === board2TileCount;
+            });
+
+            const totalPairs = boardPairs.length;
+            const analyses = [];
+            const BATCH_SIZE = 5;
+
+            for (let i = 0; i < boardPairs.length; i += BATCH_SIZE) {
+                loadingStatus.textContent = `Analyzing board pairs ${i + 1}-${Math.min(i + BATCH_SIZE, totalPairs)}/${totalPairs}...`;
+                await new Promise(resolve => setTimeout(resolve, 0));
+
+                const batch = boardPairs.slice(i, i + BATCH_SIZE);
+                const batchAnalyses = batch.map(([[id1, board1], [id2, board2]], index) => {
+                    if (!board1 || !board2) return null;
+                    const scores = analyzeBoards(board1, board2, useCounterMoves);
+                    const metrics = calculateBoardMetrics(scores);
+                    const moveFrequencies = calculateMoveFrequencies(globalFirstMoves, id1, id2, createBoardFilters(Object.keys(scores).map(s => s.symbol)));
+                    return { board1, board2, id1, id2, scores, metrics, moveFrequencies };
+                });
+                analyses.push(...batchAnalyses);
+            }
+
+            loadingStatus.textContent = 'Preparing results...';
+            await new Promise(resolve => setTimeout(resolve, 0));
+
+            // Sort analyses before touching the DOM
+            const sortedAnalyses = analyses
+                .filter(analysis => analysis !== null)
+                .sort((a, b) => b.metrics.combinedScore - a.metrics.combinedScore);
+
+            // Now update the DOM all at once
+            const grid = document.getElementById('analysisGrid');
+            const newGrid = document.createElement('div');
+            newGrid.className = 'analysis-grid';
+            newGrid.id = 'analysisGrid';
+
+            sortedAnalyses.forEach(({ board1, board2, id1, id2, scores, metrics, moveFrequencies }) => {
+                const card = document.createElement('div');
+                card.className = 'combo-card';
+                card.innerHTML = `
+                    <h2>${board1.name} vs ${board2.name}</h2>
+                `;
+
+                const analysisContainer = document.createElement('div');
+                analysisContainer.className = 'analysis-container';
+
+                // Create score section first
+                const scoreSection = document.createElement('div');
+                scoreSection.className = 'board-section';
+
+                const scoreHeader = document.createElement('div');
+                scoreHeader.className = 'section-header';
+                scoreHeader.innerHTML = `
+                    <h3>Position Analysis</h3>
+                    <p>Blue intensity shows strength based on connectivity to other cells.</p>
+                `;
+                scoreSection.appendChild(scoreHeader);
+
+                const metricsDiv = document.createElement('div');
+                metricsDiv.className = 'metrics';
+                metricsDiv.innerHTML = `
+                    <div class="metric-row">
+                        <span>Combined Score:</span>
+                        <span class="metric-value better-higher">${metrics.combinedScore.toFixed(2)}</span>
+                    </div>
+                    <div class="metric-row">
+                        <span>Viable Moves:</span>
+                        <span class="metric-value better-higher">${metrics.viableMoves}</span>
+                    </div>
+                    <div class="metric-row">
+                        <span>Standard Deviation:</span>
+                        <span class="metric-value better-lower">${metrics.stdDev.toFixed(2)}</span>
+                    </div>
+                `;
+                scoreSection.appendChild(metricsDiv);
+
+                const scoreBoardDisplay = document.createElement('div');
+                scoreBoardDisplay.className = 'board-display';
+                scoreBoardDisplay.appendChild(createScoreBoard(board1, scores, metrics.worst, metrics.best));
+                scoreBoardDisplay.appendChild(createScoreBoard(board2, scores, metrics.worst, metrics.best));
+                scoreSection.appendChild(scoreBoardDisplay);
+
+                const scorePlot = document.createElement('div');
+                scorePlot.className = 'score-plot';
+                scoreSection.appendChild(scorePlot);
+                createScatterPlot(scorePlot, scores, board1.name, board2.name);
+
+                // Create frequency section
+                const frequencySection = document.createElement('div');
+                frequencySection.className = 'board-section';
+
+                const frequencyHeader = document.createElement('div');
+                frequencyHeader.className = 'section-header';
+                frequencyHeader.innerHTML = `
+                    <h3>Tournament Play Analysis</h3>
+                    <p>Red intensity shows how often each position is selected as the first move.</p>
+                `;
+                frequencySection.appendChild(frequencyHeader);
+
+                // Get all moves for this board combination first
+                const boardFilteredMoves = globalFirstMoves.filter(m => {
+                    const board1Match = typeof m.boards.board1 === 'string' ?
+                        m.boards.board1 === id1 :
+                        m.boards.board1.id === id1;
+                    const board2Match = typeof m.boards.board2 === 'string' ?
+                        m.boards.board2 === id2 :
+                        m.boards.board2.id === id2;
+                    return board1Match && board2Match;
+                });
+
+                if (boardFilteredMoves.length > 0) {
+                    // Count AI types
+                    const aiCounts = {
+                        'random': 0,
+                        'deterministic': 0,
+                        'aggressive': 0,
+                        'defensive': 0,
+                        'minimax': 0,
+                        'mcts': 0,
+                        'hybrid': 0
+                    };
+
+                    boardFilteredMoves.forEach(move => {
+                        const blackBase = move.black.split('-')[0];
+                        if (aiCounts.hasOwnProperty(blackBase)) aiCounts[blackBase] += 0.5;
+                    });
+
+                    // Initialize or get board filters
+                    const boardKey = getBoardKey(id1, id2);
+                    let boardFilters = boardFilterMap.get(boardKey);
+                    if (!boardFilters) {
+                        boardFilters = createBoardFilters(Object.keys(aiCounts).filter(ai => aiCounts[ai] > 0));
+                        boardFilterMap.set(boardKey, boardFilters);
+                    }
+
+                    // Calculate frequencies with all AIs selected
+                    const moveFrequenciesData = calculateMoveFrequencies(globalFirstMoves, id1, id2, boardFilters);
+
+                    // Create metrics div
+                    const metricsPlayDiv = document.createElement('div');
+                    metricsPlayDiv.className = 'metrics';
+
+                    const aiStatsHtml = Object.entries(aiCounts)
+                        .filter(([_, count]) => count > 0)
+                        .map(([ai, count]) => `
+                            <div class="ai-stat ${boardFilters.has(ai) ? 'active' : ''}" 
+                                 onclick="window.toggleAIFilter('${ai}', this)">
+                                <div class="name-section">
+                                    <span class="checkbox">${boardFilters.has(ai) ? '☑️' : '⬜'}</span>
+                                    <span>${ai}</span>
+                                </div>
+                                <span class="game-count">${Math.round(count)} games</span>
+                            </div>
+                        `).join('');
+
+                    metricsPlayDiv.innerHTML = `
+                        <div class="ai-stats-grid">
+                            ${aiStatsHtml}
+                        </div>
+                        <div class="total-games">
+                            Total Games: ${moveFrequenciesData.total}
+                        </div>
+                    `;
+                    frequencySection.appendChild(metricsPlayDiv);
+
+                    // Create frequency board display
+                    const frequencyBoardDisplay = document.createElement('div');
+                    frequencyBoardDisplay.className = 'board-display';
+                    frequencyBoardDisplay.appendChild(createFrequencyBoard(board1, moveFrequenciesData.frequencies));
+                    frequencyBoardDisplay.appendChild(createFrequencyBoard(board2, moveFrequenciesData.frequencies));
+                    frequencySection.appendChild(frequencyBoardDisplay);
+
+                    // Create frequency plot
+                    const frequencyPlot = document.createElement('div');
+                    frequencyPlot.className = 'frequency-plot';
+                    frequencySection.appendChild(frequencyPlot);
+                    createFrequencyPlot(frequencyPlot, moveFrequenciesData, board1.name, board2.name, boardFilters);
+                } else {
+                    const noDataDiv = document.createElement('div');
+                    noDataDiv.className = 'no-data';
+                    noDataDiv.innerHTML = `
+                        <div class="no-data-icon">📊</div>
+                        <div>No tournament play data available for this board combination</div>
+                    `;
+                    frequencySection.appendChild(noDataDiv);
+                }
+
+                analysisContainer.appendChild(scoreSection);
+                analysisContainer.appendChild(frequencySection);
+                card.appendChild(analysisContainer);
+                newGrid.appendChild(card);
+            });
+
+            // Replace the old grid with the new one in a single operation
+            grid.replaceWith(newGrid);
+
+            loadingStatus.textContent = 'Analysis complete';
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            loadingIndicator.classList.add('hidden');
+        }
+
+        function getCounterMoveScore(row, col, grid1, grid2, symbol) {
+            // First find the corresponding position in board2 for our symbol
+            const board2Pos = findSymbolPosition(symbol, grid2);
+            if (!board2Pos) return 0;
+
+            // Get all possible counter-move positions (all symbols except the one we're evaluating)
+            const possibleCounterMoves = [];
+            for (let r = 0; r < grid1.length; r++) {
+                for (let c = 0; c < grid1.length; c++) {
+                    const counterSymbol = grid1[r][c];
+                    if (counterSymbol !== '.' && counterSymbol !== symbol) {
+                        const counterPos2 = findSymbolPosition(counterSymbol, grid2);
+                        if (counterPos2) {
+                            possibleCounterMoves.push({
+                                board1: { row: r, col: c },
+                                board2: counterPos2
+                            });
+                        }
+                    }
+                }
+            }
+
+            // If no counter moves possible, return normal score
+            if (possibleCounterMoves.length === 0) {
+                const score1 = getTileScore(row, col, grid1);
+                const score2 = getTileScore(board2Pos.row, board2Pos.col, grid2);
+                return score1 + score2;
+            }
+
+            // For each possible counter move, calculate our score with that counter move as a blocker
+            let worstScore = Infinity;
+            for (const counterMove of possibleCounterMoves) {
+                // Calculate score on board1 with the counter move blocking
+                const score1 = getTileScore(row, col, grid1, [counterMove.board1]);
+
+                // Calculate score on board2 with the counter move blocking
+                const score2 = getTileScore(board2Pos.row, board2Pos.col, grid2, [counterMove.board2]);
+
+                const totalScore = score1 + score2;
+                if (totalScore < worstScore) {
+                    worstScore = totalScore;
+                }
+            }
+
+            // If worstScore is still Infinity, something went wrong - return normal score
+            if (worstScore === Infinity) {
+                const score1 = getTileScore(row, col, grid1);
+                const score2 = getTileScore(board2Pos.row, board2Pos.col, grid2);
+                return score1 + score2;
+            }
+
+            return worstScore;
+        }
+
+        function analyzeBoards(board1, board2, useCounterMoves = false) {
+            const scores = [];
+
+            for (let row = 0; row < board1.grid.length; row++) {
+                for (let col = 0; col < board1.grid.length; col++) {
+                    const symbol = board1.grid[row][col];
+                    if (symbol === '.') continue;
+                    const board2Pos = findSymbolPosition(symbol, board2.grid);
+                    if (!board2Pos) continue;
+
+                    let score;
+                    if (useCounterMoves) {
+                        score = getCounterMoveScore(row, col, board1.grid, board2.grid, symbol);
+                        scores.push({
+                            symbol,
+                            board1Pos: `${row},${col}`,
+                            board2Pos: `${board2Pos.row},${board2Pos.col}`,
+                            score: score,
+                            individualScore: score / 2 // Approximate individual score
+                        });
+                    } else {
+                        const score1 = getTileScore(row, col, board1.grid);
+                        const score2 = getTileScore(board2Pos.row, board2Pos.col, board2.grid);
+                        scores.push({
+                            symbol,
+                            board1Pos: `${row},${col}`,
+                            board2Pos: `${board2Pos.row},${board2Pos.col}`,
+                            score: score1 + score2,
+                            individualScore: score1
+                        });
+                    }
+                }
+            }
+
+            return scores;
+        }
 
         async function fetchTournamentData() {
             const loadingStatus = document.querySelector('.loading-status');
@@ -609,704 +1515,6 @@
             };
         }
 
-        function calculateMoveFrequencies(moves, board1Id, board2Id) {
-            const filteredMoves = moves.filter(m => {
-                // Handle both old and new formats
-                const board1Match = typeof m.boards.board1 === 'string' ?
-                    m.boards.board1 === board1Id :
-                    m.boards.board1.id === board1Id;
-                const board2Match = typeof m.boards.board2 === 'string' ?
-                    m.boards.board2 === board2Id :
-                    m.boards.board2.id === board2Id;
-                return board1Match && board2Match;
-            });
-
-            const frequencies = {};
-            filteredMoves.forEach(m => {
-                frequencies[m.move] = (frequencies[m.move] || 0) + 1;
-            });
-
-            const total = filteredMoves.length || 0;
-            if (total === 0) return null;
-
-            return {
-                frequencies: Object.fromEntries(
-                    Object.entries(frequencies).map(([move, count]) => [
-                        move,
-                        { count, percentage: (count / total) * 100 }
-                    ])
-                ),
-                filteredMoves: filteredMoves,
-                total: total
-            };
-        }
-
-        function getScoreColor(score, minScore, maxScore) {
-            const ratio = (score - minScore) / (maxScore - minScore);
-            return `hsla(210, 100%, ${85 - (ratio * 70)}%, ${0.4 + (ratio * 0.6)})`;
-        }
-
-        function getFrequencyColor(percentage) {
-            const normalizedRatio = Math.min(percentage / 20, 1);
-            return `hsla(0, 100%, ${85 - (normalizedRatio * 70)}%, ${0.4 + (normalizedRatio * 0.6)})`;
-        }
-
-        function createScoreBoard(board, scores, minScore, maxScore) {
-            const size = board.grid.length;
-            const container = document.createElement('div');
-            container.className = 'board';
-            container.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
-
-            // Pre-compute score lookup for better performance
-            const scoreMap = new Map(scores.map(s => [s.symbol, s]));
-
-            for (let row = 0; row < size; row++) {
-                for (let col = 0; col < size; col++) {
-                    const symbol = board.grid[row][col];
-                    if (symbol === '.') { container.appendChild(document.createElement('div')).className = 'board-cell placeholder-cell'; continue; }
-                    const cell = document.createElement('div');
-                    cell.className = 'board-cell';
-
-                    const scoreInfo = scoreMap.get(symbol);
-                    const combinedScore = scoreInfo?.score || 0;
-                    const individualScore = scoreInfo?.individualScore || 0;
-                    cell.style.backgroundColor = getScoreColor(combinedScore, minScore, maxScore);
-
-                    const ratio = (combinedScore - minScore) / (maxScore - minScore);
-                    cell.style.color = ratio > 0.5 ? '#fff' : '#000';
-
-                    cell.innerHTML = `
-                        <div style="font-size: 1.2rem; font-weight: bold;">${symbol}</div>
-                        <div style="font-size: 0.75rem; font-weight: 500; line-height: 1.1;">${combinedScore.toFixed(1)}</div>
-                        <div style="font-size: 0.65rem; font-weight: 400; opacity: 0.8; line-height: 1;">${individualScore.toFixed(1)}</div>
-                    `;
-                    cell.style.width = `${40}px`;
-                    cell.style.height = `${40}px`;
-                    cell.style.padding = '2px';
-                    cell.style.textAlign = 'center';
-                    cell.style.display = 'flex';
-                    cell.style.flexDirection = 'column';
-                    cell.style.justifyContent = 'center';
-                    container.appendChild(cell);
-                }
-            }
-            return container;
-        }
-
-        function createFrequencyBoard(board, moveFrequencies) {
-            const size = board.grid.length;
-            const container = document.createElement('div');
-            container.className = 'board';
-            container.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
-
-            // Pre-compute frequency lookup for better performance
-            const frequencyMap = new Map(Object.entries(moveFrequencies));
-
-            for (let row = 0; row < size; row++) {
-                for (let col = 0; col < size; col++) {
-                    const symbol = board.grid[row][col];
-                    if (symbol === '.') { container.appendChild(document.createElement('div')).className = 'board-cell placeholder-cell'; continue; }
-                    const cell = document.createElement('div');
-                    cell.className = 'board-cell';
-                    const frequency = frequencyMap.get(symbol)?.percentage || 0;
-                    cell.style.backgroundColor = getFrequencyColor(frequency);
-
-                    const normalizedRatio = Math.min(frequency / 20, 1);
-                    cell.style.color = normalizedRatio > 0.5 ? '#fff' : '#000';
-
-                    cell.innerHTML = `
-                        <div style="font-size: 1.2rem; font-weight: bold;">${symbol}</div>
-                        <div style="font-size: 0.75rem; font-weight: 500; line-height: 1.1;">${frequency.toFixed(1)}%</div>
-                    `;
-                    cell.style.width = `${40}px`;
-                    cell.style.height = `${40}px`;
-                    cell.style.padding = '2px';
-                    cell.style.textAlign = 'center';
-                    cell.style.display = 'flex';
-                    cell.style.flexDirection = 'column';
-                    cell.style.justifyContent = 'center';
-                    container.appendChild(cell);
-                }
-            }
-            return container;
-        }
-
-        function createFrequencyPlot(container, moveFrequenciesData, board1Name, board2Name) {
-            const canvas = document.createElement('canvas');
-            container.appendChild(canvas);
-
-            if (!moveFrequenciesData || !moveFrequenciesData.filteredMoves) return;
-
-            const symbolData = {};
-            moveFrequenciesData.filteredMoves.forEach(move => {
-                const symbol = move.move;
-                const aiType = move.black.split('-')[0];
-
-                if (!symbolData[symbol]) {
-                    symbolData[symbol] = {
-                        'random': 0,
-                        'deterministic': 0,
-                        'aggressive': 0,
-                        'defensive': 0,
-                        'minimax': 0,
-                        'mcts': 0,
-                        'hybrid': 0,
-                        'total': 0
-                    };
-                }
-                symbolData[symbol][aiType]++;
-                symbolData[symbol].total++;
-            });
-
-            const sortedSymbols = Object.entries(symbolData)
-                .sort((a, b) => b[1].total - a[1].total)
-                .map(([symbol]) => symbol);
-
-            const aiColors = {
-                'random': '#1C9941',
-                'deterministic': '#88A02C',
-                'aggressive': '#DDDD22',
-                'defensive': '#FD8D3C',
-                'minimax': '#E6550D',
-                'mcts': '#DE2D26',
-                'hybrid': '#A50F15'
-            };
-
-            const datasets = Object.entries(aiColors).map(([aiType, color]) => ({
-                label: aiType,
-                data: sortedSymbols.map(symbol => symbolData[symbol][aiType]),
-                backgroundColor: color,
-                borderColor: color.replace('rgb', 'rgba').replace(')', ', 1)'),
-                borderWidth: 1
-            }));
-
-            const ctx = canvas.getContext('2d');
-            new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: sortedSymbols,
-                    datasets: datasets
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        title: {
-                            display: false,
-                            text: `First Move Selection by AI Type`
-                        },
-                        legend: {
-                            display: true,
-                            position: 'top'
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: (context) => {
-                                    return `${context.dataset.label}: ${context.raw} moves`;
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        x: {
-                            stacked: true,
-                            title: {
-                                display: true,
-                                text: 'Symbol'
-                            },
-                            ticks: {
-                                autoSkip: false,
-                                maxRotation: 0,
-                                minRotation: 0
-                            }
-                        },
-                        y: {
-                            stacked: true,
-                            beginAtZero: true,
-                            title: {
-                                display: true,
-                                text: 'Number of Selections'
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
-        function createScatterPlot(container, scores, board1Name, board2Name) {
-            const canvas = document.createElement('canvas');
-            container.appendChild(canvas);
-
-            scores.sort((a, b) => b.score - a.score);
-
-            const ctx = canvas.getContext('2d');
-            new Chart(ctx, {
-                type: 'scatter',
-                data: {
-                    datasets: [{
-                        data: scores.map((s, i) => ({
-                            x: i,
-                            y: s.score,
-                            symbol: s.symbol,
-                            positions: `${s.board1Pos}, ${s.board2Pos}`
-                        })),
-                        backgroundColor: 'rgba(33, 150, 243, 0.6)',
-                        borderColor: 'rgba(33, 150, 243, 0.8)',
-                        borderWidth: 1,
-                        pointRadius: 4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        title: {
-                            display: false,
-                            text: `${board1Name} vs ${board2Name} (higher is better)`,
-                        },
-                        legend: {
-                            display: false
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: (context) => {
-                                    const point = context.raw;
-                                    return [
-                                        `Symbol: ${point.symbol}`,
-                                        `Score: ${point.y.toFixed(1)}`,
-                                        `Positions: ${point.positions}`
-                                    ];
-                                }
-                            }
-                        },
-                        customSymbolLabels: {
-                            display: true
-                        }
-                    },
-                    scales: {
-                        y: {
-                            title: {
-                                display: true,
-                                text: 'Position Score',
-                            }
-                        },
-                        x: {
-                            ticks: {
-                                callback: function (value) {
-                                    return scores[value]?.symbol || '';
-                                }
-                            },
-                            title: {
-                                display: true,
-                                text: 'Symbols (sorted by score)'
-                            }
-                        }
-                    }
-                },
-                plugins: [{
-                    id: 'customSymbolLabels',
-                    afterDatasetsDraw: (chart) => {
-                        const ctx = chart.ctx;
-                        const dataset = chart.data.datasets[0];
-                        const meta = chart.getDatasetMeta(0);
-
-                        meta.data.forEach((point, index) => {
-                            const symbol = dataset.data[index].symbol;
-                            const x = point.x;
-                            const y = point.y;
-                            const textY = y < chart.scales.y.min ? y + 10 : y - 10;
-
-                            ctx.font = '12px Arial';
-                            ctx.fillStyle = 'black';
-                            ctx.textAlign = 'center';
-                            ctx.fillText(symbol, x, textY);
-                        });
-                    }
-                }]
-            });
-        }
-
-        let globalFirstMoves = [];
-
-        async function initializeData() {
-            const loadingIndicator = document.getElementById('loadingIndicator');
-            loadingIndicator.classList.remove('hidden');
-
-            try {
-                globalFirstMoves = await fetchTournamentData();
-            } finally {
-                await new Promise(resolve => setTimeout(resolve, 1000)); // Keep the final status visible briefly
-                loadingIndicator.classList.add('hidden');
-            }
-            updateDisplay();
-        }
-
-        function countNonDotTiles(grid) {
-            return grid.flat().filter(cell => cell !== '.').length;
-        }
-
-        async function updateDisplay() {
-            const size = parseInt(document.getElementById('sizeFilter').value);
-            const loadingIndicator = document.getElementById('loadingIndicator');
-            const loadingStatus = loadingIndicator.querySelector('.loading-status');
-            loadingIndicator.classList.remove('hidden');
-
-            // Update mode toggle button and label first
-            const modeToggle = document.getElementById('modeToggle');
-            const modeLabel = document.getElementById('modeLabel');
-            if (useCounterMoves) {
-                modeLabel.textContent = 'Counter-Move Analysis';
-                modeToggle.textContent = 'Change to Standard Analysis';
-            } else {
-                modeLabel.textContent = 'Standard Analysis';
-                modeToggle.textContent = 'Change to Counter-Move Analysis';
-            }
-            modeToggle.classList.toggle('counter-move-active', useCounterMoves);
-
-            // Pre-calculate everything before updating the UI
-            loadingStatus.textContent = 'Filtering valid board combinations...';
-            await new Promise(resolve => setTimeout(resolve, 0));
-
-            const validBoards = Object.entries(BOARD_LAYOUTS).filter(([id, layout]) =>
-                layout.grid.length === size && !id.includes('random') && !id.includes('Random'));
-
-            const board1Filter = document.getElementById('board1Filter');
-            const board2Filter = document.getElementById('board2Filter');
-            const currentBoard1 = board1Filter.value;
-            const currentBoard2 = board2Filter.value;
-
-            const options = '<option value="all">All</option>' +
-                validBoards.map(([id, board]) =>
-                    `<option value="${id}">${board.name}</option>`).join('');
-            board1Filter.innerHTML = options;
-            board2Filter.innerHTML = options;
-
-            let board1Id = currentBoard1;
-            if (size === 5 && !board1Id) {
-                board1Id = 'board1';
-                board1Filter.value = board1Id;
-                board2Filter.value = validBoards[0][0];
-                board2Filter.dispatchEvent(new Event('change'));
-                board2Filter.value = 'all';
-                board2Filter.dispatchEvent(new Event('change'));
-            } else if (validBoards.some(([id]) => id === currentBoard1)) {
-                board1Filter.value = currentBoard1;
-            }
-            if (validBoards.some(([id]) => id === currentBoard2)) {
-                board2Filter.value = currentBoard2;
-            }
-
-            const board2Id = board2Filter.value;
-
-            let boardPairs = [];
-            if (board1Id === 'all' && board2Id === 'all') {
-                boardPairs = validBoards.flatMap(board1 =>
-                    validBoards.map(board2 => [board1, board2])
-                );
-            } else if (board1Id === 'all') {
-                const board2 = validBoards.find(([id]) => id === board2Id);
-                if (board2) {
-                    boardPairs = validBoards.map(board1 => [board1, board2]);
-                }
-            } else if (board2Id === 'all') {
-                const board1 = validBoards.find(([id]) => id === board1Id);
-                if (board1) {
-                    boardPairs = validBoards.map(board2 => [board1, board2]);
-                }
-            } else {
-                const board1 = validBoards.find(([id]) => id === board1Id);
-                const board2 = validBoards.find(([id]) => id === board2Id);
-                if (board1 && board2) {
-                    boardPairs = [[board1, board2]];
-                }
-            }
-
-            if (boardPairs.length === 0) {
-                boardPairs = validBoards.flatMap(board1 =>
-                    validBoards.map(board2 => [board1, board2])
-                );
-            }
-
-            loadingStatus.textContent = 'Filtering compatible board pairs...';
-            await new Promise(resolve => setTimeout(resolve, 0));
-
-            // Filter and prepare all data before touching the DOM
-            boardPairs = boardPairs.filter(([[_, board1], [__, board2]]) => {
-                const board1TileCount = countNonDotTiles(board1.grid);
-                const board2TileCount = countNonDotTiles(board2.grid);
-                return board1TileCount === board2TileCount;
-            });
-
-            const totalPairs = boardPairs.length;
-            const analyses = [];
-            const BATCH_SIZE = 5;
-
-            for (let i = 0; i < boardPairs.length; i += BATCH_SIZE) {
-                loadingStatus.textContent = `Analyzing board pairs ${i + 1}-${Math.min(i + BATCH_SIZE, totalPairs)}/${totalPairs}...`;
-                await new Promise(resolve => setTimeout(resolve, 0));
-
-                const batch = boardPairs.slice(i, i + BATCH_SIZE);
-                const batchAnalyses = batch.map(([[id1, board1], [id2, board2]], index) => {
-                    if (!board1 || !board2) return null;
-                    const scores = analyzeBoards(board1, board2, useCounterMoves);
-                    const metrics = calculateBoardMetrics(scores);
-                    const moveFrequencies = calculateMoveFrequencies(globalFirstMoves, id1, id2);
-                    return { board1, board2, id1, id2, scores, metrics, moveFrequencies };
-                });
-                analyses.push(...batchAnalyses);
-            }
-
-            loadingStatus.textContent = 'Preparing results...';
-            await new Promise(resolve => setTimeout(resolve, 0));
-
-            // Sort analyses before touching the DOM
-            const sortedAnalyses = analyses
-                .filter(analysis => analysis !== null)
-                .sort((a, b) => b.metrics.combinedScore - a.metrics.combinedScore);
-
-            // Now update the DOM all at once
-            const grid = document.getElementById('analysisGrid');
-            const newGrid = document.createElement('div');
-            newGrid.className = 'analysis-grid';
-            newGrid.id = 'analysisGrid';
-
-            sortedAnalyses.forEach(({ board1, board2, id1, id2, scores, metrics, moveFrequencies }) => {
-                const card = document.createElement('div');
-                card.className = 'combo-card';
-                card.innerHTML = `
-                    <h2>${board1.name} vs ${board2.name}</h2>
-                `;
-
-                const analysisContainer = document.createElement('div');
-                analysisContainer.className = 'analysis-container';
-
-                const scoreSection = document.createElement('div');
-                scoreSection.className = 'board-section';
-
-                const scoreHeader = document.createElement('div');
-                scoreHeader.className = 'section-header';
-                scoreHeader.innerHTML = `
-                    <h3>Position Analysis</h3>
-                    <p>Blue intensity shows strength based on connectivity to other cells.</p>
-                `;
-                scoreSection.appendChild(scoreHeader);
-
-                const metricsDiv = document.createElement('div');
-                metricsDiv.className = 'metrics';
-                metricsDiv.innerHTML = `
-                    <div class="metric-row">
-                        <span>Combined Score:</span>
-                        <span class="metric-value better-higher">${metrics.combinedScore.toFixed(2)}</span>
-                    </div>
-                    <div class="metric-row">
-                        <span>Viable Moves:</span>
-                        <span class="metric-value better-higher">${metrics.viableMoves}</span>
-                    </div>
-                    <div class="metric-row">
-                        <span>Standard Deviation:</span>
-                        <span class="metric-value better-lower">${metrics.stdDev.toFixed(2)}</span>
-                    </div>
-                `;
-                scoreSection.appendChild(metricsDiv);
-
-                const scoreBoardDisplay = document.createElement('div');
-                scoreBoardDisplay.className = 'board-display';
-                scoreBoardDisplay.appendChild(createScoreBoard(board1, scores, metrics.worst, metrics.best));
-                scoreBoardDisplay.appendChild(createScoreBoard(board2, scores, metrics.worst, metrics.best));
-                scoreSection.appendChild(scoreBoardDisplay);
-
-                const scorePlot = document.createElement('div');
-                scorePlot.className = 'score-plot';
-                scoreSection.appendChild(scorePlot);
-                createScatterPlot(scorePlot, scores, board1.name, board2.name);
-
-                const frequencySection = document.createElement('div');
-                frequencySection.className = 'board-section';
-
-                const frequencyHeader = document.createElement('div');
-                frequencyHeader.className = 'section-header';
-                frequencyHeader.innerHTML = `
-                    <h3>Tournament Play Analysis</h3>
-                    <p>Red intensity shows how often each position is selected as the first move.</p>
-                `;
-                frequencySection.appendChild(frequencyHeader);
-
-                const moveFrequenciesData = calculateMoveFrequencies(globalFirstMoves, id1, id2);
-                const metricsPlayDiv = document.createElement('div');
-                metricsPlayDiv.className = 'metrics';
-
-                if (moveFrequenciesData) {
-                    const aiCounts = {
-                        'random': 0,
-                        'deterministic': 0,
-                        'aggressive': 0,
-                        'defensive': 0,
-                        'minimax': 0,
-                        'mcts': 0,
-                        'hybrid': 0
-                    };
-
-                    moveFrequenciesData.filteredMoves.forEach(move => {
-                        const blackBase = move.black.split('-')[0];
-                        const whiteBase = move.white.split('-')[0];
-                        if (aiCounts.hasOwnProperty(blackBase)) aiCounts[blackBase] += 0.5;
-                        if (aiCounts.hasOwnProperty(whiteBase)) aiCounts[whiteBase] += 0.5;
-                    });
-
-                    const aiStatsHtml = Object.entries(aiCounts)
-                        .filter(([_, count]) => count > 0)
-                        .map(([ai, count]) => `
-                            <div class="ai-stat">
-                                <span>${ai}</span>
-                                <span>${Math.round(count)} games</span>
-                            </div>
-                        `).join('');
-
-                    metricsPlayDiv.innerHTML = `
-                        ${aiStatsHtml}
-                        <div class="total-games">
-                            Total Games: ${moveFrequenciesData.total}
-                        </div>
-                    `;
-                } else {
-                    metricsPlayDiv.innerHTML = `
-                        <div class="ai-stat">
-                            <span>No games played</span>
-                        </div>
-                       <div class="total-games">
-                            Total Games: 0
-                        </div>
-                    `;
-                }
-                frequencySection.appendChild(metricsPlayDiv);
-
-                if (moveFrequenciesData && Object.keys(moveFrequenciesData.frequencies).length > 0) {
-                    const frequencyBoardDisplay = document.createElement('div');
-                    frequencyBoardDisplay.className = 'board-display';
-                    frequencyBoardDisplay.appendChild(createFrequencyBoard(board1, moveFrequenciesData.frequencies));
-                    frequencyBoardDisplay.appendChild(createFrequencyBoard(board2, moveFrequenciesData.frequencies));
-                    frequencySection.appendChild(frequencyBoardDisplay);
-
-                    const frequencyPlot = document.createElement('div');
-                    frequencyPlot.className = 'frequency-plot';
-                    frequencySection.appendChild(frequencyPlot);
-                    createFrequencyPlot(frequencyPlot, moveFrequenciesData, board1.name, board2.name);
-                } else {
-                    const noDataDiv = document.createElement('div');
-                    noDataDiv.className = 'no-data';
-                    noDataDiv.innerHTML = `
-                        <div class="no-data-icon">📊</div>
-                        <div>No tournament play data available for this board combination</div>
-                    `;
-                    frequencySection.appendChild(noDataDiv);
-                }
-
-                analysisContainer.appendChild(scoreSection);
-                analysisContainer.appendChild(frequencySection);
-                card.appendChild(analysisContainer);
-
-                newGrid.appendChild(card);
-            });
-
-            // Replace the old grid with the new one in a single operation
-            grid.replaceWith(newGrid);
-
-            loadingStatus.textContent = 'Analysis complete';
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            loadingIndicator.classList.add('hidden');
-        }
-
-        function getCounterMoveScore(row, col, grid1, grid2, symbol) {
-            // First find the corresponding position in board2 for our symbol
-            const board2Pos = findSymbolPosition(symbol, grid2);
-            if (!board2Pos) return 0;
-
-            // Get all possible counter-move positions (all symbols except the one we're evaluating)
-            const possibleCounterMoves = [];
-            for (let r = 0; r < grid1.length; r++) {
-                for (let c = 0; c < grid1.length; c++) {
-                    const counterSymbol = grid1[r][c];
-                    if (counterSymbol !== '.' && counterSymbol !== symbol) {
-                        const counterPos2 = findSymbolPosition(counterSymbol, grid2);
-                        if (counterPos2) {
-                            possibleCounterMoves.push({
-                                board1: { row: r, col: c },
-                                board2: counterPos2
-                            });
-                        }
-                    }
-                }
-            }
-
-            // If no counter moves possible, return normal score
-            if (possibleCounterMoves.length === 0) {
-                const score1 = getTileScore(row, col, grid1);
-                const score2 = getTileScore(board2Pos.row, board2Pos.col, grid2);
-                return score1 + score2;
-            }
-
-            // For each possible counter move, calculate our score with that counter move as a blocker
-            let worstScore = Infinity;
-            for (const counterMove of possibleCounterMoves) {
-                // Calculate score on board1 with the counter move blocking
-                const score1 = getTileScore(row, col, grid1, [counterMove.board1]);
-
-                // Calculate score on board2 with the counter move blocking
-                const score2 = getTileScore(board2Pos.row, board2Pos.col, grid2, [counterMove.board2]);
-
-                const totalScore = score1 + score2;
-                if (totalScore < worstScore) {
-                    worstScore = totalScore;
-                }
-            }
-
-            // If worstScore is still Infinity, something went wrong - return normal score
-            if (worstScore === Infinity) {
-                const score1 = getTileScore(row, col, grid1);
-                const score2 = getTileScore(board2Pos.row, board2Pos.col, grid2);
-                return score1 + score2;
-            }
-
-            return worstScore;
-        }
-
-        function analyzeBoards(board1, board2, useCounterMoves = false) {
-            const scores = [];
-
-            for (let row = 0; row < board1.grid.length; row++) {
-                for (let col = 0; col < board1.grid.length; col++) {
-                    const symbol = board1.grid[row][col];
-                    if (symbol === '.') continue;
-                    const board2Pos = findSymbolPosition(symbol, board2.grid);
-                    if (!board2Pos) continue;
-
-                    let score;
-                    if (useCounterMoves) {
-                        score = getCounterMoveScore(row, col, board1.grid, board2.grid, symbol);
-                        scores.push({
-                            symbol,
-                            board1Pos: `${row},${col}`,
-                            board2Pos: `${board2Pos.row},${board2Pos.col}`,
-                            score: score,
-                            individualScore: score / 2 // Approximate individual score
-                        });
-                    } else {
-                        const score1 = getTileScore(row, col, board1.grid);
-                        const score2 = getTileScore(board2Pos.row, board2Pos.col, board2.grid);
-                        scores.push({
-                            symbol,
-                            board1Pos: `${row},${col}`,
-                            board2Pos: `${board2Pos.row},${board2Pos.col}`,
-                            score: score1 + score2,
-                            individualScore: score1
-                        });
-                    }
-                }
-            }
-
-            return scores;
-        }
-
         // Add mode toggle handler
         document.getElementById('modeToggle').addEventListener('click', () => {
             useCounterMoves = !useCounterMoves;
@@ -1318,6 +1526,30 @@
         document.getElementById('board2Filter').addEventListener('change', updateDisplay);
 
         initializeData();
+
+        // Add to the end of the file, before the closing script tag
+        window.toggleAIFilter = toggleAIFilter;  // Make the function available globally
+
+        // Add near the end of the script, before initializeData()
+        function toggleInfoTooltip() {
+            const tooltip = document.querySelector('.info-tooltip');
+            const overlay = document.querySelector('.info-tooltip-overlay');
+            tooltip.classList.toggle('visible');
+            overlay.classList.toggle('visible');
+        }
+
+        // Make the function available globally
+        window.toggleInfoTooltip = toggleInfoTooltip;
+
+        // Add escape key handler
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const tooltip = document.querySelector('.info-tooltip');
+                const overlay = document.querySelector('.info-tooltip-overlay');
+                tooltip.classList.remove('visible');
+                overlay.classList.remove('visible');
+            }
+        });
     </script>
 </body>
 
