@@ -194,7 +194,7 @@ function populateBoardsBySize(size) {
     board2Select.innerHTML = '';
 
     Object.entries(BOARD_LAYOUTS).forEach(([id, layout]) => {
-        if (layout.grid.length === size) {
+        if (getBoardSize(id) === size) {
             const option = new Option(layout.name, id);
             board1Select.add(option.cloneNode(true));
             board2Select.add(option.cloneNode(true));
@@ -203,7 +203,7 @@ function populateBoardsBySize(size) {
 
     // Add custom boards for this size
     customBoards.forEach((board, id) => {
-        if (board.grid.length === size) {
+        if (getBoardSize(id) === size) {
             const option = new Option(`Custom: ${board.name}`, id);
             board1Select.add(option.cloneNode(true));
             board2Select.add(option.cloneNode(true));
@@ -213,8 +213,8 @@ function populateBoardsBySize(size) {
     const defaultBoards = {
         4: ['board4x4', 'random4x4'],
         5: ['board1', 'board7'],
-        6: ['board6x6', 'random6x6'],
-        7: ['donutleft', 'board2494836417right']
+        6: ['minidonutleft', 'board3072731079only'],
+        7: ['donutleft', 'board170120251455']
     };
 
     const defaultConfigs = {
