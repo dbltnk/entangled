@@ -1143,6 +1143,14 @@ function init() {
         }
     });
 
+    // Add board size change handler
+    document.getElementById('board-size').addEventListener('change', (e) => {
+        const newSize = parseInt(e.target.value);
+        populateBoardsBySize(newSize);
+        initializeBoards();
+        stopGame();
+    });
+
     populateBoardsBySize(7);
 
     document.getElementById('start-game').addEventListener('click', () => {
