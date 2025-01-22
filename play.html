@@ -44,6 +44,20 @@
         <p>You can change the board configuration via the dropdowns and you can change the starting stone configuration
             in the format <strong>BE2,WK1</strong> (Black on E board 2,
             White on K board 1). Multiple stones can be placed using comma-separated entries.</p>
+
+        <h2>🌌 Superposition Expansion</h2>
+        <p>Some spaces can be filled with stones in quantum superposition. These stones are represented as half-black,
+            half-white circles with a yellow number.</p>
+        <p>When all orthogonally adjacent spaces next to a superposition stone are filled with regular stones, it
+            collapses
+            to match the color of the last stone placed. When a superposition stone collapses, its twin (the stone with
+            the same number)
+            on the other board also collapses to the same color, if it hasn't already collapsed.</p>
+        <p>You can configure superposition stones using a list of symbols or "rng" for random placement (e.g.,
+            "A,Z,D,F,rng,rng").
+            Each superposition stone is paired with another one by a number (1-6). The first stone in each pair is
+            placed on the chaos board,
+            and its twin is placed on the rainbow board.</p>
     </div>
 
     <div class="game-container">
@@ -137,6 +151,12 @@
                 <div class="setup-input">
                     <label for="starting-config">Stones:</label>
                     <input type="text" id="starting-config" placeholder="e.g., BE2,WK1" />
+                </div>
+
+                <div class="setup-input">
+                    <label for="superposition-config">Superposition:</label>
+                    <input type="text" id="superposition-config" placeholder="e.g., A,Z,D,F,rng,rng"
+                        value="rng,rng,rng,rng,rng,rng" />
                 </div>
 
                 <div class="player-select">

@@ -622,7 +622,18 @@ function updateCell(boardNum, row, col, player) {
 
     if (player) {
         const stone = document.createElement('div');
-        stone.className = `stone ${player.toLowerCase()}`;
+        if (player === PLAYERS.SUPERPOSITION) {
+            stone.className = 'stone superposition';
+            // Find the superposition number for this cell
+            const symbol = cell.dataset.symbol;
+            const spState = game.getSuperpositionState();
+            const spStone = spState.stones.find(s => s.symbol === symbol);
+            if (spStone) {
+                stone.dataset.number = spStone.number;
+            }
+        } else {
+            stone.className = `stone ${player.toLowerCase()}`;
+        }
         cell.appendChild(stone);
         cell.classList.add('has-stone');
     } else {
@@ -815,8 +826,14 @@ function initializeGame() {
     const board1Select = document.getElementById('board1-select');
     const board2Select = document.getElementById('board2-select');
     const rawConfig = document.getElementById('starting-config').value;
+    const rawSuperpositionConfig = document.getElementById('superposition-config').value;
 
     const startingConfig = rawConfig
+        .toUpperCase()
+        .replace(/\s+/g, '')
+        .replace(/[,.;\s]+$/, '');
+
+    const superpositionConfig = rawSuperpositionConfig
         .toUpperCase()
         .replace(/\s+/g, '')
         .replace(/[,.;\s]+$/, '');
@@ -829,7 +846,12 @@ function initializeGame() {
     const board1Layout = getSelectedBoardLayout(board1Select);
     const board2Layout = getSelectedBoardLayout(board2Select);
 
-    game = new EntangledGame(board1Layout, board2Layout, startingConfig);
+    try {
+        game = new EntangledGame(board1Layout, board2Layout, startingConfig, superpositionConfig);
+    } catch (error) {
+        alert(error.message);
+        return;
+    }
 
     const existingWinner = document.querySelector('.winner');
     if (existingWinner) {
@@ -982,7 +1004,8 @@ function init() {
         'board2-select',
         'black-player',
         'white-player',
-        'starting-config'
+        'starting-config',
+        'superposition-config'
     ];
 
     settingsElements.forEach(elementId => {
