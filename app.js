@@ -173,7 +173,13 @@ function populatePlayerDropdowns() {
         whiteSelect.add(option.cloneNode(true));
     });
 
+    // Set default values
+    blackSelect.value = 'human';
     whiteSelect.value = 'defensive-some-rng';
+
+    // Update thinking time visibility for initial values
+    updateThinkingTimeVisibility('black-player');
+    updateThinkingTimeVisibility('white-player');
 }
 
 function getBoardSize(boardId) {
@@ -805,39 +811,111 @@ function handleCellClick(symbol) {
     }
 }
 
+function updateThinkingTimeVisibility(playerId) {
+    const playerSelect = document.getElementById(playerId);
+    const thinkingTimeContainer = document.querySelector(`#${playerId}-controls .thinking-time-container`);
+
+    if (!playerSelect || !thinkingTimeContainer) return;
+
+    const selectedValue = playerSelect.value;
+    const isAI = selectedValue !== 'human' && selectedValue !== 'remote';
+    thinkingTimeContainer.style.display = isAI ? 'flex' : 'none';
+}
+
+function setupThinkingTimeHandlers() {
+    const playerIds = ['black-player', 'white-player'];
+
+    // Set up change event handlers
+    playerIds.forEach(id => {
+        const select = document.getElementById(id);
+        if (select) {
+            select.addEventListener('change', () => updateThinkingTimeVisibility(id));
+        }
+    });
+
+    // Initialize visibility based on default selections
+    updateThinkingTimeVisibility('black-player');
+    updateThinkingTimeVisibility('white-player');
+}
+
+function getThinkingTime(playerId) {
+    const input = document.querySelector(`#${playerId}-controls .thinking-time-input`);
+    if (!input) return null;
+    // Convert seconds to milliseconds
+    return parseFloat(input.value) * 1000;
+}
+
 function makeAIMove() {
-    if (!game) return;
+    if (!game || game.isGameOver()) return;
 
-    const currentPlayer = game.getCurrentPlayer();
-    const playerType = document.getElementById(`${currentPlayer.toLowerCase()}-player`).value;
+    const currentPlayerId = game.getCurrentPlayer() === PLAYERS.BLACK ? 'black-player' : 'white-player';
+    const playerType = document.getElementById(currentPlayerId).value;
 
-    if (playerType !== 'human') {
-        setTimeout(() => {
-            if (!game) return;
+    if (playerType === 'human' || playerType === 'remote') return;
 
-            const ai = createPlayer(playerType, game, currentPlayer);
-            if (ai) {
-                // Check for swap first
-                if (game.isSwapAvailable() && ai.shouldSwap()) {
-                    game.swapFirstMove();
-                    updateDisplay();
-                    makeAIMove();
-                    return;
-                }
+    const thinkingTime = getThinkingTime(currentPlayerId);
+    if (!thinkingTime) {
+        console.error(`No thinking time provided for ${currentPlayerId}`);
+        return;
+    }
 
-                const move = ai.chooseMove();
-                if (move && game) {
-                    game.makeMove(move);
-                    updateDisplay();
+    disableUI();
+    const player = createPlayer(playerType, game, game.getCurrentPlayer(), { thinkingTime });
 
-                    if (game && game.isGameOver()) {
-                        showWinner(game.getWinner());
-                    } else if (game) {
-                        makeAIMove();
-                    }
-                }
+    try {
+        // First check if we should swap
+        if (game.isSwapAvailable()) {
+            const shouldSwap = player.shouldSwap();
+            if (shouldSwap) {
+                game.swapFirstMove();
+                updateDisplay();
+                enableUI();
+                // Schedule next AI move
+                setTimeout(makeAIMove, 100);
+                return;
             }
-        }, 500);
+        }
+
+        // Choose and make the move
+        const move = player.chooseMove();
+        if (!move) {
+            console.error(`${playerType} returned no move`);
+            enableUI();
+            if (game.getValidMoves().length === 0) {
+                showWinner(game.getWinner());
+            }
+            return;
+        }
+
+        const positions = game.superpositionStones && game.superpositionStones.has(move) ?
+            game.getValidPositionsForStone(move) : null;
+
+        if (positions && positions.length > 0) {
+            // For superposition stones, pick a random valid position
+            const randomPos = positions[Math.floor(Math.random() * positions.length)];
+            game.makeMove(move, randomPos);
+        } else {
+            game.makeMove(move);
+        }
+
+        updateDisplay();
+
+        if (game.isGameOver()) {
+            showWinner(game.getWinner());
+        } else {
+            // Schedule next AI move
+            setTimeout(makeAIMove, 100);
+        }
+    } catch (error) {
+        console.error('Error during AI move:', error);
+        enableUI();
+        return;
+    } finally {
+        enableUI();
+        // Clean up player resources
+        if (player.destroy) {
+            player.destroy();
+        }
     }
 }
 
@@ -987,9 +1065,49 @@ function setupCustomBoardHandling() {
     });
 }
 
+function disableUI() {
+    // Disable all interactive elements during AI moves
+    document.getElementById('start-game').disabled = true;
+    document.getElementById('board-size').disabled = true;
+    document.getElementById('board1-select').disabled = true;
+    document.getElementById('board2-select').disabled = true;
+    document.getElementById('black-player').disabled = true;
+    document.getElementById('white-player').disabled = true;
+    document.getElementById('starting-config').disabled = true;
+    document.getElementById('superposition').disabled = true;
+    document.getElementById('swap-rule').disabled = true;
+    document.getElementById('swap-first-move').disabled = true;
+
+    // Add visual feedback
+    document.body.style.cursor = 'wait';
+}
+
+function enableUI() {
+    // Re-enable all interactive elements
+    document.getElementById('start-game').disabled = false;
+    document.getElementById('board-size').disabled = false;
+    document.getElementById('board1-select').disabled = false;
+    document.getElementById('board2-select').disabled = false;
+    document.getElementById('black-player').disabled = false;
+    document.getElementById('white-player').disabled = false;
+    document.getElementById('starting-config').disabled = false;
+    document.getElementById('superposition').disabled = false;
+    document.getElementById('swap-rule').disabled = false;
+    document.getElementById('swap-first-move').disabled = false;
+
+    // Restore normal cursor
+    document.body.style.cursor = 'default';
+}
+
 function init() {
     loadSettings();
     setupCustomBoardHandling();
+
+    // First populate dropdowns (which sets default values)
+    populatePlayerDropdowns();
+
+    // Then set up thinking time handlers
+    setupThinkingTimeHandlers();
 
     // Set default value for superposition input
     document.getElementById('superposition').value = 'rng,rng,rng,rng,rng,rng';
@@ -1022,17 +1140,6 @@ function init() {
             updateDisplay();
             makeAIMove();
         }
-    });
-
-    populatePlayerDropdowns();
-
-    const boardSizeSelect = document.getElementById('board-size');
-    boardSizeSelect.addEventListener('change', (e) => {
-        stopGame();
-        const size = parseInt(e.target.value);
-        populateBoardsBySize(size);
-        currentRandomBoards = { board1: null, board2: null };
-        initializeBoards();
     });
 
     populateBoardsBySize(7);
