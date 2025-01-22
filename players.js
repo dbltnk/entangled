@@ -910,91 +910,6 @@ class MCTSPlayer extends EntangledPlayer {
     }
 }
 
-class HybridStrongPlayer extends MinimaxPlayer {
-    constructor(gameEngine, playerColor, config = {}) {
-        super(gameEngine, playerColor, config);
-        if (!config.thinkingTime) {
-            throw new Error('HybridStrongPlayer requires thinkingTime in config');
-        }
-        this.thinkingTime = config.thinkingTime;
-        this.minimaxTime = this.thinkingTime * 0.4; // 40% for minimax
-        this.mctsTime = this.thinkingTime * 0.6;    // 60% for MCTS
-        this.mctsPlayer = new MCTSPlayer(gameEngine, playerColor, { ...config, thinkingTime: this.mctsTime });
-    }
-
-    shouldSwap() {
-        return this.mctsPlayer.shouldSwap();
-    }
-
-    chooseMove() {
-        const validMoves = this.gameEngine.getValidMoves();
-        if (validMoves.length === 0) return null;
-
-        // First use minimax with iterative deepening
-        const startTime = performance.now();
-        let depth = 1;
-        let bestMove = null;
-        let bestScore = -Infinity;
-        let moveEvaluations = validMoves.map(move => ({ move, score: -Infinity }));
-
-        while (performance.now() - startTime < this.minimaxTime) {
-            try {
-                for (let i = 0; i < validMoves.length; i++) {
-                    const move = validMoves[i];
-                    const simGame = this.simulateGame(this.gameEngine.getGameState());
-                    simGame.makeMove(move);
-
-                    try {
-                        const score = this.minimax(simGame, depth, false, -Infinity, Infinity);
-                        moveEvaluations[i].score = score;
-                        if (score > bestScore) {
-                            bestScore = score;
-                            bestMove = move;
-                        }
-                    } catch (error) {
-                        moveEvaluations[i].score = -Infinity;
-                    }
-                }
-                depth++;
-            } catch (error) {
-                break;
-            }
-        }
-
-        // Then use MCTS for the remaining time
-        const mctsMove = this.mctsPlayer.chooseMove();
-
-        // Combine the evaluations
-        const minimaxMoves = moveEvaluations
-            .filter(e => e.score > -Infinity)
-            .sort((a, b) => b.score - a.score)
-            .slice(0, 3)
-            .map(e => e.move);
-
-        // If minimax found good moves, choose between them and MCTS move
-        if (minimaxMoves.length > 0) {
-            const candidates = [...minimaxMoves];
-            if (mctsMove && !candidates.includes(mctsMove)) {
-                candidates.push(mctsMove);
-            }
-            return this.randomizeChoice(
-                candidates,
-                candidates.map(move => {
-                    const evaluation = moveEvaluations.find(e => e.move === move);
-                    return evaluation ? evaluation.score : 0;
-                })
-            );
-        }
-
-        // Fallback to MCTS move if minimax failed
-        return mctsMove;
-    }
-
-    destroy() {
-        this.mctsPlayer.destroy();
-    }
-}
-
 export const AI_PLAYERS = {
     'deterministic': {
         id: 'deterministic',
@@ -1079,17 +994,6 @@ export const AI_PLAYERS = {
             randomThreshold: 0.1,
             thinkingTime: 1000
         }
-    },
-    'hybrid': {
-        id: 'hybrid',
-        name: 'Hybrid Strong',
-        description: 'Uses a combination of minimax and Monte Carlo Tree Search.',
-        class: HybridStrongPlayer,
-        config: {
-            randomize: true,
-            randomThreshold: 0.1,
-            thinkingTime: 1000
-        }
     }
 };
 
@@ -1102,8 +1006,7 @@ export function createPlayer(strategyId, gameEngine, playerColor, config = {}) {
     // Ensure thinkingTime is provided either in config or player defaults
     const finalConfig = { ...playerConfig.config, ...config };
     if (playerConfig.class.prototype instanceof MinimaxPlayer ||
-        playerConfig.class.prototype instanceof MCTSPlayer ||
-        playerConfig.class === MCTSPlayer) {
+        playerConfig.class.prototype instanceof MCTSPlayer) {
         if (!finalConfig.thinkingTime) {
             throw new Error(`${playerConfig.name} requires thinkingTime in config`);
         }
