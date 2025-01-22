@@ -1,4 +1,4 @@
-import { AI_PLAYERS } from './players.js';
+import { AI_PLAYERS, MinimaxPlayer, MCTSPlayer } from './players.js';
 import BOARD_LAYOUTS, { getSymbolsForSize } from './boards.js';
 import ELOSystem from './elo.js';
 import TournamentStorage from './tournament-storage.js';
@@ -24,6 +24,7 @@ class TournamentManager {
         this.isCompletingTournament = false;
         this.customBoards = new Map();
         this.currentCustomTarget = null;
+        this.aiConfigs = new Map();
         this.initializeUI();
         this.setupEventListeners();
         this.initializeFirstConfig();
@@ -34,10 +35,27 @@ class TournamentManager {
         Object.entries(AI_PLAYERS).forEach(([id, ai]) => {
             const div = document.createElement('div');
             div.className = 'checkbox-item';
+            const needsThinkingTime = ai.class.prototype instanceof MinimaxPlayer ||
+                ai.class.prototype instanceof MCTSPlayer;
+
             div.innerHTML = `
-                <input type="checkbox" id="${id}" name="ai-select" value="${id}" 
-                    ${this.isDefaultAI(id) ? 'checked' : ''}>
-                <label for="${id}" style="white-space: normal;">${ai.name}</label>
+                <div class="ai-select-row">
+                    <input type="checkbox" id="${id}" name="ai-select" value="${id}" 
+                        ${this.isDefaultAI(id) ? 'checked' : ''}>
+                    <label for="${id}" style="white-space: normal;">${ai.name}</label>
+                    ${needsThinkingTime ? `
+                        <div class="thinking-time-container">
+                            <input type="number" 
+                                id="${id}-thinking-time" 
+                                class="thinking-time-input" 
+                                value="1.0" 
+                                min="0.1" 
+                                max="60.0" 
+                                step="0.1">
+                            <label>sec</label>
+                        </div>
+                    ` : ''}
+                </div>
             `;
             aiSelection.appendChild(div);
         });
@@ -50,7 +68,20 @@ class TournamentManager {
     }
 
     isDefaultAI(id) {
-        const defaultAIs = ['mcts-some-rng', 'minimax-some-rng', 'defensive-some-rng', 'aggressive-some-rng'];
+        const defaultAIs = [
+            'mcts',
+            'mcts-some-rng',
+            'minimax',
+            'minimax-some-rng',
+            'defensive',
+            'defensive-some-rng',
+            'aggressive',
+            'aggressive-some-rng',
+            'greedy',
+            'greedy-some-rng',
+            'random',
+            'deterministic'
+        ];
         return defaultAIs.includes(id);
     }
 
@@ -69,7 +100,10 @@ class TournamentManager {
                 template.appendChild(removeButton);
             }
 
+            // Reset values for the new configuration
             template.querySelector('.tournament-starting-config').value = '';
+            template.querySelector('.superposition-config').value = '';
+            template.querySelector('.swap-rule-toggle').checked = true;
 
             document.getElementById('tournament-configs').appendChild(template);
             this.attachConfigListeners(template);
@@ -178,6 +212,58 @@ class TournamentManager {
         sizeSelect.addEventListener('change', () => {
             this.updateBoardSelectionsForConfig(configElement);
         });
+
+        // Add listeners for new configuration options
+        const swapToggle = configElement.querySelector('.swap-rule-toggle');
+        const superpositionInput = configElement.querySelector('.superposition-config');
+
+        if (swapToggle) {
+            swapToggle.addEventListener('change', () => {
+                this.validateConfig(configElement);
+            });
+        }
+
+        if (superpositionInput) {
+            superpositionInput.addEventListener('input', () => {
+                this.validateConfig(configElement);
+            });
+        }
+    }
+
+    validateConfig(configElement) {
+        const superpositionInput = configElement.querySelector('.superposition-config');
+        const startingConfig = configElement.querySelector('.tournament-starting-config');
+        const size = parseInt(configElement.querySelector('.board-size').value);
+
+        if (superpositionInput.value.trim()) {
+            const validSymbols = getSymbolsForSize(size);
+            const config = superpositionInput.value.trim();
+            const positions = config.split(',').map(p => p.trim());
+
+            // Check if all values are 'rng'
+            if (positions.every(pos => pos === 'rng')) return true;
+
+            // Check for specific positions
+            const valid = positions.every(pos => validSymbols.includes(pos));
+
+            if (!valid) {
+                alert(`Invalid superposition configuration. Valid symbols for size ${size} are: ${validSymbols}`);
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    getConfigFromElement(configElement) {
+        return {
+            boardSize: parseInt(configElement.querySelector('.board-size').value),
+            board1: configElement.querySelector('.tournament-board1-select').value,
+            board2: configElement.querySelector('.tournament-board2-select').value,
+            startingConfig: configElement.querySelector('.tournament-starting-config').value,
+            superpositionConfig: configElement.querySelector('.superposition-config').value,
+            swapRuleEnabled: configElement.querySelector('.swap-rule-toggle').checked
+        };
     }
 
     updateBoardSelectionsForConfig(configElement) {
@@ -333,7 +419,9 @@ class TournamentManager {
 
     setConfigurationEditingEnabled(enabled) {
         const elements = document.querySelectorAll(
-            '.tournament-config select, .tournament-config input, #add-config, #start-tournament, #games-per-matchup, #parallel-games, .remove-config'
+            '.tournament-config select, .tournament-config input, ' +
+            '.thinking-time-input, .swap-rule-toggle, .superposition-config, ' +
+            '#add-config, #start-tournament, #games-per-matchup, #parallel-games, .remove-config'
         );
         elements.forEach(element => element.disabled = !enabled);
     }
@@ -345,18 +433,52 @@ class TournamentManager {
             return;
         }
 
-        this.tournamentConfigs = Array.from(document.querySelectorAll('.tournament-config'))
+        // Collect and validate AI configurations
+        this.aiConfigs.clear();
+        for (const aiId of this.selectedAIs) {
+            const ai = AI_PLAYERS[aiId];
+            if (ai.class.prototype instanceof MinimaxPlayer ||
+                ai.class.prototype instanceof MCTSPlayer) {
+                const thinkingTimeInput = document.getElementById(`${aiId}-thinking-time`);
+                const thinkingTime = parseFloat(thinkingTimeInput.value);
+
+                if (isNaN(thinkingTime) || thinkingTime < 0.1 || thinkingTime > 60.0) {
+                    alert(`Invalid thinking time for ${ai.name}. Must be between 0.1 and 60.0 seconds.`);
+                    return;
+                }
+
+                this.aiConfigs.set(aiId, {
+                    ...AI_PLAYERS[aiId].config,
+                    thinkingTime
+                });
+            } else {
+                // For non-thinking time AIs, still copy their config
+                this.aiConfigs.set(aiId, { ...AI_PLAYERS[aiId].config });
+            }
+        }
+
+        // Validate all tournament configurations
+        const configs = document.querySelectorAll('.tournament-config');
+        for (const config of configs) {
+            if (!this.validateConfig(config)) {
+                return;
+            }
+        }
+
+        // Collect tournament configurations
+        this.tournamentConfigs = Array.from(configs)
             .map(config => ({
-                boardSize: parseInt(config.querySelector('.board-size').value),
-                board1: config.querySelector('.tournament-board1-select').value,
-                board2: config.querySelector('.tournament-board2-select').value,
-                startingConfig: config.querySelector('.tournament-starting-config').value
+                ...this.getConfigFromElement(config),
+                aiConfigs: Object.fromEntries(this.aiConfigs)
             }));
 
         if (this.tournamentConfigs.length === 0) {
             alert('Please add at least one board configuration');
             return;
         }
+
+        // Set up the first board configuration
+        this.boardConfigs = [this.tournamentConfigs[0]];
 
         this.setConfigurationEditingEnabled(false);
         this.gamesPerMatchup = parseInt(document.getElementById('games-per-matchup').value);
@@ -495,7 +617,11 @@ class TournamentManager {
                 const gameConfig = {
                     matchup,
                     boardConfig,
-                    matchIndex: this.currentMatchIndex
+                    matchIndex: this.currentMatchIndex,
+                    aiConfigs: {
+                        [matchup.black]: this.aiConfigs.get(matchup.black),
+                        [matchup.white]: this.aiConfigs.get(matchup.white)
+                    }
                 };
 
                 const worker = this.workers.find(w => !w.busy);

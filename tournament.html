@@ -24,8 +24,8 @@
                         <div class="setup-row">
                             <label>Board Size:</label>
                             <select class="board-size">
-                                <option value="4">4×4</option>
-                                <option value="5" selected>5×5</option>
+                                <option value="4" selected>4×4</option>
+                                <option value="5">5×5</option>
                                 <option value="6">6×6</option>
                                 <option value="7">7×7</option>
                             </select>
@@ -43,7 +43,18 @@
                         <div class="setup-row">
                             <label>Starting Position:</label>
                             <input type="text" class="tournament-starting-config" placeholder="e.g., BE2,WK1"
-                                value="WB1,WB2">
+                                value="WA1,BA2">
+                        </div>
+                        <div class="setup-row">
+                            <label>Superposition Stones:</label>
+                            <input type="text" class="superposition-config" placeholder="e.g., A,B,C or rng,rng"
+                                value="rng,rng,rng,rng,rng,rng">
+                        </div>
+                        <div class="setup-row swap-rule-row">
+                            <label>
+                                <input type="checkbox" class="swap-rule-toggle" checked>
+                                Enable Swap Rule
+                            </label>
                         </div>
                     </div>
                 </div>
@@ -56,7 +67,7 @@
                 <div class="tournament-settings">
                     <div class="setup-row">
                         <label>Games per Matchup:</label>
-                        <input type="number" id="games-per-matchup" value="64" min="2" step="2">
+                        <input type="number" id="games-per-matchup" value="2" min="2" step="2">
                     </div>
                     <div class="setup-row">
                         <label>Parallel Games:</label>
