@@ -991,7 +991,6 @@ export const AI_PLAYERS = {
         class: MCTSPlayer,
         config: {
             randomize: true,
-            randomThreshold: 0.1,
             thinkingTime: 1000
         }
     }
