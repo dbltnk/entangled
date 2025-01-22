@@ -869,6 +869,7 @@ function makeAIMove() {
             const shouldSwap = player.shouldSwap();
             if (shouldSwap) {
                 game.swapFirstMove();
+                showToast('🔄 AI decided to take over first move');
                 updateDisplay();
                 enableUI();
                 // Schedule next AI move
@@ -918,6 +919,29 @@ function makeAIMove() {
             player.destroy();
         }
     }
+}
+
+function showToast(message) {
+    // Remove any existing toast
+    const existingToast = document.querySelector('.toast');
+    if (existingToast) {
+        existingToast.remove();
+    }
+
+    // Create and show new toast
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.textContent = message;
+    document.body.appendChild(toast);
+
+    // Trigger animation
+    setTimeout(() => toast.classList.add('show'), 10);
+
+    // Remove after delay
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
 }
 
 function initializeGame() {
