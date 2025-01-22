@@ -306,6 +306,11 @@ class DeterministicPlayer extends EntangledPlayer {
 
     chooseMove() {
         const validMoves = this.gameEngine.getValidMoves();
+        if (!validMoves || validMoves.length === 0) {
+            console.error('DeterministicPlayer: No valid moves available');
+            return null;
+        }
+        // Always pick the first valid move
         return validMoves[0];
     }
 }
@@ -323,7 +328,7 @@ class RandomPlayer extends EntangledPlayer {
     }
 }
 
-class GreedyHighPlayer extends EntangledPlayer {
+class GreedyPlayer extends EntangledPlayer {
     shouldSwap() {
         if (!this.gameEngine.isSwapAvailable()) return false;
 
@@ -356,29 +361,6 @@ class GreedyHighPlayer extends EntangledPlayer {
             return {
                 move,
                 score: evaluation.totalScore + superpositionBonus
-            };
-        });
-
-        moveEvaluations.sort((a, b) => b.score - a.score);
-
-        return this.randomizeChoice(
-            moveEvaluations.map(m => m.move),
-            moveEvaluations.map(m => m.score)
-        );
-    }
-}
-
-class GreedyLowPlayer extends EntangledPlayer {
-    chooseMove() {
-        const validMoves = this.gameEngine.getValidMoves();
-        const moveEvaluations = validMoves.map(move => {
-            const moveEval = this.evaluateMove(move);
-            // Only apply SP bonus if it's actually a superposition move
-            const gameProgress = Object.values(this.gameEngine.playerTurns).reduce((a, b) => a + b);
-            const superpositionBonus = moveEval.isSuperposition && gameProgress < 15 ? 1 : 0;
-            return {
-                move,
-                score: -moveEval.difference + (moveEval.totalScore * 0.001) + superpositionBonus
             };
         });
 
@@ -481,229 +463,128 @@ class DefensivePlayer extends EntangledPlayer {
     }
 }
 
-class EnhancedGreedyPlayer extends EntangledPlayer {
-    chooseMove() {
-        const validMoves = this.gameEngine.getValidMoves();
-        const moveEvaluations = validMoves.map(move => ({
-            move,
-            score: this.evaluateMoveWithLookahead(move)
-        }));
-
-        moveEvaluations.sort((a, b) => b.score - a.score);
-
-        return this.randomizeChoice(
-            moveEvaluations.map(m => m.move),
-            moveEvaluations.map(m => m.score)
-        );
-    }
-
-    evaluateMoveWithLookahead(move) {
-        const simGame = this.simulateGame(this.gameEngine.getGameState());
-        simGame.makeMove(move);
-
-        if (simGame.isGameOver()) {
-            return this.evaluatePosition(simGame);
-        }
-
-        let score = this.evaluatePosition(simGame);
-        const growthPotential = this.evaluateGrowthPotential(simGame);
-
-        const opponentMoves = simGame.getValidMoves();
-        const opponentColor = this.playerColor === 'BLACK' ? 'WHITE' : 'BLACK';
-
-        let bestOpponentScore = -Infinity;
-        for (const oppMove of opponentMoves) {
-            const oppGame = this.simulateGame(simGame.getGameState());
-            oppGame.makeMove(oppMove);
-            bestOpponentScore = Math.max(bestOpponentScore,
-                oppGame.getScore(opponentColor) - oppGame.getScore(this.playerColor));
-        }
-
-        return score + growthPotential - (bestOpponentScore * 0.5);
-    }
-}
-
-class EnhancedBalancedPlayer extends EntangledPlayer {
-    chooseMove() {
-        const validMoves = this.gameEngine.getValidMoves();
-        const moveEvaluations = validMoves.map(move => {
-            const evaluation = this.evaluateBalancedMove(move);
-            return {
-                move,
-                score: -evaluation.balance + (evaluation.score * 0.001)
-            };
-        });
-
-        moveEvaluations.sort((a, b) => b.score - a.score);
-
-        return this.randomizeChoice(
-            moveEvaluations.map(m => m.move),
-            moveEvaluations.map(m => m.score)
-        );
-    }
-
-    evaluateBalancedMove(move) {
-        const simGame = this.simulateGame(this.gameEngine.getGameState());
-        simGame.makeMove(move);
-
-        const board1Score = simGame.findLargestCluster(simGame.board1, this.playerColor);
-        const board2Score = simGame.findLargestCluster(simGame.board2, this.playerColor);
-
-        const balance = Math.abs(board1Score - board2Score);
-        const growthPotential = this.evaluateGrowthPotential(simGame);
-        const positionScore = this.evaluatePosition(simGame);
-
-        let opponentPressure = 0;
-        if (!simGame.isGameOver()) {
-            const opponentColor = this.playerColor === 'BLACK' ? 'WHITE' : 'BLACK';
-            const opponentMoves = simGame.getValidMoves();
-
-            for (const oppMove of opponentMoves) {
-                const oppGame = this.simulateGame(simGame.getGameState());
-                oppGame.makeMove(oppMove);
-                const oppBalance = Math.abs(
-                    oppGame.findLargestCluster(oppGame.board1, opponentColor) -
-                    oppGame.findLargestCluster(oppGame.board2, opponentColor)
-                );
-                opponentPressure = Math.max(opponentPressure, oppBalance);
-            }
-        }
-
-        return {
-            balance: balance + (opponentPressure * 0.3),
-            score: positionScore + growthPotential
-        };
-    }
-}
-
-class EnhancedDefensivePlayer extends EntangledPlayer {
-    chooseMove() {
-        const validMoves = this.gameEngine.getValidMoves();
-        const moveEvaluations = validMoves.map(move => ({
-            move,
-            score: this.evaluateDefensiveMove(move)
-        }));
-
-        moveEvaluations.sort((a, b) => b.score - a.score);
-
-        return this.randomizeChoice(
-            moveEvaluations.map(m => m.move),
-            moveEvaluations.map(m => m.score)
-        );
-    }
-
-    evaluateDefensiveMove(move) {
-        const simGame = this.simulateGame(this.gameEngine.getGameState());
-        simGame.makeMove(move);
-
-        const immediateScore = this.evaluatePosition(simGame);
-        const growthPotential = this.evaluateGrowthPotential(simGame);
-        const blockingValue = this.evaluateBlocking(simGame);
-
-        const opponentColor = this.playerColor === 'BLACK' ? 'WHITE' : 'BLACK';
-        const opponentMoves = simGame.getValidMoves();
-        let opponentBestScore = -Infinity;
-
-        for (const oppMove of opponentMoves) {
-            const oppGame = this.simulateGame(simGame.getGameState());
-            oppGame.makeMove(oppMove);
-            const oppScore = oppGame.getScore(opponentColor);
-            const oppGrowth = this.evaluateGrowthPotential(oppGame);
-            opponentBestScore = Math.max(opponentBestScore, oppScore + oppGrowth);
-        }
-
-        return immediateScore + growthPotential + blockingValue - (opponentBestScore * 0.7);
-    }
-
-    evaluateBlocking(game) {
-        let value = 0;
-        const opponentColor = this.playerColor === 'BLACK' ? 'WHITE' : 'BLACK';
-
-        for (const board of [game.board1, game.board2]) {
-            const opponentClusters = game.findLargestClusterCells(board, opponentColor);
-
-            for (const cluster of opponentClusters) {
-                let blockedDirections = 0;
-                let openDirections = 0;
-
-                for (let dr = -1; dr <= 1; dr++) {
-                    for (let dc = -1; dc <= 1; dc++) {
-                        if (dr === 0 && dc === 0) continue;
-                        const newRow = cluster.row + dr;
-                        const newCol = cluster.col + dc;
-
-                        if (newRow >= 0 && newRow < game.boardSize && newCol >= 0 && newCol < game.boardSize) {
-                            if (board[newRow][newCol] === this.playerColor) {
-                                blockedDirections++;
-                            } else if (board[newRow][newCol] === null) {
-                                openDirections++;
-                            }
-                        }
-                    }
-                }
-
-                value += blockedDirections * 0.5 - openDirections * 0.2;
-            }
-        }
-
-        return value;
-    }
-}
-
 class MinimaxPlayer extends EntangledPlayer {
     constructor(gameEngine, playerColor, config = {}) {
         super(gameEngine, playerColor, config);
-        this.lookahead = config.lookahead;
+        if (!config.thinkingTime) {
+            throw new Error('MinimaxPlayer requires thinkingTime in config');
+        }
+        this.thinkingTime = config.thinkingTime;
+        this.bestMove = null;
+        this.startTime = null;
     }
 
     shouldSwap() {
         if (!this.gameEngine.isSwapAvailable()) return false;
 
-        // Evaluate swap position with minimax
-        const swapGame = this.simulateGame(this.gameEngine.getGameState());
-        swapGame.swapFirstMove();
-        const swapScore = this.minimax(swapGame, this.lookahead - 1, true, -Infinity, Infinity);
-
-        // Evaluate best regular move with minimax
-        const validMoves = this.gameEngine.getValidMoves();
+        this.startTime = performance.now();
+        let depth = 1;
+        let bestScore = -Infinity;
         let bestMoveScore = -Infinity;
 
-        for (const move of validMoves) {
-            const moveGame = this.simulateGame(this.gameEngine.getGameState());
-            moveGame.makeMove(move);
-            const score = this.minimax(moveGame, this.lookahead - 1, false, -Infinity, Infinity);
-            bestMoveScore = Math.max(bestMoveScore, score);
-        }
+        try {
+            // Evaluate swap position with iterative deepening
+            const swapGame = this.simulateGame(this.gameEngine.getGameState());
+            swapGame.swapFirstMove();
 
-        return swapScore > bestMoveScore;
+            // Evaluate best regular move with iterative deepening
+            const validMoves = this.gameEngine.getValidMoves();
+
+            while (performance.now() - this.startTime < this.thinkingTime / 2) {
+                try {
+                    // Evaluate swap
+                    const swapEval = this.minimax(swapGame, depth, true, -Infinity, Infinity);
+                    if (swapEval > bestScore) {
+                        bestScore = swapEval;
+                    }
+
+                    // Evaluate regular moves
+                    for (const move of validMoves) {
+                        const moveGame = this.simulateGame(this.gameEngine.getGameState());
+                        moveGame.makeMove(move);
+                        const score = this.minimax(moveGame, depth, false, -Infinity, Infinity);
+                        bestMoveScore = Math.max(bestMoveScore, score);
+                    }
+
+                    depth++;
+                } catch (error) {
+                    if (error.message === 'Timeout') {
+                        break;
+                    }
+                    throw error;
+                }
+            }
+
+            return bestScore > bestMoveScore;
+        } catch (error) {
+            console.warn('Error in shouldSwap, defaulting to false:', error);
+            return false;
+        }
     }
 
     chooseMove() {
+        this.startTime = performance.now();
+        this.bestMove = null;
+        let depth = 1;
         const validMoves = this.gameEngine.getValidMoves();
-        const moveEvaluations = validMoves.map(move => {
-            const simGame = this.simulateGame(this.gameEngine.getGameState());
 
-            // For superposition stones, evaluate all possible outcomes
-            if (simGame.superpositionStones.has(move)) {
+        // For superposition stones, use simpler evaluation
+        if (validMoves.some(move => this.gameEngine.superpositionStones &&
+            this.gameEngine.superpositionStones.has(move))) {
+            const moveEvaluations = validMoves.map(move => {
                 const spEval = this.evaluateMove(move);
-                // Minimax players prefer superposition stones in early-mid game
                 const gameProgress = Object.values(this.gameEngine.playerTurns).reduce((a, b) => a + b);
                 const superpositionBonus = gameProgress < 15 ? 2 : 0;
                 return {
                     move,
                     score: spEval.totalScore + superpositionBonus
                 };
+            });
+
+            moveEvaluations.sort((a, b) => b.score - a.score);
+            return this.randomizeChoice(
+                moveEvaluations.map(m => m.move),
+                moveEvaluations.map(m => m.score)
+            );
+        }
+
+        // Iterative deepening with time limit
+        let bestScore = -Infinity;
+        let moveEvaluations = validMoves.map(move => ({ move, score: -Infinity }));
+
+        while (performance.now() - this.startTime < this.thinkingTime) {
+            let completedDepth = true;
+
+            for (let i = 0; i < validMoves.length; i++) {
+                const move = validMoves[i];
+                const simGame = this.simulateGame(this.gameEngine.getGameState());
+                simGame.makeMove(move);
+
+                try {
+                    const score = this.minimax(simGame, depth, false, -Infinity, Infinity);
+                    moveEvaluations[i].score = score;
+                    if (score > bestScore) {
+                        bestScore = score;
+                        this.bestMove = move;
+                    }
+                } catch (timeoutError) {
+                    completedDepth = false;
+                    break;
+                }
+
+                // Check time after each move evaluation
+                if (performance.now() - this.startTime >= this.thinkingTime) {
+                    completedDepth = false;
+                    break;
+                }
             }
 
-            simGame.makeMove(move);
-            return {
-                move,
-                score: this.minimax(simGame, this.lookahead - 1, false, -Infinity, Infinity)
-            };
-        });
+            if (!completedDepth) break;
+            depth++;
+        }
 
+        // Use the best move found so far
         moveEvaluations.sort((a, b) => b.score - a.score);
-
         return this.randomizeChoice(
             moveEvaluations.map(m => m.move),
             moveEvaluations.map(m => m.score)
@@ -711,12 +592,16 @@ class MinimaxPlayer extends EntangledPlayer {
     }
 
     minimax(game, depth, isMaximizing, alpha, beta) {
+        // Check time limit first
+        if (performance.now() - this.startTime >= this.thinkingTime) {
+            throw new Error('Timeout');
+        }
+
         if (depth === 0 || game.isGameOver()) {
             return this.evaluatePosition(game);
         }
 
         const validMoves = game.getValidMoves();
-
         if (!validMoves || validMoves.length === 0) {
             return this.evaluatePosition(game);
         }
@@ -753,8 +638,11 @@ class MinimaxPlayer extends EntangledPlayer {
 class MCTSPlayer extends EntangledPlayer {
     constructor(gameEngine, playerColor, config = {}) {
         super(gameEngine, playerColor, config);
-        this.timeLimit = config.timeLimit;
-        // Reusable game state for simulations
+        if (!config.thinkingTime) {
+            throw new Error('MCTSPlayer requires thinkingTime in config');
+        }
+        this.thinkingTime = config.thinkingTime;
+        // Create reusable components for simulations
         this.baseSimGame = null;
         this.simBoards = {
             board1: Array(gameEngine.boardSize).fill(null).map(() => Array(gameEngine.boardSize).fill(null)),
@@ -773,7 +661,7 @@ class MCTSPlayer extends EntangledPlayer {
         // Initialize base simulation game
         this.initBaseSimGame(this.gameEngine.getGameState());
 
-        while (performance.now() - startTime < this.timeLimit / 2) {
+        while (performance.now() - startTime < this.thinkingTime / 2) {
             // Simulate swap scenario
             const swapGame = this.getSimulationGame();
             swapGame.swapFirstMove();
@@ -857,7 +745,7 @@ class MCTSPlayer extends EntangledPlayer {
         const moveScores = validMoves.map(() => 0);
 
         // Keep simulating until time limit is reached
-        while (performance.now() - startTime < this.timeLimit) {
+        while (performance.now() - startTime < this.thinkingTime) {
             // Find move with least simulations
             const minSims = Math.min(...moveSimulations);
             const moveIndices = moveSimulations
@@ -894,7 +782,6 @@ class MCTSPlayer extends EntangledPlayer {
             }
         }
 
-        // Convert to move evaluations
         const moveEvaluations = validMoves.map((move, i) => ({
             move,
             score: moveSimulations[i] > 0 ? moveScores[i] / moveSimulations[i] : -Infinity,
@@ -946,314 +833,205 @@ class MCTSPlayer extends EntangledPlayer {
 class HybridStrongPlayer extends MinimaxPlayer {
     constructor(gameEngine, playerColor, config = {}) {
         super(gameEngine, playerColor, config);
-        this.timeLimit = config.timeLimit;
-        this.minimaxDepth = config.lookahead;
-        // Create reusable MCTS components
-        this.baseSimGame = null;
-        this.simBoards = {
-            board1: Array(gameEngine.boardSize).fill(null).map(() => Array(gameEngine.boardSize).fill(null)),
-            board2: Array(gameEngine.boardSize).fill(null).map(() => Array(gameEngine.boardSize).fill(null))
-        };
-    }
-
-    // Copy necessary MCTS methods
-    copyBoardState(source, target) {
-        for (let i = 0; i < source.length; i++) {
-            for (let j = 0; j < source[i].length; j++) {
-                target[i][j] = source[i][j];
-            }
+        if (!config.thinkingTime) {
+            throw new Error('HybridStrongPlayer requires thinkingTime in config');
         }
+        this.thinkingTime = config.thinkingTime;
+        this.minimaxTime = this.thinkingTime * 0.4; // 40% for minimax
+        this.mctsTime = this.thinkingTime * 0.6;    // 60% for MCTS
+        this.mctsPlayer = new MCTSPlayer(gameEngine, playerColor, { ...config, thinkingTime: this.mctsTime });
     }
 
-    initBaseSimGame(gameState) {
-        if (!this.baseSimGame) {
-            this.baseSimGame = new SimulatedGame(this.gameEngine, gameState);
-        } else {
-            this.copyBoardState(gameState.board1, this.baseSimGame.board1);
-            this.copyBoardState(gameState.board2, this.baseSimGame.board2);
-            this.baseSimGame.currentPlayer = gameState.currentPlayer;
-            this.baseSimGame.playerTurns = { ...gameState.playerTurns };
-            this.baseSimGame.gameOver = gameState.gameOver;
-            this.baseSimGame._lastMove = gameState.lastMove;
-            this.baseSimGame.lastPlacedStone = gameState.lastPlacedStone;
-            this.baseSimGame.superpositionStones = new Map(this.gameEngine.superpositionStones);
-        }
-    }
-
-    getSimulationGame() {
-        this.copyBoardState(this.baseSimGame.board1, this.simBoards.board1);
-        this.copyBoardState(this.baseSimGame.board2, this.simBoards.board2);
-
-        return {
-            board1: this.simBoards.board1,
-            board2: this.simBoards.board2,
-            currentPlayer: this.baseSimGame.currentPlayer,
-            playerTurns: { ...this.baseSimGame.playerTurns },
-            gameOver: this.baseSimGame.gameOver,
-            boardSize: this.baseSimGame.boardSize,
-            getValidMoves: () => {
-                return this.baseSimGame.getValidMoves().filter(move =>
-                    !this.baseSimGame.superpositionStones || !this.baseSimGame.superpositionStones.has(move)
-                );
-            },
-            makeMove: (symbol) => {
-                const positions = this.baseSimGame.symbolToPosition.get(symbol);
-                if (positions.board1) {
-                    this.simBoards.board1[positions.board1.row][positions.board1.col] = this.currentPlayer;
-                }
-                if (positions.board2) {
-                    this.simBoards.board2[positions.board2.row][positions.board2.col] = this.currentPlayer;
-                }
-                this.currentPlayer = this.currentPlayer === 'BLACK' ? 'WHITE' : 'BLACK';
-            },
-            isGameOver: () => {
-                return this.getValidMoves().length === 0;
-            },
-            findLargestCluster: (board, player) => {
-                return this.baseSimGame.findLargestCluster(board, player);
-            },
-            getScore: (player) => {
-                const board1Score = this.baseSimGame.findLargestCluster(this.simBoards.board1, player);
-                const board2Score = this.baseSimGame.findLargestCluster(this.simBoards.board2, player);
-                return board1Score + board2Score;
-            }
-        };
+    shouldSwap() {
+        return this.mctsPlayer.shouldSwap();
     }
 
     chooseMove() {
         const validMoves = this.gameEngine.getValidMoves();
-        if (!validMoves.length) return null;
+        if (validMoves.length === 0) return null;
 
-        const hasSuperposition = this.gameEngine.superpositionStones &&
-            validMoves.some(move => this.gameEngine.superpositionStones.has(move));
-
-        if (hasSuperposition || validMoves.length >= 10) {
-            return this.mctsChoice(validMoves);
-        } else {
-            return this.minimaxChoice(validMoves);
-        }
-    }
-
-    minimaxChoice(moves) {
-        const evaluations = moves.map(m => {
-            const sim = this.simulateGame(this.gameEngine.getGameState());
-            sim.makeMove(m);
-            return {
-                move: m,
-                score: this.minimax(sim, this.minimaxDepth - 1, false, -Infinity, Infinity)
-            };
-        });
-        evaluations.sort((a, b) => b.score - a.score);
-        return this.randomizeChoice(evaluations.map(e => e.move), evaluations.map(e => e.score));
-    }
-
-    mctsChoice(moves) {
+        // First use minimax with iterative deepening
         const startTime = performance.now();
-        this.initBaseSimGame(this.gameEngine.getGameState());
+        let depth = 1;
+        let bestMove = null;
+        let bestScore = -Infinity;
+        let moveEvaluations = validMoves.map(move => ({ move, score: -Infinity }));
 
-        const moveSimulations = moves.map(() => 0);
-        const moveScores = moves.map(() => 0);
-
-        while (performance.now() - startTime < this.timeLimit) {
-            const minSims = Math.min(...moveSimulations);
-            const moveIndices = moveSimulations
-                .map((sims, i) => sims === minSims ? i : -1)
-                .filter(i => i !== -1);
-            const moveIndex = moveIndices[Math.floor(Math.random() * moveIndices.length)];
-            const move = moves[moveIndex];
-
+        while (performance.now() - startTime < this.minimaxTime) {
             try {
-                if (this.gameEngine.superpositionStones && this.gameEngine.superpositionStones.has(move)) {
-                    const positions = this.gameEngine.getValidPositionsForStone(move);
-                    if (positions && positions.length > 0) {
-                        const randomPos = positions[Math.floor(Math.random() * positions.length)];
-                        this.baseSimGame.makeMove(move, randomPos);
-                        moveScores[moveIndex] += this.playRandomGame(this.getSimulationGame());
-                        moveSimulations[moveIndex]++;
-                        this.initBaseSimGame(this.gameEngine.getGameState());
-                    } else {
-                        moveScores[moveIndex] -= 1000;
-                        moveSimulations[moveIndex]++;
-                        continue;
+                for (let i = 0; i < validMoves.length; i++) {
+                    const move = validMoves[i];
+                    const simGame = this.simulateGame(this.gameEngine.getGameState());
+                    simGame.makeMove(move);
+
+                    try {
+                        const score = this.minimax(simGame, depth, false, -Infinity, Infinity);
+                        moveEvaluations[i].score = score;
+                        if (score > bestScore) {
+                            bestScore = score;
+                            bestMove = move;
+                        }
+                    } catch (error) {
+                        moveEvaluations[i].score = -Infinity;
                     }
-                } else {
-                    this.baseSimGame.makeMove(move);
-                    moveScores[moveIndex] += this.playRandomGame(this.getSimulationGame());
-                    moveSimulations[moveIndex]++;
-                    this.initBaseSimGame(this.gameEngine.getGameState());
                 }
-            } catch (error) {
-                moveScores[moveIndex] -= 1000;
-                moveSimulations[moveIndex]++;
-            }
-        }
-
-        const moveEvaluations = moves.map((move, i) => ({
-            move,
-            score: moveSimulations[i] > 0 ? moveScores[i] / moveSimulations[i] : -Infinity,
-            simulations: moveSimulations[i]
-        }));
-
-        moveEvaluations.sort((a, b) => b.score - a.score);
-        return this.randomizeChoice(
-            moveEvaluations.map(m => m.move),
-            moveEvaluations.map(m => m.score)
-        );
-    }
-
-    playRandomGame(simGame) {
-        let validMoves = simGame.getValidMoves();
-        const maxMoves = simGame.boardSize * simGame.boardSize;
-        let moveCount = 0;
-
-        while (!simGame.isGameOver() && moveCount < maxMoves && validMoves.length > 0) {
-            const randomMove = validMoves[Math.floor(Math.random() * validMoves.length)];
-            try {
-                simGame.makeMove(randomMove);
-                moveCount++;
-                validMoves = simGame.getValidMoves();
+                depth++;
             } catch (error) {
                 break;
             }
         }
 
-        const blackScore =
-            simGame.findLargestCluster(simGame.board1, 'BLACK') +
-            simGame.findLargestCluster(simGame.board2, 'BLACK');
-        const whiteScore =
-            simGame.findLargestCluster(simGame.board1, 'WHITE') +
-            simGame.findLargestCluster(simGame.board2, 'WHITE');
+        // Then use MCTS for the remaining time
+        const mctsMove = this.mctsPlayer.chooseMove();
 
-        return this.playerColor === 'BLACK' ? blackScore - whiteScore : whiteScore - blackScore;
+        // Combine the evaluations
+        const minimaxMoves = moveEvaluations
+            .filter(e => e.score > -Infinity)
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 3)
+            .map(e => e.move);
+
+        // If minimax found good moves, choose between them and MCTS move
+        if (minimaxMoves.length > 0) {
+            const candidates = [...minimaxMoves];
+            if (mctsMove && !candidates.includes(mctsMove)) {
+                candidates.push(mctsMove);
+            }
+            return this.randomizeChoice(
+                candidates,
+                candidates.map(move => {
+                    const evaluation = moveEvaluations.find(e => e.move === move);
+                    return evaluation ? evaluation.score : 0;
+                })
+            );
+        }
+
+        // Fallback to MCTS move if minimax failed
+        return mctsMove;
     }
 
     destroy() {
-        this.baseSimGame = null;
-        this.simBoards = null;
+        this.mctsPlayer.destroy();
     }
 }
 
 export const AI_PLAYERS = {
-    random: {
-        id: 'random',
-        name: 'Fully Random',
-        description: 'Makes random valid moves',
-        implementation: RandomPlayer
-    },
-    deterministic: {
+    'deterministic': {
         id: 'deterministic',
-        name: 'A-to-Z Deterministic',
-        description: 'Always uses the first available move',
-        implementation: DeterministicPlayer
+        name: 'Deterministic',
+        description: 'Always makes the first valid move it finds.',
+        class: DeterministicPlayer,
+        config: {}
     },
-    'aggressive-no-rng': {
-        id: 'aggressive-no-rng',
-        name: 'Greedy (no-rng)',
-        description: 'Maximizes current turn score',
-        implementation: GreedyHighPlayer,
-        defaultConfig: {
+    'random': {
+        id: 'random',
+        name: 'Random',
+        description: 'Makes random valid moves.',
+        class: RandomPlayer,
+        config: {}
+    },
+    'greedy': {
+        id: 'greedy',
+        name: 'Greedy (deterministic)',
+        description: 'Tries to maximize total score without looking ahead.',
+        class: GreedyPlayer,
+        config: {
             randomize: false,
-            randomThreshold: 0.1
+            thinkingTime: 1000
         }
     },
-    'aggressive-some-rng': {
-        id: 'aggressive-some-rng',
-        name: 'Greedy (some-rng)',
-        description: 'Maximizes current turn score with randomization',
-        implementation: GreedyHighPlayer,
-        defaultConfig: {
+    'greedy-some-rng': {
+        id: 'greedy-some-rng',
+        name: 'Greedy with RNG',
+        description: 'Like Greedy, but with some randomization.',
+        class: GreedyPlayer,
+        config: {
             randomize: true,
-            randomThreshold: 0.1
+            randomThreshold: 0.1,
+            thinkingTime: 1000
         }
     },
-    'defensive-no-rng': {
-        id: 'defensive-no-rng',
-        name: 'Defensive (no-rng)',
-        description: 'Considers opponent\'s potential responses',
-        implementation: DefensivePlayer,
-        defaultConfig: {
+    'defensive': {
+        id: 'defensive',
+        name: 'Defensive (deterministic)',
+        description: 'Tries to minimize opponent\'s best response.',
+        class: DefensivePlayer,
+        config: {
             randomize: false,
-            randomThreshold: 0.1
+            thinkingTime: 1000
         }
     },
     'defensive-some-rng': {
         id: 'defensive-some-rng',
-        name: 'Defensive (some-rng)',
-        description: 'Considers opponent\'s potential responses with randomization',
-        implementation: DefensivePlayer,
-        defaultConfig: {
+        name: 'Defensive with RNG',
+        description: 'Like Defensive, but with some randomization.',
+        class: DefensivePlayer,
+        config: {
             randomize: true,
-            randomThreshold: 0.1
+            randomThreshold: 0.1,
+            thinkingTime: 1000
         }
     },
-    'minimax-no-rng': {
-        id: 'minimax-no-rng',
-        name: 'Minimax (no-rng)',
-        description: 'Uses minimax algorithm with alpha-beta pruning',
-        implementation: MinimaxPlayer,
-        defaultConfig: {
+    'minimax': {
+        id: 'minimax',
+        name: 'Minimax (deterministic)',
+        description: 'Uses minimax algorithm with alpha-beta pruning.',
+        class: MinimaxPlayer,
+        config: {
             randomize: false,
-            randomThreshold: 0.1,
-            lookahead: 4
+            thinkingTime: 1000
         }
     },
     'minimax-some-rng': {
         id: 'minimax-some-rng',
-        name: 'Minimax (some-rng)',
-        description: 'Uses minimax algorithm with alpha-beta pruning and randomization',
-        implementation: MinimaxPlayer,
-        defaultConfig: {
+        name: 'Minimax with RNG',
+        description: 'Uses minimax algorithm with alpha-beta pruning and some randomization.',
+        class: MinimaxPlayer,
+        config: {
             randomize: true,
             randomThreshold: 0.1,
-            lookahead: 4
+            thinkingTime: 1000
         }
     },
-    'mcts-no-rng': {
-        id: 'mcts-no-rng',
-        name: 'MCTS (no rng)',
-        description: 'Uses Monte Carlo Tree Search simulation without randomization',
-        implementation: MCTSPlayer,
-        defaultConfig: {
-            randomize: false,
-            timeLimit: 1000
-        }
-    },
-    'mcts-some-rng': {
-        id: 'mcts-some-rng',
-        name: 'MCTS (some rng)',
-        description: 'Uses Monte Carlo Tree Search simulation with randomization',
-        implementation: MCTSPlayer,
-        defaultConfig: {
+    'mcts': {
+        id: 'mcts',
+        name: 'Monte Carlo Tree Search',
+        description: 'Uses Monte Carlo Tree Search.',
+        class: MCTSPlayer,
+        config: {
             randomize: true,
             randomThreshold: 0.1,
-            timeLimit: 1000
+            thinkingTime: 1000
         }
     },
-    'hybrid-strong': {
-        id: 'hybrid-strong',
-        name: 'Hybrid Strong Player',
-        description: 'Combines MCTS and Minimax adaptively',
-        implementation: HybridStrongPlayer,
-        defaultConfig: {
+    'hybrid': {
+        id: 'hybrid',
+        name: 'Hybrid Strong',
+        description: 'Uses a combination of minimax and Monte Carlo Tree Search.',
+        class: HybridStrongPlayer,
+        config: {
             randomize: true,
-            randomThreshold: 0.05,
-            timeLimit: 1000,
-            lookahead: 4
+            randomThreshold: 0.1,
+            thinkingTime: 1000
         }
     }
 };
 
 export function createPlayer(strategyId, gameEngine, playerColor, config = {}) {
-    const player = AI_PLAYERS[strategyId];
-    if (!player) {
-        throw new Error(`Unknown strategy: ${strategyId}`);
+    const playerConfig = AI_PLAYERS[strategyId];
+    if (!playerConfig) {
+        throw new Error(`Unknown player strategy: ${strategyId}`);
     }
 
-    // Merge default config with provided config
-    const finalConfig = {
-        ...player.defaultConfig,
-        ...config
-    };
+    // Ensure thinkingTime is provided either in config or player defaults
+    const finalConfig = { ...playerConfig.config, ...config };
+    if (playerConfig.class.prototype instanceof MinimaxPlayer ||
+        playerConfig.class.prototype instanceof MCTSPlayer ||
+        playerConfig.class === MCTSPlayer) {
+        if (!finalConfig.thinkingTime) {
+            throw new Error(`${playerConfig.name} requires thinkingTime in config`);
+        }
+    }
 
-    return new player.implementation(gameEngine, playerColor, finalConfig);
+    return new playerConfig.class(gameEngine, playerColor, finalConfig);
 }

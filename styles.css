@@ -725,3 +725,44 @@ button:disabled {
     cursor: pointer;
     user-select: none;
 }
+
+.player-controls {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.player-controls select {
+    flex: 1;
+}
+
+.thinking-time-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    margin-left: 0.5rem;
+}
+
+.thinking-time-input-container {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.thinking-time-input {
+    width: 3rem;
+    height: calc(var(--font-size-base) * 1.6);
+    padding: 0 var(--spacing-sm);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-sm);
+    font-size: calc(var(--font-size-sm) * 0.75);
+}
+
+.thinking-time-container .field-label {
+    margin: 0;
+}
+
+.thinking-time-input-container label {
+    color: var(--color-text);
+    font-size: calc(var(--font-size-sm) * 0.75);
+}
