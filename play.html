@@ -11,53 +11,72 @@
 <body>
 
     <div class="panel rules" id="rules-panel">
-        <h1>Entangled</h1>
-        <p>🌀 A 2-player abstract game inspired by <a href="https://en.wikipedia.org/wiki/Quantum_entanglement"
-                target="_blank">quantum entanglement</a>.</p>
+        <h1>🌀 Entangled</h1>
+        <p class="intro">A 2-player abstract strategy game inspired by <a
+                href="https://en.wikipedia.org/wiki/Quantum_entanglement" target="_blank">quantum entanglement</a>.</p>
 
-        <h2>🎯 Your Goal</h2>
-        <p>Build one large group of stones on <strong>each</strong> of the boards. Your score is <strong>the
-                sum</strong> of your biggest
-            group on board 1 and your biggest group on board 2.
-        </p>
+        <h2>🎯 Quick Start</h2>
+        <p class="highlight">Place stones that appear simultaneously on <strong>both boards</strong>. Each symbol has a
+            matching symbol on the other board.</p>
+        <p>Build the largest connected groups you can! Your final score is the <em>sum of your largest group on each
+                board</em>. Largest total wins!</p>
 
-        <h2>🔧 Setup</h2>
-        <p>Both boards are played in parallel. <strong>Each space has a matching space</strong> (same letter) on
-            the other board. Some stones might already be placed.</p>
+        <h2>🎮 Game Modes</h2>
+        <div class="mode-section">
+            <p><strong>👥 Human vs Human</strong> - Play against a friend locally</p>
+            <p><strong>🤖 Human vs AI</strong> - Test yourself against:</p>
+            <ul class="ai-tiers">
+                <li>🟢 <strong>Simple:</strong> Deterministic, Random</li>
+                <li>🟡 <strong>Medium:</strong> Greedy, Defensive</li>
+                <li>🔴 <strong>Strong:</strong> Minimax, Monte Carlo Tree Search</li>
+            </ul>
+        </div>
 
-        <h2>🎮 Playing</h2>
-        <p>On your turn, place a stone on any <strong>empty</strong> space. A matching stone will be placed on the
-            corresponding space on the other board.</p>
 
-        <h2>🏆 Winning</h2>
-        <p>The game ends after all stones are placed. Count your <strong>largest orthogonally connected group</strong>
-            on each board. <b>Add these two numbers</b> together for your final score.</p>
-        <p>If scores are tied, compare your <strong>next largest</strong> groups: Add up your second biggest groups from
-            each board,
-            then third biggest, and so on until finding a difference. Missing groups count as 0.</p>
+        <h2>🎲 Advanced Features</h2>
+        <h2>⚖️ Swap Rule</h2>
+        <p class="highlight">After the first move, the second player can choose to <em>"swap"</em> - taking over the
+            first player's stone as their own.</p>
+        <p><em>Note:</em> This balances first-move advantage. Can be disabled in settings.</p>
 
-        <h2>🤖 Too Easy?</h2>
-        <p>AI opponents get stronger from top to bottom. Minimax is a decent player, MCTS is probably better than most
-            humans right now. Try them all. =D</p>
+        <h3>🌌 Superposition Stones</h3>
+        <p>Special stones that collapse to match the last placed stone when all adjacent spaces are filled.</p>
+        <p><strong>Configure using:</strong></p>
+        <ul class="feature-list">
+            <li><code>A,B,C</code> - Place on specific spaces</li>
+            <li><code>rng,rng</code> - Place randomly</li>
+        </ul>
 
-        <h2>🚀 Setup Tweaks</h2>
-        <p>You can change the board configuration via the dropdowns and you can change the starting stone configuration
-            in the format <strong>BE2,WK1</strong> (Black on E board 2,
-            White on K board 1). Multiple stones can be placed using comma-separated entries.</p>
+        <h3>📋 Board Configuration</h3>
+        <ul class="feature-list">
+            <li><strong>Size:</strong> Choose 4×4 to 7×7 boards</li>
+            <li><strong>Layouts:</strong> Various board patterns for different gameplay styles</li>
+            <li><strong>Starting Stones:</strong> Place stones before game start using:<br>
+                <code>BE2,WK1</code> (Black on E2, White on K1)
+            </li>
+        </ul>
 
-        <h2>🌌 Superposition Expansion</h2>
-        <p>Some spaces can be filled with stones in quantum superposition. These stones are represented as half-black,
-            half-white circles with a yellow number.</p>
-        <p>When all orthogonally adjacent spaces next to a superposition stone are filled with regular stones, it
-            collapses
-            to match the color of the last stone placed. When a superposition stone collapses, its twin (the stone with
-            the same number)
-            on the other board also collapses to the same color, if it hasn't already collapsed.</p>
-        <p>You can configure superposition stones using a list of symbols or "rng" for random placement (e.g.,
-            "A,Z,D,F,rng,rng").
-            Each superposition stone is paired with another one by a number (1-6). The first stone in each pair is
-            placed on the chaos board,
-            and its twin is placed on the rainbow board.</p>
+        <h3>⚙️ AI Settings</h3>
+        <ul class="feature-list">
+            <li><strong>Thinking Time:</strong> For Minimax and MCTS (0.1-60 seconds)</li>
+            <li><strong>Randomization:</strong> Optional RNG variants for unpredictable play</li>
+        </ul>
+
+        <h3>🎨 Display Options</h3>
+        <ul class="feature-list">
+            <li>🔍 Toggle matching space highlights</li>
+            <li>📊 Show/hide group sizes and largest groups</li>
+            <li>🎯 Display live scores</li>
+            <li>🎪 Show/hide icons and symbols</li>
+        </ul>
+
+        <h2>💡 Strategy Tips</h2>
+        <ul class="strategy-list">
+            <li>🤔 Think about both boards. A move good on one might be bad on the other.</li>
+            <li>🔗 Look for opportunities to connect groups across multiple spaces.</li>
+            <li>🌟 Use superposition stones strategically for unexpected connections.</li>
+            <li>⚡ Consider swapping if the first move creates strong positions.</li>
+        </ul>
     </div>
 
     <div class="game-container">
@@ -185,7 +204,6 @@
                             <option value="minimax">Minimax (deterministic)</option>
                             <option value="minimax-some-rng">Minimax with RNG</option>
                             <option value="mcts">Monte Carlo Tree Search</option>
-                            <option value="hybrid">Hybrid Strong</option>
                         </select>
                         <div class="thinking-time-container">
                             <label class="field-label" for="black-thinking-time">Time</label>
@@ -213,7 +231,6 @@
                             <option value="minimax">Minimax (deterministic)</option>
                             <option value="minimax-some-rng">Minimax with RNG</option>
                             <option value="mcts">Monte Carlo Tree Search</option>
-                            <option value="hybrid">Hybrid Strong</option>
                         </select>
                         <div class="thinking-time-container">
                             <label class="field-label" for="white-thinking-time">Time</label>

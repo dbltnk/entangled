@@ -85,15 +85,106 @@ body {
 .rules h1 {
     font-size: var(--font-size-xl);
     margin-bottom: var(--spacing-lg);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
 }
 
 .rules h2 {
     font-size: var(--font-size-lg);
     margin: var(--spacing-lg) 0 var(--spacing-sm);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.rules h3 {
+    font-size: calc(var(--font-size-base) * 1.1);
+    margin: var(--spacing-md) 0 var(--spacing-xs);
+    color: var(--color-text);
+    opacity: 0.9;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
 }
 
 .rules p {
     margin-bottom: var(--spacing-md);
+    font-size: var(--font-size-base);
+    line-height: 1.5;
+}
+
+.rules .intro {
+    font-size: calc(var(--font-size-base) * 1.1);
+    color: var(--color-text);
+    opacity: 0.8;
+    margin-bottom: var(--spacing-lg);
+}
+
+.rules .highlight {
+    background: var(--color-hover);
+    padding: var(--spacing-sm);
+    border-radius: var(--border-radius-sm);
+    border-left: 3px solid var(--color-text);
+}
+
+.rules code {
+    background: var(--color-hover);
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-family: monospace;
+    font-size: 0.9em;
+}
+
+.rules .mode-section {
+    background: var(--color-white);
+    padding: var(--spacing-sm);
+    border-radius: var(--border-radius-sm);
+    border: 1px solid var(--color-border);
+}
+
+.rules .ai-tiers {
+    list-style: none;
+    margin: var(--spacing-xs) 0 0 var(--spacing-md);
+}
+
+.rules .ai-tiers li {
+    margin-bottom: var(--spacing-xs);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.rules .feature-list {
+    list-style: none;
+    margin: var(--spacing-xs) 0 var(--spacing-md) var(--spacing-sm);
+}
+
+.rules .feature-list li {
+    margin-bottom: var(--spacing-xs);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.rules .strategy-list {
+    list-style: none;
+    margin: var(--spacing-xs) 0 0 var(--spacing-sm);
+}
+
+.rules .strategy-list li {
+    margin-bottom: var(--spacing-sm);
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+    padding-left: var(--spacing-sm);
+    border-left: 2px solid transparent;
+}
+
+.rules .strategy-list li:hover {
+    border-left-color: var(--color-text);
+    background: var(--color-hover);
+    border-radius: 0 var(--border-radius-sm) var(--border-radius-sm) 0;
 }
 
 /* Game container */
