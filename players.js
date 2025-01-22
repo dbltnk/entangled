@@ -680,6 +680,10 @@ class MCTSPlayer extends EntangledPlayer {
             board1: Array(gameEngine.boardSize).fill(null).map(() => Array(gameEngine.boardSize).fill(null)),
             board2: Array(gameEngine.boardSize).fill(null).map(() => Array(gameEngine.boardSize).fill(null))
         };
+        // Early return thresholds
+        this.minSimulationsPerMove = 30;     // Minimum simulations per move before checking convergence
+        this.convergenceWindow = 20;         // Number of recent simulations to check for convergence
+        this.convergenceThreshold = 0.01;    // Maximum allowed change in win rates
     }
 
     shouldSwap() {
@@ -772,9 +776,12 @@ class MCTSPlayer extends EntangledPlayer {
         // Initialize base simulation game
         this.initBaseSimGame(this.gameEngine.getGameState());
 
-        // Track simulations per move for balanced exploration
+        // Track simulations and scores for each move
         const moveSimulations = validMoves.map(() => 0);
         const moveScores = validMoves.map(() => 0);
+
+        // Track recent win rates for convergence check
+        const recentWinRates = validMoves.map(() => []);
 
         // Keep simulating until time limit is reached
         while (performance.now() - startTime < this.thinkingTime) {
@@ -787,27 +794,68 @@ class MCTSPlayer extends EntangledPlayer {
             const move = validMoves[moveIndex];
 
             try {
+                let score = 0;
                 if (this.gameEngine.superpositionStones && this.gameEngine.superpositionStones.has(move)) {
                     const positions = this.gameEngine.getValidPositionsForStone(move);
                     if (positions && positions.length > 0) {
                         const randomPos = positions[Math.floor(Math.random() * positions.length)];
                         this.baseSimGame.makeMove(move, randomPos);
-                        moveScores[moveIndex] += this.playRandomGame(this.getSimulationGame());
-                        moveSimulations[moveIndex]++;
-                        // Reset base game state
-                        this.initBaseSimGame(this.gameEngine.getGameState());
+                        score = this.playRandomGame(this.getSimulationGame());
                     } else {
-                        moveScores[moveIndex] -= 1000;
-                        moveSimulations[moveIndex]++;
-                        continue;
+                        score = -1000;
                     }
                 } else {
                     this.baseSimGame.makeMove(move);
-                    moveScores[moveIndex] += this.playRandomGame(this.getSimulationGame());
-                    moveSimulations[moveIndex]++;
-                    // Reset base game state
-                    this.initBaseSimGame(this.gameEngine.getGameState());
+                    score = this.playRandomGame(this.getSimulationGame());
                 }
+
+                moveScores[moveIndex] += score;
+                moveSimulations[moveIndex]++;
+
+                // Track win rate for convergence check
+                const currentWinRate = moveScores[moveIndex] / moveSimulations[moveIndex];
+                recentWinRates[moveIndex].push(currentWinRate);
+                if (recentWinRates[moveIndex].length > this.convergenceWindow) {
+                    recentWinRates[moveIndex].shift();
+                }
+
+                // Reset base game state
+                this.initBaseSimGame(this.gameEngine.getGameState());
+
+                // Early return conditions
+                // Only check if not dealing with superposition stones and have enough data
+                if (!hasSuperposition && Math.min(...moveSimulations) >= this.minSimulationsPerMove) {
+                    // Check if win rates have converged
+                    let hasConverged = true;
+                    for (let i = 0; i < validMoves.length; i++) {
+                        if (recentWinRates[i].length < this.convergenceWindow) {
+                            hasConverged = false;
+                            break;
+                        }
+                        // Check if win rate has stabilized
+                        const recentRates = recentWinRates[i];
+                        const oldAvg = recentRates.slice(0, this.convergenceWindow / 2).reduce((a, b) => a + b) / (this.convergenceWindow / 2);
+                        const newAvg = recentRates.slice(-this.convergenceWindow / 2).reduce((a, b) => a + b) / (this.convergenceWindow / 2);
+                        if (Math.abs(newAvg - oldAvg) > this.convergenceThreshold) {
+                            hasConverged = false;
+                            break;
+                        }
+                    }
+
+                    // If converged, return the best move
+                    if (hasConverged) {
+                        const moveEvaluations = validMoves.map((move, i) => ({
+                            move,
+                            score: moveScores[i] / moveSimulations[i]
+                        }));
+                        moveEvaluations.sort((a, b) => b.score - a.score);
+                        return this.randomizeChoice(
+                            moveEvaluations.map(m => m.move),
+                            moveEvaluations.map(m => m.score)
+                        );
+                    }
+                }
+
             } catch (error) {
                 moveScores[moveIndex] -= 1000;
                 moveSimulations[moveIndex]++;
