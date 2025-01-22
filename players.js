@@ -1,5 +1,5 @@
 // players.js
-import { EntangledGame } from './gameplay.js';
+import { EntangledGame, PLAYERS } from './gameplay.js';
 
 // Define base player class
 class EntangledPlayer {
@@ -68,6 +68,12 @@ class EntangledPlayer {
     evaluateMove(move) {
         const simGame = this.simulateGame(this.gameEngine.getGameState());
         simGame.currentPlayer = this.playerColor;
+
+        // If it's a superposition stone, evaluate potential outcomes
+        if (simGame.superpositionStones.has(move)) {
+            return this.evaluateSuperpositionMove(move, simGame);
+        }
+
         simGame.makeMove(move);
 
         const score = simGame.getScore(this.playerColor);
@@ -79,26 +85,57 @@ class EntangledPlayer {
             totalScore: score,
             board1Score,
             board2Score,
-            difference: Math.abs(board1Score - board2Score)
+            difference: Math.abs(board1Score - board2Score),
+            isSuperposition: false
         };
     }
 
-    simulateGame(state) {
-        if (!state || !state.board1 || !state.board2) return null;
-
-        const simGame = new EntangledGame(this.gameEngine.board1Layout, this.gameEngine.board2Layout);
-        for (let i = 0; i < state.board1.length; i++) {
-            for (let j = 0; j < state.board1[i].length; j++) {
-                simGame.board1[i][j] = state.board1[i][j];
-                simGame.board2[i][j] = state.board2[i][j];
-            }
+    evaluateSuperpositionMove(move, simGame) {
+        // Get possible positions for this superposition stone
+        const positions = simGame.getValidPositionsForStone(move);
+        if (!positions || positions.length === 0) {
+            return {
+                move,
+                totalScore: -Infinity,
+                board1Score: 0,
+                board2Score: 0,
+                difference: 0,
+                isSuperposition: true
+            };
         }
-        simGame.currentPlayer = state.currentPlayer;
-        simGame.playerTurns = { ...state.playerTurns };
-        simGame.gameOver = state.gameOver;
-        simGame.symbolToPosition = new Map(this.gameEngine.symbolToPosition);
-        simGame._lastMove = state.lastMove;
-        return simGame;
+
+        // Evaluate each possible position
+        const outcomes = positions.map(pos => {
+            const gameCopy = this.simulateGame(simGame.getGameState());
+            gameCopy.makeMove(move, pos);
+
+            const board1Score = gameCopy.findLargestCluster(gameCopy.board1, this.playerColor);
+            const board2Score = gameCopy.findLargestCluster(gameCopy.board2, this.playerColor);
+            const score = board1Score + board2Score;
+
+            return {
+                position: pos,
+                score,
+                board1Score,
+                board2Score
+            };
+        });
+
+        // Calculate average and worst-case scores
+        const avgScore = outcomes.reduce((sum, o) => sum + o.score, 0) / outcomes.length;
+        const worstScore = Math.min(...outcomes.map(o => o.score));
+        const avgBoard1 = outcomes.reduce((sum, o) => sum + o.board1Score, 0) / outcomes.length;
+        const avgBoard2 = outcomes.reduce((sum, o) => sum + o.board2Score, 0) / outcomes.length;
+
+        return {
+            move,
+            totalScore: avgScore * 0.7 + worstScore * 0.3, // Balance between average and worst case
+            board1Score: avgBoard1,
+            board2Score: avgBoard2,
+            difference: Math.abs(avgBoard1 - avgBoard2),
+            isSuperposition: true,
+            outcomes
+        };
     }
 
     evaluatePosition(game) {
@@ -106,7 +143,26 @@ class EntangledPlayer {
         const opponentColor = this.playerColor === 'BLACK' ? 'WHITE' : 'BLACK';
         const opponentScore = game.getScore(opponentColor);
         const centerBonus = this.evaluateCenterControl(game);
-        return myScore - opponentScore + centerBonus;
+        // Only add superposition bonus if there are SP stones in the game
+        const spState = game.getSuperpositionState();
+        const superpositionBonus = spState && spState.stones.length > 0 ?
+            this.evaluateSuperpositionState(game) : 0;
+        return myScore - opponentScore + centerBonus + superpositionBonus;
+    }
+
+    evaluateSuperpositionState(game) {
+        let bonus = 0;
+        const spState = game.getSuperpositionState();
+
+        // Bonus for having superposition stones available
+        for (const stone of spState.stones) {
+            const positions = game.getValidPositionsForStone(stone.symbol);
+            if (positions && positions.length > 0) {
+                bonus += positions.length * 0.2; // Small bonus for each valid position
+            }
+        }
+
+        return bonus;
     }
 
     evaluateCenterControl(game) {
@@ -131,8 +187,9 @@ class EntangledPlayer {
     }
 
     evaluateConnectivity(game, board) {
-        let value = 0;
+        // Use game engine's cluster finding methods
         const clusters = game.findLargestClusterCells(board, this.playerColor);
+        let value = 0;
 
         for (const cluster of clusters) {
             let emptyNeighbors = 0;
@@ -164,6 +221,43 @@ class EntangledPlayer {
         return this.evaluateConnectivity(game, game.board1) +
             this.evaluateConnectivity(game, game.board2);
     }
+
+    simulateGame(state) {
+        if (!state || !state.board1 || !state.board2) return null;
+        return new SimulatedGame(this.gameEngine, state);
+    }
+}
+
+class SimulatedGame extends EntangledGame {
+    constructor(originalGame, state) {
+        super(originalGame.board1Layout, originalGame.board2Layout);
+
+        // Copy board state from passed state
+        for (let i = 0; i < state.board1.length; i++) {
+            for (let j = 0; j < state.board1[i].length; j++) {
+                this.board1[i][j] = state.board1[i][j];
+                this.board2[i][j] = state.board2[i][j];
+            }
+        }
+
+        // Copy game state from passed state
+        this.currentPlayer = state.currentPlayer;
+        this.playerTurns = { ...state.playerTurns };
+        this.gameOver = state.gameOver;
+        this._lastMove = state.lastMove;
+        this.lastPlacedStone = state.lastPlacedStone;
+
+        // Copy required maps and methods from original game
+        this.symbolToPosition = new Map(originalGame.symbolToPosition);
+        this.superpositionStones = new Map(originalGame.superpositionStones || new Map());
+
+        // Copy over any additional methods that might be needed
+        this.getValidPositionsForStone = originalGame.getValidPositionsForStone.bind(this);
+        this.getSuperpositionState = originalGame.getSuperpositionState.bind(this);
+        this.findSymbolAtPosition = originalGame.findSymbolAtPosition.bind(this);
+        this.checkAllNeighborsFilled = originalGame.checkAllNeighborsFilled.bind(this);
+        this.collapseSuperpositionStone = originalGame.collapseSuperpositionStone.bind(this);
+    }
 }
 
 class DeterministicPlayer extends EntangledPlayer {
@@ -184,10 +278,16 @@ class RandomPlayer extends EntangledPlayer {
 class GreedyHighPlayer extends EntangledPlayer {
     chooseMove() {
         const validMoves = this.gameEngine.getValidMoves();
-        const moveEvaluations = validMoves.map(move => ({
-            move,
-            score: this.evaluateMove(move).totalScore
-        }));
+        const moveEvaluations = validMoves.map(move => {
+            const evaluation = this.evaluateMove(move);
+            // Only apply SP bonus if it's actually a superposition move
+            const superpositionBonus = evaluation.isSuperposition ?
+                (Object.values(this.gameEngine.playerTurns).reduce((a, b) => a + b) < 10 ? 2 : 0) : 0;
+            return {
+                move,
+                score: evaluation.totalScore + superpositionBonus
+            };
+        });
 
         moveEvaluations.sort((a, b) => b.score - a.score);
 
@@ -203,9 +303,12 @@ class GreedyLowPlayer extends EntangledPlayer {
         const validMoves = this.gameEngine.getValidMoves();
         const moveEvaluations = validMoves.map(move => {
             const moveEval = this.evaluateMove(move);
+            // Only apply SP bonus if it's actually a superposition move
+            const gameProgress = Object.values(this.gameEngine.playerTurns).reduce((a, b) => a + b);
+            const superpositionBonus = moveEval.isSuperposition && gameProgress < 15 ? 1 : 0;
             return {
                 move,
-                score: -moveEval.difference + (moveEval.totalScore * 0.001) // Small weight for total score as tiebreaker
+                score: -moveEval.difference + (moveEval.totalScore * 0.001) + superpositionBonus
             };
         });
 
@@ -221,31 +324,89 @@ class GreedyLowPlayer extends EntangledPlayer {
 class DefensivePlayer extends EntangledPlayer {
     chooseMove() {
         const validMoves = this.gameEngine.getValidMoves();
-        const moveEvaluations = validMoves.map(move => {
-            const ourEvaluation = this.evaluateMove(move);
-            const opponentColor = this.playerColor === 'BLACK' ? 'WHITE' : 'BLACK';
-            const simGame = this.simulateGame(this.gameEngine.getGameState());
-            simGame.currentPlayer = this.playerColor;
-            simGame.makeMove(move);
+        console.log(`[DefensivePlayer] Valid moves:`, validMoves);
 
-            const remainingMoves = simGame.getValidMoves();
+        const moveEvaluations = validMoves.map(move => {
+            console.log(`[DefensivePlayer] Evaluating move: ${move}`);
+
+            // First simulate our move
+            const ourGame = this.simulateGame(this.gameEngine.getGameState());
+            console.log(`[DefensivePlayer] Simulated game state:`, {
+                currentPlayer: ourGame.currentPlayer,
+                superpositionStones: Array.from(ourGame.superpositionStones.entries())
+            });
+
+            // Handle superposition stones differently only if they exist
+            if (ourGame.superpositionStones && ourGame.superpositionStones.has(move)) {
+                const spEval = this.evaluateMove(move);
+                // Defensive players prefer superposition stones in mid-game
+                const gameProgress = Object.values(this.gameEngine.playerTurns).reduce((a, b) => a + b);
+                const midGameBonus = gameProgress >= 5 && gameProgress <= 15 ? 3 : 0;
+                return {
+                    move,
+                    score: spEval.totalScore + midGameBonus
+                };
+            }
+
+            // Original defensive evaluation logic for non-SP stones
+            ourGame.currentPlayer = this.playerColor;
+            try {
+                ourGame.makeMove(move);
+            } catch (error) {
+                console.error(`[DefensivePlayer] Error making move ${move}:`, error);
+                return {
+                    move,
+                    score: -Infinity
+                };
+            }
+
+            const ourScore = ourGame.getScore(this.playerColor);
+            console.log(`[DefensivePlayer] Our score after move: ${ourScore}`);
+
+            const remainingMoves = ourGame.getValidMoves();
+            console.log(`[DefensivePlayer] Remaining moves for opponent:`, remainingMoves);
+
             const worstOpponentScore = remainingMoves.reduce((worst, oppMove) => {
-                simGame.currentPlayer = opponentColor;
-                const oppEval = new EntangledPlayer(simGame, opponentColor).evaluateMove(oppMove);
-                return Math.max(worst, oppEval.totalScore);
+                // Skip superposition stones for opponent only if they exist
+                if (ourGame.superpositionStones && ourGame.superpositionStones.has(oppMove)) {
+                    return worst;
+                }
+
+                const oppGame = this.simulateGame(ourGame.getGameState());
+                oppGame.currentPlayer = this.playerColor === PLAYERS.BLACK ? PLAYERS.WHITE : PLAYERS.BLACK;
+
+                try {
+                    oppGame.makeMove(oppMove);
+                    const oppScore = oppGame.getScore(oppGame.currentPlayer);
+                    console.log(`[DefensivePlayer] Opponent score for move ${oppMove}: ${oppScore}`);
+                    return Math.max(worst, oppScore);
+                } catch (error) {
+                    console.error(`[DefensivePlayer] Error simulating opponent move ${oppMove}:`, error);
+                    return worst;
+                }
             }, -Infinity);
 
+            console.log(`[DefensivePlayer] Worst opponent score: ${worstOpponentScore}`);
             return {
                 move,
-                score: ourEvaluation.totalScore - worstOpponentScore
+                score: ourScore - worstOpponentScore
             };
         });
 
-        moveEvaluations.sort((a, b) => b.score - a.score);
+        // Filter out invalid moves
+        const validEvaluations = moveEvaluations.filter(evaluation => evaluation.score !== -Infinity);
+
+        if (validEvaluations.length === 0) {
+            console.warn('[DefensivePlayer] No valid moves found, falling back to first available move');
+            return validMoves[0];
+        }
+
+        validEvaluations.sort((a, b) => b.score - a.score);
+        console.log(`[DefensivePlayer] Move evaluations:`, validEvaluations);
 
         return this.randomizeChoice(
-            moveEvaluations.map(m => m.move),
-            moveEvaluations.map(m => m.score)
+            validEvaluations.map(m => m.move),
+            validEvaluations.map(m => m.score)
         );
     }
 }
@@ -429,6 +590,19 @@ class MinimaxPlayer extends EntangledPlayer {
         const validMoves = this.gameEngine.getValidMoves();
         const moveEvaluations = validMoves.map(move => {
             const simGame = this.simulateGame(this.gameEngine.getGameState());
+
+            // For superposition stones, evaluate all possible outcomes
+            if (simGame.superpositionStones.has(move)) {
+                const spEval = this.evaluateMove(move);
+                // Minimax players prefer superposition stones in early-mid game
+                const gameProgress = Object.values(this.gameEngine.playerTurns).reduce((a, b) => a + b);
+                const superpositionBonus = gameProgress < 15 ? 2 : 0;
+                return {
+                    move,
+                    score: spEval.totalScore + superpositionBonus
+                };
+            }
+
             simGame.makeMove(move);
             return {
                 move,
@@ -487,131 +661,274 @@ class MinimaxPlayer extends EntangledPlayer {
 class MCTSPlayer extends EntangledPlayer {
     constructor(gameEngine, playerColor, config = {}) {
         super(gameEngine, playerColor, config);
-        this.simulationCount = config.simulationCount;
-        this.clusterCache = new Map();
-        this.cacheHits = 0;
-        this.cacheMisses = 0;
+        this.timeLimit = config.timeLimit;
+        // Reusable game state for simulations
+        this.baseSimGame = null;
+        this.simBoards = {
+            board1: Array(gameEngine.boardSize).fill(null).map(() => Array(gameEngine.boardSize).fill(null)),
+            board2: Array(gameEngine.boardSize).fill(null).map(() => Array(gameEngine.boardSize).fill(null))
+        };
     }
 
-    createBoardKey(board, player) {
-        return board.map(row =>
-            row.map(cell => cell === null ? '0' : cell === 'BLACK' ? '1' : '2').join('')
-        ).join('') + player;
-    }
-
-    getCachedLargestCluster(simGame, board, player) {
-        const boardKey = this.createBoardKey(board, player);
-
-        let clusterSize = this.clusterCache.get(boardKey);
-        if (clusterSize !== undefined) {
-            this.cacheHits++;
-            return clusterSize;
+    // Fast board state copy without object creation
+    copyBoardState(source, target) {
+        for (let i = 0; i < source.length; i++) {
+            for (let j = 0; j < source[i].length; j++) {
+                target[i][j] = source[i][j];
+            }
         }
+    }
 
-        this.cacheMisses++;
-        clusterSize = simGame.findLargestCluster(board, player);
-        this.clusterCache.set(boardKey, clusterSize);
+    // Initialize base simulation game once
+    initBaseSimGame(gameState) {
+        if (!this.baseSimGame) {
+            this.baseSimGame = new SimulatedGame(this.gameEngine, gameState);
+        } else {
+            // Update existing base game state
+            this.copyBoardState(gameState.board1, this.baseSimGame.board1);
+            this.copyBoardState(gameState.board2, this.baseSimGame.board2);
+            this.baseSimGame.currentPlayer = gameState.currentPlayer;
+            this.baseSimGame.playerTurns = { ...gameState.playerTurns };
+            this.baseSimGame.gameOver = gameState.gameOver;
+            this.baseSimGame._lastMove = gameState.lastMove;
+            this.baseSimGame.lastPlacedStone = gameState.lastPlacedStone;
+            this.baseSimGame.superpositionStones = new Map(this.gameEngine.superpositionStones);
+        }
+    }
 
-        return clusterSize;
+    // Fast game state copy for simulation
+    getSimulationGame() {
+        // Copy board states to reusable boards
+        this.copyBoardState(this.baseSimGame.board1, this.simBoards.board1);
+        this.copyBoardState(this.baseSimGame.board2, this.simBoards.board2);
+
+        // Create minimal game state for simulation
+        return {
+            board1: this.simBoards.board1,
+            board2: this.simBoards.board2,
+            currentPlayer: this.baseSimGame.currentPlayer,
+            playerTurns: { ...this.baseSimGame.playerTurns },
+            gameOver: this.baseSimGame.gameOver,
+            boardSize: this.baseSimGame.boardSize,
+            getValidMoves: () => {
+                // Filter out superposition stones for simulation
+                return this.baseSimGame.getValidMoves().filter(move =>
+                    !this.baseSimGame.superpositionStones || !this.baseSimGame.superpositionStones.has(move)
+                );
+            },
+            makeMove: (symbol) => {
+                const positions = this.baseSimGame.symbolToPosition.get(symbol);
+                if (positions.board1) {
+                    this.simBoards.board1[positions.board1.row][positions.board1.col] = this.currentPlayer;
+                }
+                if (positions.board2) {
+                    this.simBoards.board2[positions.board2.row][positions.board2.col] = this.currentPlayer;
+                }
+                this.currentPlayer = this.currentPlayer === 'BLACK' ? 'WHITE' : 'BLACK';
+            },
+            isGameOver: () => {
+                // Quick check if any valid moves remain
+                return this.getValidMoves().length === 0;
+            },
+            findLargestCluster: (board, player) => {
+                return this.baseSimGame.findLargestCluster(board, player);
+            },
+            getScore: (player) => {
+                const board1Score = this.baseSimGame.findLargestCluster(this.simBoards.board1, player);
+                const board2Score = this.baseSimGame.findLargestCluster(this.simBoards.board2, player);
+                return board1Score + board2Score;
+            }
+        };
     }
 
     chooseMove() {
-        this.clusterCache.clear();
-        this.cacheHits = 0;
-        this.cacheMisses = 0;
-
         const startTime = performance.now();
         const validMoves = this.gameEngine.getValidMoves();
-        const moveEvaluations = validMoves.map(move => {
-            let totalScore = 0;
+        const hasSuperposition = validMoves.some(move =>
+            this.gameEngine.superpositionStones && this.gameEngine.superpositionStones.has(move));
 
-            for (let i = 0; i < this.simulationCount; i++) {
-                const simGame = this.simulateGame(this.gameEngine.getGameState());
-                try {
-                    simGame.makeMove(move);
-                    totalScore += this.playRandomGame(simGame);
-                } catch (error) {
-                    console.error('Simulation error:', error);
-                    totalScore -= 1000; // Penalize invalid moves
+        // Initialize base simulation game
+        this.initBaseSimGame(this.gameEngine.getGameState());
+
+        // Track simulations per move for balanced exploration
+        const moveSimulations = validMoves.map(() => 0);
+        const moveScores = validMoves.map(() => 0);
+
+        // Keep simulating until time limit is reached
+        while (performance.now() - startTime < this.timeLimit) {
+            // Find move with least simulations
+            const minSims = Math.min(...moveSimulations);
+            const moveIndices = moveSimulations
+                .map((sims, i) => sims === minSims ? i : -1)
+                .filter(i => i !== -1);
+            const moveIndex = moveIndices[Math.floor(Math.random() * moveIndices.length)];
+            const move = validMoves[moveIndex];
+
+            try {
+                if (this.gameEngine.superpositionStones && this.gameEngine.superpositionStones.has(move)) {
+                    const positions = this.gameEngine.getValidPositionsForStone(move);
+                    if (positions && positions.length > 0) {
+                        const randomPos = positions[Math.floor(Math.random() * positions.length)];
+                        this.baseSimGame.makeMove(move, randomPos);
+                        moveScores[moveIndex] += this.playRandomGame(this.getSimulationGame());
+                        moveSimulations[moveIndex]++;
+                        // Reset base game state
+                        this.initBaseSimGame(this.gameEngine.getGameState());
+                    } else {
+                        moveScores[moveIndex] -= 1000;
+                        moveSimulations[moveIndex]++;
+                        continue;
+                    }
+                } else {
+                    this.baseSimGame.makeMove(move);
+                    moveScores[moveIndex] += this.playRandomGame(this.getSimulationGame());
+                    moveSimulations[moveIndex]++;
+                    // Reset base game state
+                    this.initBaseSimGame(this.gameEngine.getGameState());
                 }
+            } catch (error) {
+                moveScores[moveIndex] -= 1000;
+                moveSimulations[moveIndex]++;
             }
+        }
 
-            return {
-                move,
-                score: totalScore / this.simulationCount
-            };
-        });
+        // Convert to move evaluations
+        const moveEvaluations = validMoves.map((move, i) => ({
+            move,
+            score: moveSimulations[i] > 0 ? moveScores[i] / moveSimulations[i] : -Infinity,
+            simulations: moveSimulations[i]
+        }));
 
         moveEvaluations.sort((a, b) => b.score - a.score);
 
-        const selectedMove = this.randomizeChoice(
+        return this.randomizeChoice(
             moveEvaluations.map(m => m.move),
             moveEvaluations.map(m => m.score)
         );
-
-        const endTime = performance.now();
-        const duration = endTime - startTime;
-
-        return selectedMove;
     }
 
     playRandomGame(simGame) {
+        let validMoves = simGame.getValidMoves();
         const maxMoves = simGame.boardSize * simGame.boardSize;
-        const validMoves = new Array(maxMoves);
         let moveCount = 0;
 
-        while (!simGame.isGameOver() && moveCount < maxMoves) {
-            let validMoveCount = 0;
-            const symbols = simGame.symbolToPosition.keys();
-            for (const symbol of symbols) {
-                if (simGame.isValidMove(symbol)) {
-                    validMoves[validMoveCount++] = symbol;
-                }
-            }
-
-            if (validMoveCount === 0) break;
-
-            const randomMove = validMoves[Math.floor(Math.random() * validMoveCount)];
+        while (!simGame.isGameOver() && moveCount < maxMoves && validMoves.length > 0) {
+            const randomMove = validMoves[Math.floor(Math.random() * validMoves.length)];
 
             try {
                 simGame.makeMove(randomMove);
                 moveCount++;
+                validMoves = simGame.getValidMoves();
             } catch (error) {
                 break;
             }
         }
 
         const blackScore =
-            this.getCachedLargestCluster(simGame, simGame.board1, 'BLACK') +
-            this.getCachedLargestCluster(simGame, simGame.board2, 'BLACK');
+            simGame.findLargestCluster(simGame.board1, 'BLACK') +
+            simGame.findLargestCluster(simGame.board2, 'BLACK');
 
         const whiteScore =
-            this.getCachedLargestCluster(simGame, simGame.board1, 'WHITE') +
-            this.getCachedLargestCluster(simGame, simGame.board2, 'WHITE');
+            simGame.findLargestCluster(simGame.board1, 'WHITE') +
+            simGame.findLargestCluster(simGame.board2, 'WHITE');
 
         return this.playerColor === 'BLACK' ? blackScore - whiteScore : whiteScore - blackScore;
     }
 
     destroy() {
-        this.clusterCache.clear();
-        this.clusterCache = null;
+        this.baseSimGame = null;
+        this.simBoards = null;
     }
 }
 
-class HybridStrongPlayer extends EntangledPlayer {
+class HybridStrongPlayer extends MinimaxPlayer {
     constructor(gameEngine, playerColor, config = {}) {
         super(gameEngine, playerColor, config);
-        this.mctsCount = config.simulationCount;
+        this.timeLimit = config.timeLimit;
         this.minimaxDepth = config.lookahead;
+        // Create reusable MCTS components
+        this.baseSimGame = null;
+        this.simBoards = {
+            board1: Array(gameEngine.boardSize).fill(null).map(() => Array(gameEngine.boardSize).fill(null)),
+            board2: Array(gameEngine.boardSize).fill(null).map(() => Array(gameEngine.boardSize).fill(null))
+        };
+    }
+
+    // Copy necessary MCTS methods
+    copyBoardState(source, target) {
+        for (let i = 0; i < source.length; i++) {
+            for (let j = 0; j < source[i].length; j++) {
+                target[i][j] = source[i][j];
+            }
+        }
+    }
+
+    initBaseSimGame(gameState) {
+        if (!this.baseSimGame) {
+            this.baseSimGame = new SimulatedGame(this.gameEngine, gameState);
+        } else {
+            this.copyBoardState(gameState.board1, this.baseSimGame.board1);
+            this.copyBoardState(gameState.board2, this.baseSimGame.board2);
+            this.baseSimGame.currentPlayer = gameState.currentPlayer;
+            this.baseSimGame.playerTurns = { ...gameState.playerTurns };
+            this.baseSimGame.gameOver = gameState.gameOver;
+            this.baseSimGame._lastMove = gameState.lastMove;
+            this.baseSimGame.lastPlacedStone = gameState.lastPlacedStone;
+            this.baseSimGame.superpositionStones = new Map(this.gameEngine.superpositionStones);
+        }
+    }
+
+    getSimulationGame() {
+        this.copyBoardState(this.baseSimGame.board1, this.simBoards.board1);
+        this.copyBoardState(this.baseSimGame.board2, this.simBoards.board2);
+
+        return {
+            board1: this.simBoards.board1,
+            board2: this.simBoards.board2,
+            currentPlayer: this.baseSimGame.currentPlayer,
+            playerTurns: { ...this.baseSimGame.playerTurns },
+            gameOver: this.baseSimGame.gameOver,
+            boardSize: this.baseSimGame.boardSize,
+            getValidMoves: () => {
+                return this.baseSimGame.getValidMoves().filter(move =>
+                    !this.baseSimGame.superpositionStones || !this.baseSimGame.superpositionStones.has(move)
+                );
+            },
+            makeMove: (symbol) => {
+                const positions = this.baseSimGame.symbolToPosition.get(symbol);
+                if (positions.board1) {
+                    this.simBoards.board1[positions.board1.row][positions.board1.col] = this.currentPlayer;
+                }
+                if (positions.board2) {
+                    this.simBoards.board2[positions.board2.row][positions.board2.col] = this.currentPlayer;
+                }
+                this.currentPlayer = this.currentPlayer === 'BLACK' ? 'WHITE' : 'BLACK';
+            },
+            isGameOver: () => {
+                return this.getValidMoves().length === 0;
+            },
+            findLargestCluster: (board, player) => {
+                return this.baseSimGame.findLargestCluster(board, player);
+            },
+            getScore: (player) => {
+                const board1Score = this.baseSimGame.findLargestCluster(this.simBoards.board1, player);
+                const board2Score = this.baseSimGame.findLargestCluster(this.simBoards.board2, player);
+                return board1Score + board2Score;
+            }
+        };
     }
 
     chooseMove() {
         const validMoves = this.gameEngine.getValidMoves();
         if (!validMoves.length) return null;
-        if (validMoves.length < 10) {
-            return this.minimaxChoice(validMoves);
-        } else {
+
+        const hasSuperposition = this.gameEngine.superpositionStones &&
+            validMoves.some(move => this.gameEngine.superpositionStones.has(move));
+
+        if (hasSuperposition || validMoves.length >= 10) {
             return this.mctsChoice(validMoves);
+        } else {
+            return this.minimaxChoice(validMoves);
         }
     }
 
@@ -619,68 +936,98 @@ class HybridStrongPlayer extends EntangledPlayer {
         const evaluations = moves.map(m => {
             const sim = this.simulateGame(this.gameEngine.getGameState());
             sim.makeMove(m);
-            return { move: m, score: this.minimax(sim, this.minimaxDepth - 1, false, -Infinity, Infinity) };
+            return {
+                move: m,
+                score: this.minimax(sim, this.minimaxDepth - 1, false, -Infinity, Infinity)
+            };
         });
         evaluations.sort((a, b) => b.score - a.score);
         return this.randomizeChoice(evaluations.map(e => e.move), evaluations.map(e => e.score));
     }
 
-    minimax(game, depth, maxing, alpha, beta) {
-        if (depth === 0 || game.isGameOver()) return this.evaluatePosition(game);
-        const moves = game.getValidMoves();
-        if (!moves.length) return this.evaluatePosition(game);
-        if (maxing) {
-            let val = -Infinity;
-            for (const m of moves) {
-                const sim = this.simulateGame(game.getGameState());
-                sim.currentPlayer = this.playerColor;
-                sim.makeMove(m);
-                val = Math.max(val, this.minimax(sim, depth - 1, false, alpha, beta));
-                alpha = Math.max(alpha, val);
-                if (beta <= alpha) break;
-            }
-            return val;
-        } else {
-            let val = Infinity;
-            const opp = this.playerColor === 'BLACK' ? 'WHITE' : 'BLACK';
-            for (const m of moves) {
-                const sim = this.simulateGame(game.getGameState());
-                sim.currentPlayer = opp;
-                sim.makeMove(m);
-                val = Math.min(val, this.minimax(sim, depth - 1, true, alpha, beta));
-                beta = Math.min(beta, val);
-                if (beta <= alpha) break;
-            }
-            return val;
-        }
-    }
-
     mctsChoice(moves) {
-        const evals = moves.map(m => {
-            let total = 0;
-            for (let i = 0; i < this.mctsCount; i++) {
-                const sim = this.simulateGame(this.gameEngine.getGameState());
-                sim.makeMove(m);
-                total += this.playRandomGame(sim);
+        const startTime = performance.now();
+        this.initBaseSimGame(this.gameEngine.getGameState());
+
+        const moveSimulations = moves.map(() => 0);
+        const moveScores = moves.map(() => 0);
+
+        while (performance.now() - startTime < this.timeLimit) {
+            const minSims = Math.min(...moveSimulations);
+            const moveIndices = moveSimulations
+                .map((sims, i) => sims === minSims ? i : -1)
+                .filter(i => i !== -1);
+            const moveIndex = moveIndices[Math.floor(Math.random() * moveIndices.length)];
+            const move = moves[moveIndex];
+
+            try {
+                if (this.gameEngine.superpositionStones && this.gameEngine.superpositionStones.has(move)) {
+                    const positions = this.gameEngine.getValidPositionsForStone(move);
+                    if (positions && positions.length > 0) {
+                        const randomPos = positions[Math.floor(Math.random() * positions.length)];
+                        this.baseSimGame.makeMove(move, randomPos);
+                        moveScores[moveIndex] += this.playRandomGame(this.getSimulationGame());
+                        moveSimulations[moveIndex]++;
+                        this.initBaseSimGame(this.gameEngine.getGameState());
+                    } else {
+                        moveScores[moveIndex] -= 1000;
+                        moveSimulations[moveIndex]++;
+                        continue;
+                    }
+                } else {
+                    this.baseSimGame.makeMove(move);
+                    moveScores[moveIndex] += this.playRandomGame(this.getSimulationGame());
+                    moveSimulations[moveIndex]++;
+                    this.initBaseSimGame(this.gameEngine.getGameState());
+                }
+            } catch (error) {
+                moveScores[moveIndex] -= 1000;
+                moveSimulations[moveIndex]++;
             }
-            return { move: m, score: total / this.mctsCount };
-        });
-        evals.sort((a, b) => b.score - a.score);
-        return this.randomizeChoice(evals.map(e => e.move), evals.map(e => e.score));
+        }
+
+        const moveEvaluations = moves.map((move, i) => ({
+            move,
+            score: moveSimulations[i] > 0 ? moveScores[i] / moveSimulations[i] : -Infinity,
+            simulations: moveSimulations[i]
+        }));
+
+        moveEvaluations.sort((a, b) => b.score - a.score);
+        return this.randomizeChoice(
+            moveEvaluations.map(m => m.move),
+            moveEvaluations.map(m => m.score)
+        );
     }
 
-    playRandomGame(sim) {
-        while (!sim.isGameOver()) {
-            const vm = sim.getValidMoves();
-            if (!vm.length) break;
-            const rnd = vm[Math.floor(Math.random() * vm.length)];
-            sim.makeMove(rnd);
+    playRandomGame(simGame) {
+        let validMoves = simGame.getValidMoves();
+        const maxMoves = simGame.boardSize * simGame.boardSize;
+        let moveCount = 0;
+
+        while (!simGame.isGameOver() && moveCount < maxMoves && validMoves.length > 0) {
+            const randomMove = validMoves[Math.floor(Math.random() * validMoves.length)];
+            try {
+                simGame.makeMove(randomMove);
+                moveCount++;
+                validMoves = simGame.getValidMoves();
+            } catch (error) {
+                break;
+            }
         }
-        const my = this.playerColor;
-        const opp = my === 'BLACK' ? 'WHITE' : 'BLACK';
-        const myScore = sim.getScore(my);
-        const oppScore = sim.getScore(opp);
-        return myScore - oppScore;
+
+        const blackScore =
+            simGame.findLargestCluster(simGame.board1, 'BLACK') +
+            simGame.findLargestCluster(simGame.board2, 'BLACK');
+        const whiteScore =
+            simGame.findLargestCluster(simGame.board1, 'WHITE') +
+            simGame.findLargestCluster(simGame.board2, 'WHITE');
+
+        return this.playerColor === 'BLACK' ? blackScore - whiteScore : whiteScore - blackScore;
+    }
+
+    destroy() {
+        this.baseSimGame = null;
+        this.simBoards = null;
     }
 }
 
@@ -766,7 +1113,7 @@ export const AI_PLAYERS = {
         implementation: MCTSPlayer,
         defaultConfig: {
             randomize: false,
-            simulationCount: 2000
+            timeLimit: 1000
         }
     },
     'mcts-some-rng': {
@@ -777,7 +1124,7 @@ export const AI_PLAYERS = {
         defaultConfig: {
             randomize: true,
             randomThreshold: 0.1,
-            simulationCount: 2000
+            timeLimit: 1000
         }
     },
     'hybrid-strong': {
@@ -788,8 +1135,8 @@ export const AI_PLAYERS = {
         defaultConfig: {
             randomize: true,
             randomThreshold: 0.05,
-            simulationCount: 5000,
-            lookahead: 10
+            timeLimit: 1000,
+            lookahead: 4
         }
     }
 };

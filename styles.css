@@ -284,6 +284,49 @@ body.rules-hidden .game-container {
     border: 2px solid var(--color-black);
 }
 
+.stone.superposition {
+    background: linear-gradient(45deg, var(--color-black) 0%, var(--color-black) 50%, var(--color-white) 50%, var(--color-white) 100%);
+    border: 2px solid var(--color-black);
+    position: relative;
+}
+
+.stone.superposition::after {
+    content: attr(data-number);
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #FFD700;
+    /* Yellow */
+    font-weight: 900;
+    /* Increased from bold */
+    font-size: 1.2em;
+    text-shadow:
+        -1px -1px 0 #000,
+        1px -1px 0 #000,
+        -1px 1px 0 #000,
+        1px 1px 0 #000,
+        0 0 4px rgba(0, 0, 0, 0.8);
+    /* Added glow effect */
+}
+
+/* Adjust superposition stone number size based on board size */
+.board.board-4 .stone.superposition::after {
+    font-size: 1.4em;
+}
+
+.board.board-5 .stone.superposition::after {
+    font-size: 1.2em;
+}
+
+.board.board-6 .stone.superposition::after {
+    font-size: 1em;
+}
+
+.board.board-7 .stone.superposition::after {
+    font-size: 0.9em;
+}
+
 /* Hover states for stones */
 .cell:not(.has-stone):hover::before,
 .cell.highlighted:not(.has-stone)::before {

@@ -1,4 +1,4 @@
-import BOARD_LAYOUTS from './boards.js';
+import BOARD_LAYOUTS, { getSymbolsForSize } from './boards.js';
 
 // Constants for the game
 const DEFAULT_BOARD_SIZE = 5;
@@ -11,7 +11,8 @@ const DIRECTIONS = [
 
 const PLAYERS = {
     BLACK: 'BLACK',
-    WHITE: 'WHITE'
+    WHITE: 'WHITE',
+    SUPERPOSITION: 'SUPERPOSITION'
 };
 
 class EntangledGame {
@@ -19,6 +20,7 @@ class EntangledGame {
         board1Layout = BOARD_LAYOUTS.board1.grid,
         board2Layout = BOARD_LAYOUTS.board2.grid,
         startingConfig = '',
+        superpositionConfig = 'rng,rng,rng,rng,rng,rng',
         enableTieBreaker = false
     ) {
         // Store the symbol layouts and determine board size
@@ -48,13 +50,21 @@ class EntangledGame {
         };
         this.gameOver = false;
 
+        // Superposition state
+        this.superpositionStones = new Map(); // symbol -> { number, validPositions }
+        this.lastPlacedStone = null;
+
         // Parse and place starting stones
         if (startingConfig) {
             this.placeStartingStones(startingConfig);
         }
 
-        this.enableTieBreaker = enableTieBreaker;
+        // Place superposition stones
+        if (superpositionConfig) {
+            this.placeSuperpositionStones(superpositionConfig);
+        }
 
+        this.enableTieBreaker = enableTieBreaker;
         this._lastMove = null;
     }
 
@@ -110,10 +120,7 @@ class EntangledGame {
 
     placeStartingStones(config) {
         // Valid characters for board cells based on size
-        const validSymbols = this.boardSize === 4 ? 'ABCDEFGHIJKLMNOP' :
-            this.boardSize === 5 ? 'ABCDEFGHIJKLMNOPQRSTUVWXY' :
-                this.boardSize === 6 ? 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789' :
-                    'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&*+-=/?!~';
+        const validSymbols = getSymbolsForSize(this.boardSize);
 
         // Split the config string by commas
         const placements = config.split(',').map(p => p.trim());
@@ -184,22 +191,111 @@ class EntangledGame {
         return null;
     }
 
+    placeSuperpositionStones(config) {
+        const validSymbols = getSymbolsForSize(this.boardSize);
+
+        const placements = config.split(',').map(p => p.trim().toUpperCase());
+
+        // Validate and collect symbols
+        const usedSymbols = new Set();
+        const rngCount = placements.filter(p => p === 'RNG').length;
+        const specificSymbols = placements.filter(p => p !== 'RNG');
+
+        // Check for duplicate symbols
+        for (const symbol of specificSymbols) {
+            if (usedSymbols.has(symbol)) {
+                throw new Error(`Duplicate symbol in superposition config: ${symbol}`);
+            }
+            if (!validSymbols.includes(symbol)) {
+                throw new Error(`Invalid symbol in superposition config: ${symbol}`);
+            }
+            usedSymbols.add(symbol);
+        }
+
+        // Get available positions for RNG placement
+        const availablePositions = [];
+        for (const symbol of validSymbols) {
+            if (!usedSymbols.has(symbol) && this.isValidMove(symbol)) {
+                availablePositions.push(symbol);
+            }
+        }
+
+        if (availablePositions.length < rngCount) {
+            throw new Error('Not enough available positions for RNG placements');
+        }
+
+        // Place specific symbols
+        let spNumber = 1;
+        for (const symbol of specificSymbols) {
+            const positions = this.symbolToPosition.get(symbol);
+            const validPositions = [];
+
+            // Check each board position once at creation
+            if (positions.board1 && this.board1Layout[positions.board1.row][positions.board1.col] !== '.') {
+                validPositions.push('board1');
+                this.board1[positions.board1.row][positions.board1.col] = PLAYERS.SUPERPOSITION;
+            }
+            if (positions.board2 && this.board2Layout[positions.board2.row][positions.board2.col] !== '.') {
+                validPositions.push('board2');
+                this.board2[positions.board2.row][positions.board2.col] = PLAYERS.SUPERPOSITION;
+            }
+
+            // Store both the SP number and valid positions
+            this.superpositionStones.set(symbol, {
+                number: spNumber++,
+                validPositions
+            });
+        }
+
+        // Place RNG symbols
+        for (let i = 0; i < rngCount; i++) {
+            const randomIndex = Math.floor(Math.random() * availablePositions.length);
+            const symbol = availablePositions.splice(randomIndex, 1)[0];
+            const positions = this.symbolToPosition.get(symbol);
+            const validPositions = [];
+
+            if (positions.board1 && this.board1Layout[positions.board1.row][positions.board1.col] !== '.') {
+                validPositions.push('board1');
+                this.board1[positions.board1.row][positions.board1.col] = PLAYERS.SUPERPOSITION;
+            }
+            if (positions.board2 && this.board2Layout[positions.board2.row][positions.board2.col] !== '.') {
+                validPositions.push('board2');
+                this.board2[positions.board2.row][positions.board2.col] = PLAYERS.SUPERPOSITION;
+            }
+
+            this.superpositionStones.set(symbol, {
+                number: spNumber++,
+                validPositions
+            });
+        }
+    }
+
     isValidMove(symbol) {
-        if (!this.symbolToPosition.has(symbol)) return false;
-        if (symbol === '.') return false;
+        if (!this.symbolToPosition.has(symbol)) {
+            return false;
+        }
+        if (symbol === '.') {
+            return false;
+        }
 
         const { board1, board2 } = this.symbolToPosition.get(symbol);
+
         if (board1) {
             if (this.board1Layout[board1.row][board1.col] === '.' ||
-                this.board1[board1.row][board1.col] !== null) return false;
+                this.board1[board1.row][board1.col] !== null) {
+                return false;
+            }
         }
 
         if (board2) {
             if (this.board2Layout[board2.row][board2.col] === '.' ||
-                this.board2[board2.row][board2.col] !== null) return false;
+                this.board2[board2.row][board2.col] !== null) {
+                return false;
+            }
         }
 
-        return true;
+        // Check if this position is reserved for a superposition stone
+        return !this.superpositionStones.has(symbol);
     }
 
     makeMove(symbol) {
@@ -223,6 +319,10 @@ class EntangledGame {
         }
 
         this._lastMove = symbol;
+        this.lastPlacedStone = this.currentPlayer;
+
+        // Check for superposition collapses
+        this.checkSuperpositionCollapses(board1, board2);
 
         // Update game state
         this.playerTurns[this.currentPlayer]++;
@@ -254,6 +354,126 @@ class EntangledGame {
             gameOver: this.gameOver,
             currentPlayer: this.currentPlayer,
             turnNumber: this.playerTurns[this.currentPlayer] + 1
+        };
+    }
+
+    checkSuperpositionCollapses(board1Pos, board2Pos) {
+        const checkPosition = (board, pos) => {
+            if (!pos) return;
+            const { row, col } = pos;
+
+            // Check all orthogonal neighbors
+            const neighbors = [
+                [row - 1, col], // up
+                [row + 1, col], // down
+                [row, col - 1], // left
+                [row, col + 1]  // right
+            ];
+
+            // Find superposition stones that need to collapse
+            for (const [nRow, nCol] of neighbors) {
+                if (nRow < 0 || nRow >= this.boardSize || nCol < 0 || nCol >= this.boardSize) continue;
+                if (board[nRow][nCol] === PLAYERS.SUPERPOSITION) {
+                    // Check if all neighbors are filled
+                    const allNeighborsFilled = this.checkAllNeighborsFilled(board, nRow, nCol);
+                    if (allNeighborsFilled) {
+                        // Find the symbol at this position
+                        const symbol = this.findSymbolAtPosition(board === this.board1 ? 1 : 2, nRow, nCol);
+                        if (symbol) {
+                            this.collapseSuperpositionStone(symbol);
+                        }
+                    }
+                }
+            }
+        };
+
+        checkPosition(this.board1, board1Pos);
+        checkPosition(this.board2, board2Pos);
+    }
+
+    checkAllNeighborsFilled(board, row, col) {
+        const neighbors = [
+            [row - 1, col], // up
+            [row + 1, col], // down
+            [row, col - 1], // left
+            [row, col + 1]  // right
+        ];
+
+        return neighbors.every(([nRow, nCol]) => {
+            // Edge of board counts as filled
+            if (nRow < 0 || nRow >= this.boardSize || nCol < 0 || nCol >= this.boardSize) {
+                return true;
+            }
+
+            // Check the layout to see if it's a dot position
+            const layout = board === this.board1 ? this.board1Layout : this.board2Layout;
+            if (layout[nRow][nCol] === '.') {
+                return true;
+            }
+
+            // Superposition stones count as filled
+            if (board[nRow][nCol] === PLAYERS.SUPERPOSITION) {
+                return true;
+            }
+
+            // Regular stone is filled
+            return board[nRow][nCol] !== null;
+        });
+    }
+
+    findSymbolAtPosition(boardNum, row, col) {
+        const layout = boardNum === 1 ? this.board1Layout : this.board2Layout;
+        const symbol = layout[row][col];
+        return symbol !== '.' ? symbol : null;
+    }
+
+    collapseSuperpositionStone(symbol) {
+        const positions = this.symbolToPosition.get(symbol);
+        if (!positions) return;
+
+        // Collapse to the last placed stone's color
+        const newColor = this.lastPlacedStone;
+
+        // Update both boards
+        if (positions.board1) {
+            this.board1[positions.board1.row][positions.board1.col] = newColor;
+        }
+        if (positions.board2) {
+            this.board2[positions.board2.row][positions.board2.col] = newColor;
+        }
+
+        // Find and collapse the twin stone with the same number
+        const spInfo = this.superpositionStones.get(symbol);
+        if (!spInfo) return;
+
+        for (const [otherSymbol, otherInfo] of this.superpositionStones.entries()) {
+            if (otherSymbol !== symbol && otherInfo.number === spInfo.number) {
+                const otherPositions = this.symbolToPosition.get(otherSymbol);
+                if (otherPositions) {
+                    if (otherPositions.board1) {
+                        this.board1[otherPositions.board1.row][otherPositions.board1.col] = newColor;
+                    }
+                    if (otherPositions.board2) {
+                        this.board2[otherPositions.board2.row][otherPositions.board2.col] = newColor;
+                    }
+                    this.superpositionStones.delete(otherSymbol);
+                }
+                break;
+            }
+        }
+
+        // Remove from superposition stones
+        this.superpositionStones.delete(symbol);
+    }
+
+    getSuperpositionState() {
+        return {
+            stones: Array.from(this.superpositionStones.entries()).map(([symbol, info]) => ({
+                symbol,
+                number: info.number,
+                positions: this.symbolToPosition.get(symbol),
+                validPositions: info.validPositions
+            }))
         };
     }
 
@@ -518,6 +738,11 @@ class EntangledGame {
             .filter(symbol => this.isValidMove(symbol));
     }
 
+    getValidPositionsForStone(symbol) {
+        const spInfo = this.superpositionStones.get(symbol);
+        return spInfo ? spInfo.validPositions : null;
+    }
+
     getGameState() {
         const blackClusters = {
             board1: this.findLargestClusterCells(this.board1, PLAYERS.BLACK),
@@ -537,6 +762,7 @@ class EntangledGame {
             playerTurns: { ...this.playerTurns },
             validMoves: this.getValidMoves(),
             lastMove: this._lastMove,
+            lastPlacedStone: this.lastPlacedStone,
             largestClusters: {
                 black: blackClusters,
                 white: whiteClusters
