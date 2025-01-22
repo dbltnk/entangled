@@ -936,8 +936,7 @@ export const AI_PLAYERS = {
         description: 'Tries to maximize total score without looking ahead.',
         class: GreedyPlayer,
         config: {
-            randomize: false,
-            thinkingTime: 1000
+            randomize: false
         }
     },
     'greedy-some-rng': {
@@ -947,8 +946,7 @@ export const AI_PLAYERS = {
         class: GreedyPlayer,
         config: {
             randomize: true,
-            randomThreshold: 0.1,
-            thinkingTime: 1000
+            randomThreshold: 0.1
         }
     },
     'defensive': {
@@ -957,8 +955,7 @@ export const AI_PLAYERS = {
         description: 'Tries to minimize opponent\'s best response.',
         class: DefensivePlayer,
         config: {
-            randomize: false,
-            thinkingTime: 1000
+            randomize: false
         }
     },
     'defensive-some-rng': {
@@ -968,8 +965,7 @@ export const AI_PLAYERS = {
         class: DefensivePlayer,
         config: {
             randomize: true,
-            randomThreshold: 0.1,
-            thinkingTime: 1000
+            randomThreshold: 0.1
         }
     },
     'minimax': {
