@@ -97,20 +97,25 @@
                     </div>
                     <div class="setting-item">
                         <input type="checkbox" id="setting-currentPlayer" checked>
-                        <label for="setting-current-player">Show current player</label>
+                        <label for="setting-currentPlayer">Show current player</label>
                     </div>
                     <div class="setting-item">
                         <input type="checkbox" id="setting-icons" checked>
                         <label for="setting-icons">Show icons</label>
                     </div>
                     <div class="setting-item">
-                        <input type="checkbox" id="setting-symbols" checked>
+                        <input type="checkbox" id="setting-symbols">
                         <label for="setting-symbols">Show symbols</label>
                     </div>
                 </div>
             </div>
 
             <div class="control-group">
+                <div id="swap-button-container" style="display: none;">
+                    <button id="swap-first-move" class="swap-button">
+                        <span>🔄</span> Take Over First Move
+                    </button>
+                </div>
                 <div class="stats">
                     <div class="stats-row">
                         <span id="score-display">Black: 0 - White: 0</span>
@@ -123,7 +128,7 @@
 
             <div class="control-group">
                 <div class="size-select">
-                    <label for="board-size">Board Size:</label>
+                    <label for="board-size" class="field-label">Board Dimensions</label>
                     <select id="board-size">
                         <option value="4">4×4</option>
                         <option value="5">5×5</option>
@@ -133,43 +138,47 @@
                 </div>
 
                 <div class="player-select">
-                    <label for="board1-select">Board 1:</label>
-                    <!-- select options will be populated dynamically based on size -->
-                    <select id="board1-select">
-                    </select>
-                    <button id="custom-board1-btn" class="custom-board-btn" title="Add custom board">+</button>
+                    <label for="board1-select" class="field-label">First Board Layout</label>
+                    <div class="select-with-button">
+                        <select id="board1-select">
+                        </select>
+                        <button id="custom-board1-btn" class="custom-board-btn" title="Add custom board">+</button>
+                    </div>
                 </div>
 
                 <div class="player-select">
-                    <label for="board2-select">Board 2:</label>
-                    <!-- select options will be populated dynamically based on size -->
-                    <select id="board2-select">
-                    </select>
-                    <button id="custom-board2-btn" class="custom-board-btn" title="Add custom board">+</button>
+                    <label for="board2-select" class="field-label">Second Board Layout</label>
+                    <div class="select-with-button">
+                        <select id="board2-select">
+                        </select>
+                        <button id="custom-board2-btn" class="custom-board-btn" title="Add custom board">+</button>
+                    </div>
                 </div>
 
                 <div class="setup-input">
-                    <label for="starting-config">Stones:</label>
+                    <label for="starting-config" class="field-label">Starting Stone Configuration</label>
                     <input type="text" id="starting-config" placeholder="e.g., BE2,WK1" />
                 </div>
 
                 <div class="setup-input">
-                    <label for="superposition-config">Superposition:</label>
-                    <input type="text" id="superposition-config" placeholder="e.g., A,Z,D,F,rng,rng"
-                        value="rng,rng,rng,rng,rng,rng" />
+                    <label class="field-label" for="superposition">Superposition Stone Configuration</label>
+                    <input type="text" id="superposition" placeholder="Example: 1A,2B,3C">
+                </div>
+
+                <div class="swap-rule-container">
+                    <input type="checkbox" id="swap-rule" checked>
+                    <label for="swap-rule">Enable Swap Rule</label>
                 </div>
 
                 <div class="player-select">
-                    <label for="black-player">⚫</label>
+                    <label class="field-label" for="black-player">Black Player (First)</label>
                     <select id="black-player" class="player-type">
-                        <!-- player type options will be populated dynamically -->
                     </select>
                 </div>
 
                 <div class="player-select">
-                    <label for="white-player">⚪</label>
+                    <label class="field-label" for="white-player">White Player (Second)</label>
                     <select id="white-player" class="player-type">
-                        <!-- player type options will be populated dynamically -->
                     </select>
                 </div>
 

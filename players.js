@@ -226,6 +226,37 @@ class EntangledPlayer {
         if (!state || !state.board1 || !state.board2) return null;
         return new SimulatedGame(this.gameEngine, state);
     }
+
+    // Add shouldSwap method to base class
+    shouldSwap() {
+        if (!this.gameEngine.isSwapAvailable()) {
+            return false;
+        }
+
+        // Default implementation evaluates the first move position
+        const firstMove = this.gameEngine.firstMove;
+        if (!firstMove) return false;
+
+        // Simulate taking over the move
+        const simGame = this.simulateGame(this.gameEngine.getGameState());
+        simGame.swapFirstMove();
+        const scoreAfterSwap = this.evaluatePosition(simGame);
+
+        // Simulate our best move as second player
+        const originalGame = this.simulateGame(this.gameEngine.getGameState());
+        const validMoves = originalGame.getValidMoves();
+        let bestMoveScore = -Infinity;
+
+        for (const move of validMoves) {
+            const moveGame = this.simulateGame(originalGame.getGameState());
+            moveGame.makeMove(move);
+            const score = this.evaluatePosition(moveGame);
+            bestMoveScore = Math.max(bestMoveScore, score);
+        }
+
+        // Compare the two scenarios
+        return scoreAfterSwap > bestMoveScore;
+    }
 }
 
 class SimulatedGame extends EntangledGame {
@@ -247,6 +278,12 @@ class SimulatedGame extends EntangledGame {
         this._lastMove = state.lastMove;
         this.lastPlacedStone = state.lastPlacedStone;
 
+        // Copy swap rule state
+        this.enableSwapRule = originalGame.enableSwapRule;
+        this.firstMove = state.firstMove;
+        this.swapAvailable = state.swapAvailable;
+        this.swapOccurred = state.swapOccurred;
+
         // Copy required maps and methods from original game
         this.symbolToPosition = new Map(originalGame.symbolToPosition);
         this.superpositionStones = new Map(originalGame.superpositionStones || new Map());
@@ -261,6 +298,12 @@ class SimulatedGame extends EntangledGame {
 }
 
 class DeterministicPlayer extends EntangledPlayer {
+    shouldSwap() {
+        // Always take predictable action based on board position
+        return this.gameEngine.firstMove &&
+            this.gameEngine.firstMove.charCodeAt(0) % 2 === 0;
+    }
+
     chooseMove() {
         const validMoves = this.gameEngine.getValidMoves();
         return validMoves[0];
@@ -268,6 +311,11 @@ class DeterministicPlayer extends EntangledPlayer {
 }
 
 class RandomPlayer extends EntangledPlayer {
+    shouldSwap() {
+        // Random 50/50 decision
+        return this.gameEngine.isSwapAvailable() && Math.random() < 0.5;
+    }
+
     chooseMove() {
         const validMoves = this.gameEngine.getValidMoves();
         const randomIndex = Math.floor(Math.random() * validMoves.length);
@@ -276,6 +324,28 @@ class RandomPlayer extends EntangledPlayer {
 }
 
 class GreedyHighPlayer extends EntangledPlayer {
+    shouldSwap() {
+        if (!this.gameEngine.isSwapAvailable()) return false;
+
+        // Evaluate immediate position after swap
+        const simGame = this.simulateGame(this.gameEngine.getGameState());
+        simGame.swapFirstMove();
+        const swapScore = this.evaluatePosition(simGame);
+
+        // Compare with best immediate move
+        const validMoves = this.gameEngine.getValidMoves();
+        let bestMoveScore = -Infinity;
+
+        for (const move of validMoves) {
+            const moveGame = this.simulateGame(this.gameEngine.getGameState());
+            moveGame.makeMove(move);
+            const score = this.evaluatePosition(moveGame);
+            bestMoveScore = Math.max(bestMoveScore, score);
+        }
+
+        return swapScore > bestMoveScore;
+    }
+
     chooseMove() {
         const validMoves = this.gameEngine.getValidMoves();
         const moveEvaluations = validMoves.map(move => {
@@ -586,6 +656,28 @@ class MinimaxPlayer extends EntangledPlayer {
         this.lookahead = config.lookahead;
     }
 
+    shouldSwap() {
+        if (!this.gameEngine.isSwapAvailable()) return false;
+
+        // Evaluate swap position with minimax
+        const swapGame = this.simulateGame(this.gameEngine.getGameState());
+        swapGame.swapFirstMove();
+        const swapScore = this.minimax(swapGame, this.lookahead - 1, true, -Infinity, Infinity);
+
+        // Evaluate best regular move with minimax
+        const validMoves = this.gameEngine.getValidMoves();
+        let bestMoveScore = -Infinity;
+
+        for (const move of validMoves) {
+            const moveGame = this.simulateGame(this.gameEngine.getGameState());
+            moveGame.makeMove(move);
+            const score = this.minimax(moveGame, this.lookahead - 1, false, -Infinity, Infinity);
+            bestMoveScore = Math.max(bestMoveScore, score);
+        }
+
+        return swapScore > bestMoveScore;
+    }
+
     chooseMove() {
         const validMoves = this.gameEngine.getValidMoves();
         const moveEvaluations = validMoves.map(move => {
@@ -670,6 +762,40 @@ class MCTSPlayer extends EntangledPlayer {
         };
     }
 
+    shouldSwap() {
+        if (!this.gameEngine.isSwapAvailable()) return false;
+
+        const startTime = performance.now();
+        let swapWins = 0;
+        let regularWins = 0;
+        let totalSimulations = 0;
+
+        // Initialize base simulation game
+        this.initBaseSimGame(this.gameEngine.getGameState());
+
+        while (performance.now() - startTime < this.timeLimit / 2) {
+            // Simulate swap scenario
+            const swapGame = this.getSimulationGame();
+            swapGame.swapFirstMove();
+            const swapScore = this.playRandomGame(swapGame);
+            swapWins += swapScore > 0 ? 1 : 0;
+
+            // Simulate regular move
+            const regularGame = this.getSimulationGame();
+            const validMoves = regularGame.getValidMoves();
+            if (validMoves.length > 0) {
+                const randomMove = validMoves[Math.floor(Math.random() * validMoves.length)];
+                regularGame.makeMove(randomMove);
+                const regularScore = this.playRandomGame(regularGame);
+                regularWins += regularScore > 0 ? 1 : 0;
+            }
+
+            totalSimulations++;
+        }
+
+        return swapWins > regularWins;
+    }
+
     // Fast board state copy without object creation
     copyBoardState(source, target) {
         for (let i = 0; i < source.length; i++) {
@@ -702,43 +828,19 @@ class MCTSPlayer extends EntangledPlayer {
         this.copyBoardState(this.baseSimGame.board1, this.simBoards.board1);
         this.copyBoardState(this.baseSimGame.board2, this.simBoards.board2);
 
-        // Create minimal game state for simulation
-        return {
+        // Create a proper game state for simulation
+        return new SimulatedGame(this.gameEngine, {
             board1: this.simBoards.board1,
             board2: this.simBoards.board2,
             currentPlayer: this.baseSimGame.currentPlayer,
             playerTurns: { ...this.baseSimGame.playerTurns },
             gameOver: this.baseSimGame.gameOver,
-            boardSize: this.baseSimGame.boardSize,
-            getValidMoves: () => {
-                // Filter out superposition stones for simulation
-                return this.baseSimGame.getValidMoves().filter(move =>
-                    !this.baseSimGame.superpositionStones || !this.baseSimGame.superpositionStones.has(move)
-                );
-            },
-            makeMove: (symbol) => {
-                const positions = this.baseSimGame.symbolToPosition.get(symbol);
-                if (positions.board1) {
-                    this.simBoards.board1[positions.board1.row][positions.board1.col] = this.currentPlayer;
-                }
-                if (positions.board2) {
-                    this.simBoards.board2[positions.board2.row][positions.board2.col] = this.currentPlayer;
-                }
-                this.currentPlayer = this.currentPlayer === 'BLACK' ? 'WHITE' : 'BLACK';
-            },
-            isGameOver: () => {
-                // Quick check if any valid moves remain
-                return this.getValidMoves().length === 0;
-            },
-            findLargestCluster: (board, player) => {
-                return this.baseSimGame.findLargestCluster(board, player);
-            },
-            getScore: (player) => {
-                const board1Score = this.baseSimGame.findLargestCluster(this.simBoards.board1, player);
-                const board2Score = this.baseSimGame.findLargestCluster(this.simBoards.board2, player);
-                return board1Score + board2Score;
-            }
-        };
+            lastMove: this.baseSimGame.lastMove,
+            lastPlacedStone: this.baseSimGame.lastPlacedStone,
+            firstMove: this.baseSimGame.firstMove,
+            swapAvailable: this.baseSimGame.swapAvailable,
+            swapOccurred: this.baseSimGame.swapOccurred
+        });
     }
 
     chooseMove() {
