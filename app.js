@@ -818,8 +818,9 @@ function updateThinkingTimeVisibility(playerId) {
     if (!playerSelect || !thinkingTimeContainer) return;
 
     const selectedValue = playerSelect.value;
-    const isAI = selectedValue !== 'human' && selectedValue !== 'remote';
-    thinkingTimeContainer.style.display = isAI ? 'flex' : 'none';
+    // Only show thinking time for minimax, mcts, and hybrid players
+    const showThinkingTime = ['minimax', 'minimax-some-rng', 'mcts', 'hybrid'].includes(selectedValue);
+    thinkingTimeContainer.style.display = showThinkingTime ? 'flex' : 'none';
 }
 
 function setupThinkingTimeHandlers() {
