@@ -472,6 +472,8 @@ class MinimaxPlayer extends EntangledPlayer {
         this.thinkingTime = config.thinkingTime;
         this.bestMove = null;
         this.startTime = null;
+        // Maximum theoretical score (all stones connected)
+        this.maxPossibleScore = Math.floor(this.gameEngine.calculatePlayablePositions() / 2);
     }
 
     shouldSwap() {
@@ -551,6 +553,8 @@ class MinimaxPlayer extends EntangledPlayer {
         // Iterative deepening with time limit
         let bestScore = -Infinity;
         let moveEvaluations = validMoves.map(move => ({ move, score: -Infinity }));
+        let previousBestMove = null;
+        let stableDepths = 0; // Count how many depths the best move remains stable
 
         while (performance.now() - this.startTime < this.thinkingTime) {
             let completedDepth = true;
@@ -563,9 +567,24 @@ class MinimaxPlayer extends EntangledPlayer {
                 try {
                     const score = this.minimax(simGame, depth, false, -Infinity, Infinity);
                     moveEvaluations[i].score = score;
+
+                    // Early return conditions
                     if (score > bestScore) {
                         bestScore = score;
                         this.bestMove = move;
+
+                        // If we found a move that achieves maximum possible score
+                        if (score >= this.maxPossibleScore) {
+                            return move;
+                        }
+
+                        // If this move is significantly better than others (2x better)
+                        const secondBestScore = Math.max(...moveEvaluations
+                            .filter(m => m.move !== move)
+                            .map(m => m.score));
+                        if (score > secondBestScore * 2 && depth >= 3) {
+                            return move;
+                        }
                     }
                 } catch (timeoutError) {
                     completedDepth = false;
@@ -580,6 +599,19 @@ class MinimaxPlayer extends EntangledPlayer {
             }
 
             if (!completedDepth) break;
+
+            // Check if best move is stable
+            if (this.bestMove === previousBestMove) {
+                stableDepths++;
+                // If best move remains the same for 3 depths and we're at least at depth 4
+                if (stableDepths >= 3 && depth >= 4) {
+                    return this.bestMove;
+                }
+            } else {
+                stableDepths = 0;
+                previousBestMove = this.bestMove;
+            }
+
             depth++;
         }
 
