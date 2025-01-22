@@ -20,8 +20,8 @@ class EntangledGame {
         board1Layout = BOARD_LAYOUTS.board1.grid,
         board2Layout = BOARD_LAYOUTS.board2.grid,
         startingConfig = '',
-        superpositionConfig = 'rng,rng,rng,rng,rng,rng',
-        enableTieBreaker = false
+        superpositionConfig = '',
+        enableSwapRule = true
     ) {
         // Store the symbol layouts and determine board size
         this.board1Layout = board1Layout;
@@ -50,6 +50,12 @@ class EntangledGame {
         };
         this.gameOver = false;
 
+        // Swap rule state
+        this.enableSwapRule = enableSwapRule;
+        this.firstMove = null;
+        this.swapAvailable = false;
+        this.swapOccurred = false;
+
         // Superposition state
         this.superpositionStones = new Map(); // symbol -> { number, validPositions }
         this.lastPlacedStone = null;
@@ -64,7 +70,6 @@ class EntangledGame {
             this.placeSuperpositionStones(superpositionConfig);
         }
 
-        this.enableTieBreaker = enableTieBreaker;
         this._lastMove = null;
     }
 
@@ -321,6 +326,12 @@ class EntangledGame {
         this._lastMove = symbol;
         this.lastPlacedStone = this.currentPlayer;
 
+        // Store first move for swap rule
+        if (this.enableSwapRule && this.playerTurns[PLAYERS.BLACK] === 0) {
+            this.firstMove = symbol;
+            this.swapAvailable = true;
+        }
+
         // Check for superposition collapses
         this.checkSuperpositionCollapses(board1, board2);
 
@@ -349,12 +360,56 @@ class EntangledGame {
                 this.currentPlayer === PLAYERS.BLACK ? PLAYERS.WHITE : PLAYERS.BLACK;
         }
 
+        // After first move is made, second player can swap
+        if (this.enableSwapRule && this.playerTurns[PLAYERS.BLACK] === 1 &&
+            this.playerTurns[PLAYERS.WHITE] === 0) {
+            this.swapAvailable = true;
+        } else {
+            this.swapAvailable = false;
+        }
+
         return {
             valid: true,
             gameOver: this.gameOver,
             currentPlayer: this.currentPlayer,
             turnNumber: this.playerTurns[this.currentPlayer] + 1
         };
+    }
+
+    swapFirstMove() {
+        if (!this.enableSwapRule || !this.swapAvailable || !this.firstMove) {
+            throw new Error('Swap is not available');
+        }
+
+        // Find the positions of the first move
+        const { board1, board2 } = this.symbolToPosition.get(this.firstMove);
+
+        // Swap the colors
+        if (board1 !== null && this.board1[board1.row][board1.col] === PLAYERS.BLACK) {
+            this.board1[board1.row][board1.col] = PLAYERS.WHITE;
+        }
+        if (board2 !== null && this.board2[board2.row][board2.col] === PLAYERS.BLACK) {
+            this.board2[board2.row][board2.col] = PLAYERS.WHITE;
+        }
+
+        // Update game state
+        this.playerTurns[PLAYERS.BLACK] = 0;
+        this.playerTurns[PLAYERS.WHITE] = 1;
+        this.currentPlayer = PLAYERS.BLACK;  // Original first player goes again
+        this.swapAvailable = false;
+        this.swapOccurred = true;
+        this.lastPlacedStone = PLAYERS.WHITE;  // Update last placed stone to maintain consistency
+
+        return {
+            valid: true,
+            gameOver: false,
+            currentPlayer: this.currentPlayer,
+            turnNumber: this.playerTurns[this.currentPlayer] + 1
+        };
+    }
+
+    isSwapAvailable() {
+        return this.enableSwapRule && this.swapAvailable;
     }
 
     checkSuperpositionCollapses(board1Pos, board2Pos) {
@@ -766,7 +821,10 @@ class EntangledGame {
             largestClusters: {
                 black: blackClusters,
                 white: whiteClusters
-            }
+            },
+            swapAvailable: this.isSwapAvailable(),
+            swapOccurred: this.swapOccurred,
+            firstMove: this.firstMove
         };
     }
 }

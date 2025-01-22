@@ -402,41 +402,58 @@ body.rules-hidden .game-container {
 .player-select,
 .setup-input {
     display: flex;
-    flex-direction: row;
-    gap: var(--spacing-sm);
-    margin-bottom: var(--spacing-xs);
+    flex-direction: column;
+    gap: calc(var(--spacing-xs) / 4);
+    margin-bottom: calc(var(--spacing-md) / 2);
 }
 
-.size-select label,
-.player-select label,
-.setup-input label {
-    font-weight: 600;
-    white-space: nowrap;
+.field-label {
+    font-size: calc(var(--font-size-sm) * 0.75);
+    color: var(--color-text);
+    opacity: 0.8;
+    font-weight: 500;
+    margin-bottom: calc(var(--spacing-xs) / 4);
+    line-height: 1;
+}
+
+.select-with-button {
     display: flex;
+    gap: var(--spacing-xs);
     align-items: center;
+}
+
+.select-with-button select {
+    flex-grow: 1;
 }
 
 .size-select select,
 .player-select select,
 .setup-input input {
     width: 100%;
-    padding: var(--spacing-sm);
-    border: 1px solid var(--color-text);
+    padding: calc(var(--spacing-sm) / 2);
+    border: 1px solid var(--color-border);
     border-radius: var(--border-radius-sm);
-    font-size: var(--font-size-sm);
+    font-size: calc(var(--font-size-base) * 0.67);
+    background: var(--color-white);
+    line-height: 1.2;
+    height: calc(var(--font-size-base) * 1.6);
 }
 
 .setup-input input {
     font-family: monospace;
+    font-size: calc(var(--font-size-base) * 0.6);
 }
 
 .setup-input input::placeholder {
     color: #999;
+    font-size: calc(var(--font-size-sm) * 0.6);
 }
 
-.setup-input input:focus {
+.setup-input input:focus,
+.size-select select:focus,
+.player-select select:focus {
     outline: none;
-    border-color: #666;
+    border-color: var(--color-text);
     box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
 }
 
@@ -553,11 +570,13 @@ button:disabled {
 .setting-item input[type="checkbox"] {
     width: 16px;
     height: 16px;
+    cursor: pointer;
 }
 
 .setting-item label {
     font-size: var(--font-size-sm);
     cursor: pointer;
+    user-select: none;
 }
 
 /* Hidden states */
@@ -586,17 +605,22 @@ button:disabled {
 /* Custom board button styles */
 .custom-board-btn {
     padding: 2px 8px;
-    margin-left: 4px;
-    font-size: 16px;
+    font-size: var(--font-size-base);
     line-height: 1;
-    border-radius: 4px;
+    border-radius: var(--border-radius-sm);
     background: var(--color-white);
-    border: 1px solid var(--color-text);
+    border: 1px solid var(--color-border);
     cursor: pointer;
+    min-width: 28px;
+    height: calc(var(--font-size-base) * 1.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .custom-board-btn:hover {
     background: var(--color-hover);
+    border-color: var(--color-text);
 }
 
 /* Modal styles */
@@ -650,4 +674,54 @@ button:disabled {
     display: flex;
     justify-content: flex-end;
     gap: var(--spacing-sm);
+}
+
+/* Swap button styles */
+.swap-button {
+    width: 100%;
+    margin-bottom: var(--spacing-md);
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--color-white);
+    border: 2px solid var(--color-text);
+    border-radius: var(--border-radius-sm);
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-sm);
+}
+
+.swap-button:hover {
+    background: var(--color-hover);
+}
+
+.swap-button:active {
+    background: var(--color-active);
+}
+
+.swap-button span {
+    font-size: 1.1rem;
+}
+
+/* Swap rule styles */
+.swap-rule-container {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin: calc(var(--spacing-md) / 2) 0;
+    padding: calc(var(--spacing-xs) / 2) 0;
+    border-top: 1px solid var(--color-hover);
+    border-bottom: 1px solid var(--color-hover);
+}
+
+.swap-rule-container input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+.swap-rule-container label {
+    font-size: calc(var(--font-size-sm) * 0.75);
+    cursor: pointer;
+    user-select: none;
 }

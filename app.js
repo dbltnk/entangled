@@ -12,7 +12,7 @@ let gameSettings = {
     score: true,
     currentPlayer: true,
     icons: true,
-    symbols: false,
+    symbols: false
 };
 
 let game = null;
@@ -578,7 +578,8 @@ function initializeBoards() {
 function isHumanTurn() {
     if (!game || game.isGameOver()) return false;
     const currentPlayer = game.getCurrentPlayer().toLowerCase();
-    const playerType = document.getElementById(`${currentPlayer}-player`)?.value;
+    const playerSelect = currentPlayer === 'black' ? 'black-player' : 'white-player';
+    const playerType = document.getElementById(playerSelect)?.value;
     return playerType === 'human';
 }
 
@@ -674,6 +675,16 @@ function updateDisplay() {
         currentPlayerDisplay.style.display = '';
         currentPlayerDisplay.textContent =
             `Current player: ${state.currentPlayer === PLAYERS.BLACK ? '⚫ Black' : '⚪ White'}`;
+    }
+
+    // Update swap button visibility
+    const swapContainer = document.getElementById('swap-button-container');
+    const currentPlayerType = document.getElementById(`${state.currentPlayer.toLowerCase()}-player`).value;
+
+    if (state.swapAvailable && currentPlayerType === 'human') {
+        swapContainer.style.display = 'block';
+    } else {
+        swapContainer.style.display = 'none';
     }
 
     const cells = document.querySelectorAll('.cell');
@@ -806,6 +817,14 @@ function makeAIMove() {
 
             const ai = createPlayer(playerType, game, currentPlayer);
             if (ai) {
+                // Check for swap first
+                if (game.isSwapAvailable() && ai.shouldSwap()) {
+                    game.swapFirstMove();
+                    updateDisplay();
+                    makeAIMove();
+                    return;
+                }
+
                 const move = ai.chooseMove();
                 if (move && game) {
                     game.makeMove(move);
@@ -823,31 +842,43 @@ function makeAIMove() {
 }
 
 function initializeGame() {
-    const board1Select = document.getElementById('board1-select');
-    const board2Select = document.getElementById('board2-select');
-    const rawConfig = document.getElementById('starting-config').value;
-    const rawSuperpositionConfig = document.getElementById('superposition-config').value;
+    // Get settings
+    const settings = {
+        showScore: document.getElementById('setting-score').checked,
+        showGroups: document.getElementById('setting-groups').checked,
+        showSize: document.getElementById('setting-size').checked,
+        showSymbols: document.getElementById('setting-symbols').checked
+    };
 
-    const startingConfig = rawConfig
-        .toUpperCase()
-        .replace(/\s+/g, '')
-        .replace(/[,.;\s]+$/, '');
-
-    const superpositionConfig = rawSuperpositionConfig
-        .toUpperCase()
-        .replace(/\s+/g, '')
-        .replace(/[,.;\s]+$/, '');
+    // Get game configuration
+    const gameConfig = {
+        boardSize: parseInt(document.getElementById('board-size').value),
+        board1Layout: document.getElementById('board1-select').value,
+        board2Layout: document.getElementById('board2-select').value,
+        startingStones: document.getElementById('starting-config').value,
+        superpositionStones: document.getElementById('superposition').value,
+        enableSwapRule: document.getElementById('swap-rule').checked,
+        player1: document.getElementById('black-player').value,
+        player2: document.getElementById('white-player').value,
+        settings
+    };
 
     currentRandomBoards = {
         board1: null,
         board2: null
     };
 
-    const board1Layout = getSelectedBoardLayout(board1Select);
-    const board2Layout = getSelectedBoardLayout(board2Select);
+    const board1Layout = getSelectedBoardLayout(document.getElementById('board1-select'));
+    const board2Layout = getSelectedBoardLayout(document.getElementById('board2-select'));
 
     try {
-        game = new EntangledGame(board1Layout, board2Layout, startingConfig, superpositionConfig);
+        game = new EntangledGame(
+            board1Layout,
+            board2Layout,
+            gameConfig.startingStones,
+            gameConfig.superpositionStones,
+            gameConfig.enableSwapRule
+        );
     } catch (error) {
         alert(error.message);
         return;
@@ -960,6 +991,9 @@ function init() {
     loadSettings();
     setupCustomBoardHandling();
 
+    // Set default value for superposition input
+    document.getElementById('superposition').value = 'rng,rng,rng,rng,rng,rng';
+
     document.getElementById('toggle-settings').addEventListener('click', () => {
         const content = document.querySelector('.settings-content');
         const icon = document.querySelector('.toggle-icon');
@@ -978,6 +1012,15 @@ function init() {
                     updateDisplay();
                 }
             });
+        }
+    });
+
+    // Add swap button handler
+    document.getElementById('swap-first-move').addEventListener('click', () => {
+        if (game && game.isSwapAvailable()) {
+            game.swapFirstMove();
+            updateDisplay();
+            makeAIMove();
         }
     });
 
@@ -1005,7 +1048,8 @@ function init() {
         'black-player',
         'white-player',
         'starting-config',
-        'superposition-config'
+        'superposition',
+        'swap-rule'
     ];
 
     settingsElements.forEach(elementId => {
@@ -1017,8 +1061,12 @@ function init() {
                 }
                 // Only reinitialize boards if a board selection changes
                 initializeBoards();
+            } else if (elementId === 'starting-config' || elementId === 'superposition' || elementId === 'swap-rule') {
+                // For stone configurations and swap rule, restart the game immediately
+                stopGame();
+                initializeGame();
             } else {
-                // For other settings, stop the game
+                // For other settings, just stop the game
                 stopGame();
             }
         });
@@ -1028,4 +1076,4 @@ function init() {
     document.getElementById('start-game').click();
 }
 
-window.addEventListener('load', init);
+document.addEventListener('DOMContentLoaded', init);
