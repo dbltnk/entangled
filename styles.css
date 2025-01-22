@@ -766,3 +766,31 @@ button:disabled {
     color: var(--color-text);
     font-size: calc(var(--font-size-sm) * 0.75);
 }
+
+/* Toast notification */
+.toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 12px 24px;
+    border-radius: var(--border-radius);
+    font-size: var(--font-size-sm);
+    z-index: 1000;
+    opacity: 0;
+    transform: translateY(-20px);
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.toast span {
+    font-size: 1.1em;
+}
