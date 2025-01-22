@@ -902,3 +902,42 @@
 .modal-buttons button:hover {
     background: var(--color-hover);
 }
+
+.ai-select-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem;
+}
+
+.thinking-time-container {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-left: auto;
+}
+
+.thinking-time-input {
+    width: 4rem;
+    padding: 0.25rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+}
+
+.swap-rule-row {
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    background: var(--color-background-light);
+    border-radius: var(--border-radius);
+}
+
+.swap-rule-row label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+}
+
+.superposition-config {
+    font-family: monospace;
+}
