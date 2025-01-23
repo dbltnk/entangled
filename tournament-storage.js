@@ -137,17 +137,13 @@ class TournamentStorage {
 
         const result = this.stats.results[matchupKey];
         const gameHistory = gameData.result.history;
-        const enhancedMoves = [];
+        const moves = [];
 
+        // Skip first state (initial) and collect just the moves
         for (let i = 1; i < gameHistory.length; i++) {
             const state = gameHistory[i];
-            if (state.move === 'SWAP') {
-                enhancedMoves.push({ type: 'swap' });
-            } else {
-                enhancedMoves.push({
-                    type: 'move',
-                    move: state.move
-                });
+            if (state.move !== 'SWAP') {  // Skip swap moves since we track them with swapOccurred
+                moves.push(state.move);
             }
         }
 
@@ -155,12 +151,19 @@ class TournamentStorage {
             winner: gameData.result.winner === 'TIE' ? 'draw' : gameData.result.winner.toLowerCase(),
             black: gameData.result.blackScore,
             white: gameData.result.whiteScore,
-            moves: enhancedMoves,
+            moves: moves,  // Just the array of moves
             tiebreaker: gameData.result.tiebreaker,
             clusters: gameData.result.clusters,
+            swapOccurred: gameData.result.swapOccurred,
             config: {
-                ...gameData.result.config,
-                superpositionCollapse: undefined
+                swapRuleEnabled: gameData.result.history[0].swapRuleEnabled,
+                startingConfig: gameData.result.history[0].startingConfig,
+                superpositionConfig: gameData.result.history[0].superpositionConfig,
+                initialSuperpositionState: gameData.result.history[0].superpositionState,
+                aiConfigs: {
+                    [gameData.matchup.black]: this.aiConfigs.get(gameData.matchup.black),
+                    [gameData.matchup.white]: this.aiConfigs.get(gameData.matchup.white)
+                }
             }
         });
     }
