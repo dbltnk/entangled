@@ -55,7 +55,8 @@ class TournamentStorage {
                 ais: selectedAIs,
                 board1: board1Info,
                 board2: board2Info,
-                startingConfig: config.startingConfig || 'empty'
+                startingConfig: config.startingConfig ?? 'empty',
+                superpositionConfig: config.superpositionConfig ?? 'empty'
             });
             const runId = await this.hashString(configString);
 
@@ -67,7 +68,8 @@ class TournamentStorage {
                     board1: board1Info,
                     board2: board2Info
                 },
-                startingConfig: config.startingConfig || 'empty',
+                startingConfig: config.startingConfig ?? 'empty',
+                superpositionConfig: config.superpositionConfig ?? 'empty',
                 totalGames: this.calculateTotalGames(selectedAIs)
             };
 
@@ -137,8 +139,12 @@ class TournamentStorage {
             black: gameData.result.blackScore,
             white: gameData.result.whiteScore,
             moves: moves,
-            tiebreaker: gameData.result.tiebreaker,  // Add tiebreaker data
-            clusters: gameData.result.clusters       // Add cluster data
+            tiebreaker: gameData.result.tiebreaker,
+            clusters: gameData.result.clusters,
+            superposition: {
+                config: gameData.result.superposition.config,
+                stones: gameData.result.superposition.stones
+            }
         });
     }
 
