@@ -376,25 +376,77 @@ class GreedyPlayer extends EntangledPlayer {
 class DefensivePlayer extends EntangledPlayer {
     chooseMove() {
         const validMoves = this.gameEngine.getValidMoves();
-        if (!validMoves || validMoves.length === 0) {
-            return null;
-        }
+        console.log(`[DefensivePlayer] Valid moves:`, validMoves);
 
-        const validEvaluations = [];
+        const moveEvaluations = validMoves.map(move => {
+            console.log(`[DefensivePlayer] Evaluating move: ${move}`);
 
-        for (const move of validMoves) {
-            try {
-                const evaluation = this.evaluateMove(move);
-                if (evaluation !== null) {
-                    validEvaluations.push({
-                        move,
-                        score: evaluation
-                    });
-                }
-            } catch (error) {
-                console.error('[DefensivePlayer] Error evaluating move:', error);
+            // First simulate our move
+            const ourGame = this.simulateGame(this.gameEngine.getGameState());
+            console.log(`[DefensivePlayer] Simulated game state:`, {
+                currentPlayer: ourGame.currentPlayer,
+                superpositionStones: Array.from(ourGame.superpositionStones.entries())
+            });
+
+            // Handle superposition stones differently only if they exist
+            if (ourGame.superpositionStones && ourGame.superpositionStones.has(move)) {
+                const spEval = this.evaluateMove(move);
+                // Defensive players prefer superposition stones in mid-game
+                const gameProgress = Object.values(this.gameEngine.playerTurns).reduce((a, b) => a + b);
+                const midGameBonus = gameProgress >= 5 && gameProgress <= 15 ? 3 : 0;
+                return {
+                    move,
+                    score: spEval.totalScore + midGameBonus
+                };
             }
-        }
+
+            // Original defensive evaluation logic for non-SP stones
+            ourGame.currentPlayer = this.playerColor;
+            try {
+                ourGame.makeMove(move);
+            } catch (error) {
+                console.error(`[DefensivePlayer] Error making move ${move}:`, error);
+                return {
+                    move,
+                    score: -Infinity
+                };
+            }
+
+            const ourScore = ourGame.getScore(this.playerColor);
+            console.log(`[DefensivePlayer] Our score after move: ${ourScore}`);
+
+            const remainingMoves = ourGame.getValidMoves();
+            console.log(`[DefensivePlayer] Remaining moves for opponent:`, remainingMoves);
+
+            const worstOpponentScore = remainingMoves.reduce((worst, oppMove) => {
+                // Skip superposition stones for opponent only if they exist
+                if (ourGame.superpositionStones && ourGame.superpositionStones.has(oppMove)) {
+                    return worst;
+                }
+
+                const oppGame = this.simulateGame(ourGame.getGameState());
+                oppGame.currentPlayer = this.playerColor === PLAYERS.BLACK ? PLAYERS.WHITE : PLAYERS.BLACK;
+
+                try {
+                    oppGame.makeMove(oppMove);
+                    const oppScore = oppGame.getScore(oppGame.currentPlayer);
+                    console.log(`[DefensivePlayer] Opponent score for move ${oppMove}: ${oppScore}`);
+                    return Math.max(worst, oppScore);
+                } catch (error) {
+                    console.error(`[DefensivePlayer] Error simulating opponent move ${oppMove}:`, error);
+                    return worst;
+                }
+            }, -Infinity);
+
+            console.log(`[DefensivePlayer] Worst opponent score: ${worstOpponentScore}`);
+            return {
+                move,
+                score: ourScore - worstOpponentScore
+            };
+        });
+
+        // Filter out invalid moves
+        const validEvaluations = moveEvaluations.filter(evaluation => evaluation.score !== -Infinity);
 
         if (validEvaluations.length === 0) {
             console.warn('[DefensivePlayer] No valid moves found, falling back to first available move');
@@ -402,6 +454,7 @@ class DefensivePlayer extends EntangledPlayer {
         }
 
         validEvaluations.sort((a, b) => b.score - a.score);
+        console.log(`[DefensivePlayer] Move evaluations:`, validEvaluations);
 
         return this.randomizeChoice(
             validEvaluations.map(m => m.move),
@@ -960,5 +1013,3 @@ export function createPlayer(strategyId, gameEngine, playerColor, config = {}) {
 
     return new playerConfig.class(gameEngine, playerColor, finalConfig);
 }
-
-export { MinimaxPlayer, MCTSPlayer };
