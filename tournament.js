@@ -32,53 +32,33 @@ class TournamentManager {
 
     initializeUI() {
         const aiSelection = document.getElementById('ai-selection');
-        const settingsDiv = document.createElement('div');
-        settingsDiv.className = 'ai-settings';
-        settingsDiv.innerHTML = '<h3>AI Settings</h3>';
-
-        // First create all checkboxes
         Object.entries(AI_PLAYERS).forEach(([id, ai]) => {
             const div = document.createElement('div');
             div.className = 'checkbox-item';
+            const needsThinkingTime = ai.class.prototype instanceof MinimaxPlayer ||
+                ai.class.prototype instanceof MCTSPlayer;
+
             div.innerHTML = `
                 <div class="ai-select-row">
                     <input type="checkbox" id="${id}" name="ai-select" value="${id}" 
                         ${this.isDefaultAI(id) ? 'checked' : ''}>
-                    <label for="${id}">${ai.name}</label>
+                    <label for="${id}" style="white-space: normal;">${ai.name}</label>
+                    ${needsThinkingTime ? `
+                        <div class="thinking-time-container">
+                            <input type="number" 
+                                id="${id}-thinking-time" 
+                                class="thinking-time-input" 
+                                value="1.0" 
+                                min="0.1" 
+                                max="60.0" 
+                                step="0.1">
+                            <label>sec</label>
+                        </div>
+                    ` : ''}
                 </div>
             `;
             aiSelection.appendChild(div);
-
-            // Check if this AI needs thinking time
-            const needsThinkingTime = id.startsWith('minimax') || id.startsWith('mcts');
-            console.log('AI Config:', {
-                id,
-                name: ai.name,
-                needsThinkingTime
-            });
-
-            if (needsThinkingTime) {
-                const settingRow = document.createElement('div');
-                settingRow.className = 'ai-setting-row';
-                settingRow.innerHTML = `
-                    <label>${ai.name} thinking time:</label>
-                    <div class="setting-input">
-                        <input type="number" 
-                            id="${id}-thinking-time" 
-                            class="thinking-time-input" 
-                            value="1.0" 
-                            min="0.1" 
-                            max="60.0" 
-                            step="0.1">
-                        <span>sec</span>
-                    </div>
-                `;
-                settingsDiv.appendChild(settingRow);
-            }
         });
-
-        // Add settings section after the AI selection
-        aiSelection.appendChild(settingsDiv);
     }
 
     initializeFirstConfig() {
@@ -453,14 +433,6 @@ class TournamentManager {
             return;
         }
 
-        // Helper function to get board layout
-        const getLayout = (boardId) => {
-            if (boardId.startsWith('custom_')) {
-                return this.customBoards.get(boardId);
-            }
-            return BOARD_LAYOUTS[boardId];
-        };
-
         // Collect and validate AI configurations
         this.aiConfigs.clear();
         for (const aiId of this.selectedAIs) {
@@ -495,33 +467,18 @@ class TournamentManager {
 
         // Collect tournament configurations
         this.tournamentConfigs = Array.from(configs)
-            .map(config => {
-                const configFromElement = this.getConfigFromElement(config);
-                return {
-                    ...configFromElement,
-                    aiConfigs: Object.fromEntries(this.aiConfigs)  // Convert Map to plain object
-                };
-            });
+            .map(config => ({
+                ...this.getConfigFromElement(config),
+                aiConfigs: Object.fromEntries(this.aiConfigs)
+            }));
 
         if (this.tournamentConfigs.length === 0) {
             alert('Please add at least one board configuration');
             return;
         }
 
-        const config = this.tournamentConfigs[0];
-        // Set up the first board configuration with AI configs
-        this.boardConfigs = [{
-            board1Layout: getLayout(config.board1).grid,
-            board2Layout: getLayout(config.board2).grid,
-            startingConfig: config.startingConfig,
-            board1Id: config.board1,
-            board2Id: config.board2,
-            board1Name: getLayout(config.board1).name,
-            board2Name: getLayout(config.board2).name,
-            isCustomBoard1: config.board1.startsWith('custom_'),
-            isCustomBoard2: config.board2.startsWith('custom_'),
-            aiConfigs: Object.fromEntries(this.aiConfigs)  // Add AI configs
-        }];
+        // Set up the first board configuration
+        this.boardConfigs = [this.tournamentConfigs[0]];
 
         this.setConfigurationEditingEnabled(false);
         this.gamesPerMatchup = parseInt(document.getElementById('games-per-matchup').value);
@@ -600,8 +557,7 @@ class TournamentManager {
             board1Name: getLayout(config.board1).name,
             board2Name: getLayout(config.board2).name,
             isCustomBoard1: config.board1.startsWith('custom_'),
-            isCustomBoard2: config.board2.startsWith('custom_'),
-            aiConfigs: Object.fromEntries(this.aiConfigs)  // Add AI configs
+            isCustomBoard2: config.board2.startsWith('custom_')
         }];
 
         try {
@@ -612,93 +568,75 @@ class TournamentManager {
             this.gamesCompleted = 0;
             this.startTime = Date.now();
 
-            // Initialize match counts
-            this.matchCounts.clear();
             this.matchups.forEach(matchup => {
                 this.matchCounts.set(`${matchup.black}-${matchup.white}`, 0);
             });
 
             const parallelGames = parseInt(document.getElementById('parallel-games').value);
             const workerCount = Math.min(parallelGames, navigator.hardwareConcurrency || 4);
-
-            // Create workers
             this.workers = Array(workerCount).fill(null).map(() => {
                 const worker = new Worker(new URL('./tournament-worker.js', import.meta.url), { type: 'module' });
                 worker.onmessage = (e) => this.handleWorkerMessage(e);
-                worker.busy = false;  // Initialize worker as not busy
                 return worker;
             });
 
             this.updateTournamentProgress();
 
-            // Start initial batch of games
-            let gamesStarted = 0;
-            while (gamesStarted < workerCount && this.startNextGame()) {
-                gamesStarted++;
-            }
-
-            if (gamesStarted === 0) {
-                throw new Error('Failed to start any games');
-            }
-
+            this.workers.forEach(() => this.startNextGame());
         } catch (error) {
             console.error('Error starting tournament:', error);
             this.handleTournamentError('Failed to start tournament');
         }
     }
 
+    handleTournamentError(message) {
+        const currentCard = this.tournamentCards.get(this.currentConfigIndex);
+        if (currentCard) {
+            const status = currentCard.querySelector('.tournament-card-status');
+            if (status) {
+                status.textContent = 'Error';
+                status.className = 'tournament-card-status error';
+            }
+        }
+
+        const notification = document.createElement('div');
+        notification.className = 'tournament-notification error';
+        notification.textContent = message;
+        document.querySelector('.progress-panel').prepend(notification);
+        setTimeout(() => notification.remove(), 5000);
+    }
+
     startNextGame() {
-        // If we've completed all matches, return false
-        if (this.currentMatchIndex >= this.matchups.length) {
-            return false;
-        }
+        while (this.currentMatchIndex < this.matchups.length) {
+            const matchup = this.matchups[this.currentMatchIndex];
+            const matchKey = `${matchup.black}-${matchup.white}`;
+            const gamesPlayed = this.matchCounts.get(matchKey);
 
-        // Find an available worker
-        const worker = this.workers.find(w => !w.busy);
-        if (!worker) {
-            return false;
-        }
-
-        // Get current matchup
-        const matchup = this.matchups[this.currentMatchIndex];
-        const matchKey = `${matchup.black}-${matchup.white}`;
-        const gamesPlayed = this.matchCounts.get(matchKey);
-
-        // If we've played enough games for this matchup, move to next matchup
-        if (gamesPlayed >= this.gamesPerMatchup) {
-            this.currentMatchIndex++;
-            return this.startNextGame();  // Recursively try next matchup
-        }
-
-        // Configure and start the game
-        const boardConfig = this.boardConfigs[0];
-        const gameConfig = {
-            matchup,
-            boardConfig: {
-                ...boardConfig,
-                aiConfigs: {
-                    [matchup.black]: { ...this.aiConfigs.get(matchup.black) },
-                    [matchup.white]: { ...this.aiConfigs.get(matchup.white) }
-                }
-            },
-            matchIndex: this.currentMatchIndex,
-            aiPlayers: Object.fromEntries(
-                Object.entries(AI_PLAYERS).map(([id, config]) => [
-                    id,
-                    {
-                        id: config.id,
-                        name: config.name,
-                        config: { ...config.config }
+            if (gamesPlayed < this.gamesPerMatchup) {
+                const boardConfig = this.boardConfigs[0];
+                const gameConfig = {
+                    matchup,
+                    boardConfig,
+                    matchIndex: this.currentMatchIndex,
+                    aiConfigs: {
+                        [matchup.black]: this.aiConfigs.get(matchup.black),
+                        [matchup.white]: this.aiConfigs.get(matchup.white)
                     }
-                ])
-            )
-        };
+                };
 
-        // Start the game
-        worker.busy = true;
-        worker.postMessage(gameConfig);
-        this.matchCounts.set(matchKey, gamesPlayed + 1);
-        return true;
+                const worker = this.workers.find(w => !w.busy);
+                if (worker) {
+                    worker.busy = true;
+                    worker.postMessage(gameConfig);
+                    this.matchCounts.set(matchKey, gamesPlayed + 1);
+                    return true;
+                }
+                return false;
+            }
+
+            this.currentMatchIndex++;
+        }
+        return false;
     }
 
     async handleWorkerMessage(e) {
@@ -706,40 +644,31 @@ class TournamentManager {
         this.gamesCompleted++;
 
         try {
-            // Create a copy of the result with the correct AI configs
-            const resultWithConfigs = {
-                ...result,
-                config: {
-                    ...result.config,
-                    aiConfigs: {
-                        [matchup.black]: this.aiConfigs.get(matchup.black) || {},
-                        [matchup.white]: this.aiConfigs.get(matchup.white) || {}
-                    }
-                }
-            };
-
             await this.storage.addGameResult({
                 matchup,
-                result: resultWithConfigs
+                result: {
+                    winner: result.winner,
+                    blackScore: result.blackScore,
+                    whiteScore: result.whiteScore,
+                    history: result.history
+                }
             });
 
             this.updateTournamentProgress();
 
-            // Mark worker as available
             const worker = e.target;
             worker.busy = false;
 
-            // Try to start next game
-            this.startNextGame();
-
             // Check if this was the actual last game and tournament isn't already completing
             if (this.gamesCompleted === this.totalGames && !this.isCompletingTournament) {
-                this.isCompletingTournament = true;
+                this.isCompletingTournament = true; // Add flag to prevent multiple completions
                 try {
                     await this.tournamentComplete();
                 } finally {
                     this.isCompletingTournament = false;
                 }
+            } else {
+                this.startNextGame();
             }
         } catch (error) {
             console.error('Error handling worker message:', error);
@@ -803,23 +732,6 @@ class TournamentManager {
             this.handleTournamentError('Error completing tournament');
             this.isCompletingTournament = false; // Reset flag on error
         }
-    }
-
-    handleTournamentError(message) {
-        const currentCard = this.tournamentCards.get(this.currentConfigIndex);
-        if (currentCard) {
-            const status = currentCard.querySelector('.tournament-card-status');
-            if (status) {
-                status.textContent = 'Error';
-                status.className = 'tournament-card-status error';
-            }
-        }
-
-        const notification = document.createElement('div');
-        notification.className = 'tournament-notification error';
-        notification.textContent = message;
-        document.querySelector('.progress-panel').prepend(notification);
-        setTimeout(() => notification.remove(), 5000);
     }
 }
 

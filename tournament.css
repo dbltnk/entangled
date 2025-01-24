@@ -64,15 +64,20 @@
 }
 
 .checkbox-grid {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
     gap: var(--spacing-sm);
 }
 
 .checkbox-item {
     display: flex;
     align-items: center;
-    padding: var(--spacing-xs);
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+    font-size: 0.9em;
     background: var(--color-white);
 }
 
@@ -901,30 +906,22 @@
 .ai-select-row {
     display: flex;
     align-items: center;
-    gap: var(--spacing-sm);
-}
-
-.ai-select-row input[type="checkbox"] {
-    margin-right: var(--spacing-sm);
-}
-
-.ai-select-row label {
-    flex: 1;
+    gap: 0.5rem;
+    padding: 0.25rem;
 }
 
 .thinking-time-container {
     display: flex;
     align-items: center;
-    gap: var(--spacing-xs);
+    gap: 0.25rem;
     margin-left: auto;
 }
 
 .thinking-time-input {
-    width: 60px;
-    padding: var(--spacing-xs);
+    width: 4rem;
+    padding: 0.25rem;
     border: 1px solid var(--color-border);
-    border-radius: var(--border-radius-sm);
-    text-align: right;
+    border-radius: var(--border-radius);
 }
 
 .swap-rule-row {
@@ -943,67 +940,4 @@
 
 .superposition-config {
     font-family: monospace;
-}
-
-.ai-settings {
-    margin-top: var(--spacing-lg);
-    padding: var(--spacing-md);
-    background: var(--color-background);
-    border-radius: var(--border-radius);
-}
-
-.ai-settings h3 {
-    margin-bottom: var(--spacing-md);
-    font-size: var(--font-size-base);
-    font-weight: 600;
-    color: var(--color-text);
-}
-
-.ai-setting-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: var(--spacing-sm);
-    background: var(--color-white);
-    border: 1px solid var(--color-border);
-    border-radius: var(--border-radius-sm);
-    margin-bottom: var(--spacing-sm);
-}
-
-.ai-setting-row label {
-    font-size: var(--font-size-base);
-    color: var(--color-text);
-}
-
-.setting-input {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-xs);
-}
-
-.thinking-time-input {
-    width: 60px;
-    padding: var(--spacing-xs);
-    border: 1px solid var(--color-border);
-    border-radius: var(--border-radius-sm);
-    text-align: right;
-}
-
-/* Simplify the checkbox items */
-.checkbox-item {
-    padding: var(--spacing-xs);
-}
-
-.ai-select-row {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-sm);
-}
-
-.ai-select-row input[type="checkbox"] {
-    margin-right: var(--spacing-sm);
-}
-
-.ai-select-row label {
-    flex: 1;
 }
