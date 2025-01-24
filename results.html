@@ -49,6 +49,10 @@
         .setup-panel {
             overflow-y: auto;
         }
+
+        .superposition-info {
+            padding-bottom: 0.25rem;
+        }
     </style>
 </head>
 
@@ -75,6 +79,11 @@
                 <div class="setup-row">
                     <label>Starting Position:</label>
                     <input type="text" id="filter-starting" class="filter-input" placeholder="e.g., WB1,WB2">
+                </div>
+                <div class="setup-row">
+                    <label>Superposition:</label>
+                    <input type="text" id="filter-superposition" class="filter-input"
+                        placeholder="e.g., A,B,C or rng,rng">
                 </div>
             </div>
             <div id="tournament-list" class="tournament-list">

@@ -118,6 +118,7 @@ class ResultsViewer {
         const board1Filter = document.getElementById('filter-board1').value;
         const board2Filter = document.getElementById('filter-board2').value;
         const startingFilter = document.getElementById('filter-starting').value.trim();
+        const superpositionFilter = document.getElementById('filter-superposition').value.trim();
 
         const tournamentList = document.getElementById('tournament-list');
         tournamentList.innerHTML = '';
@@ -126,20 +127,24 @@ class ResultsViewer {
             const board1 = tournament.metadata.boards.board1;
             const board2 = tournament.metadata.boards.board2;
             const starting = tournament.metadata.startingConfig;
+            const superposition = tournament.metadata.superpositionConfig;
 
-            if (board1Filter && board1.id !== board1Filter) return;
-            if (board2Filter && board2.id !== board2Filter) return;
-            if (startingFilter && starting !== startingFilter) return;
+            const board1Match = !board1Filter || board1.id === board1Filter;
+            const board2Match = !board2Filter || board2.id === board2Filter;
+            const startingMatch = !startingFilter || starting === startingFilter;
+            const superpositionMatch = !superpositionFilter || superposition === superpositionFilter;
 
-            const item = document.createElement('div');
-            item.className = 'tournament-item';
-            if (this.currentTournament && this.currentTournament.metadata.runId === tournament.metadata.runId) {
-                item.classList.add('selected');
+            if (board1Match && board2Match && startingMatch && superpositionMatch) {
+                const item = document.createElement('div');
+                item.className = 'tournament-item';
+                if (this.currentTournament && this.currentTournament.metadata.runId === tournament.metadata.runId) {
+                    item.classList.add('selected');
+                }
+
+                item.innerHTML = this.createTournamentItemHTML(tournament);
+                item.addEventListener('click', () => this.selectTournament(tournament));
+                tournamentList.appendChild(item);
             }
-
-            item.innerHTML = this.createTournamentItemHTML(tournament);
-            item.addEventListener('click', () => this.selectTournament(tournament));
-            tournamentList.appendChild(item);
         });
     }
 
@@ -342,12 +347,13 @@ class ResultsViewer {
         const board2Name = board2.name || (BOARD_LAYOUTS[board2]?.name || 'Unknown');
         const board1Custom = board1.isCustom ? ' (Custom)' : '';
         const board2Custom = board2.isCustom ? ' (Custom)' : '';
+        const superpositionConfig = data.metadata.superpositionConfig || 'empty';
 
         return `
             <div class="tournament-header">
                 <div class="tournament-id">Tournament: ${data.metadata.runId}</div>
                 <div class="tournament-date">${formattedDate}</div>
-            </div>
+                </div>
             <div class="board-info">
                 <div class="board-row">
                     <span class="board-label">Left:</span>
@@ -361,6 +367,10 @@ class ResultsViewer {
                     <span class="board-label">Start:</span>
                     <span class="board-value">${data.metadata.startingConfig || 'None'}</span>
                 </div>
+            </div>
+            <div class="superposition-info">
+                <span class="superposition-label">Superposition:</span>
+                <span class="superposition-value">${superpositionConfig}</span>
             </div>
             <div class="result-info">
                 <span class="result-label">Result:</span>
@@ -494,6 +504,7 @@ class ResultsViewer {
         document.getElementById('filter-board1').addEventListener('change', () => this.applyFilters());
         document.getElementById('filter-board2').addEventListener('change', () => this.applyFilters());
         document.getElementById('filter-starting').addEventListener('input', () => this.applyFilters());
+        document.getElementById('filter-superposition').addEventListener('input', () => this.applyFilters());
 
         document.getElementById('load-directory').addEventListener('click', () => this.initializeDirectoryAccess());
         document.getElementById('load-web').addEventListener('click', () => this.loadTournamentsFromWeb());
