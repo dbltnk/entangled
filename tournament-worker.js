@@ -2,23 +2,18 @@ import { EntangledGame, PLAYERS } from './gameplay.js';
 import { createPlayer } from './players.js';
 
 self.onmessage = function (e) {
-    const { matchup, boardConfig, matchIndex, aiConfigs } = e.data;
+    const { matchup, boardConfig, matchIndex } = e.data;
 
-    // Create game instance with all configuration options
+    // Create game instance
     const game = new EntangledGame(
         boardConfig.board1Layout,
         boardConfig.board2Layout,
-        boardConfig.startingConfig,
-        boardConfig.superpositionConfig,
-        boardConfig.swapRuleEnabled
+        boardConfig.startingConfig
     );
 
-    // Create players with their specific configurations
-    const blackConfig = aiConfigs[matchup.black];
-    const whiteConfig = aiConfigs[matchup.white];
-
-    const blackPlayer = createPlayer(matchup.black, game, PLAYERS.BLACK, blackConfig);
-    const whitePlayer = createPlayer(matchup.white, game, PLAYERS.WHITE, whiteConfig);
+    // Create players
+    const blackPlayer = createPlayer(matchup.black, game, PLAYERS.BLACK);
+    const whitePlayer = createPlayer(matchup.white, game, PLAYERS.WHITE);
 
     // Track game history
     const history = [];
@@ -33,9 +28,7 @@ self.onmessage = function (e) {
             whiteScore: game.getScore(PLAYERS.WHITE),
             largestClusters: state.largestClusters,
             board1Layout: boardConfig.board1Layout,
-            board2Layout: boardConfig.board2Layout,
-            swapAvailable: game.isSwapAvailable(),
-            superpositionState: game.getSuperpositionState()
+            board2Layout: boardConfig.board2Layout
         });
     };
 
@@ -48,15 +41,6 @@ self.onmessage = function (e) {
         const player = currentPlayer === PLAYERS.BLACK ? blackPlayer : whitePlayer;
 
         try {
-            // Handle swap decision first
-            if (game.isSwapAvailable() && currentPlayer === PLAYERS.WHITE) {
-                if (player.shouldSwap()) {
-                    game.swapFirstMove();
-                    recordState();
-                    continue;
-                }
-            }
-
             const move = player.chooseMove();
             if (move) {
                 game.makeMove(move);
@@ -82,16 +66,8 @@ self.onmessage = function (e) {
             blackScore: endStats.scores.black,
             whiteScore: endStats.scores.white,
             history,
-            tiebreaker: endStats.tiebreaker,
-            clusters: endStats.clusters,
-            config: {
-                swapRuleEnabled: boardConfig.swapRuleEnabled,
-                superpositionConfig: boardConfig.superpositionConfig,
-                aiConfigs: {
-                    [matchup.black]: blackConfig,
-                    [matchup.white]: whiteConfig
-                }
-            }
+            tiebreaker: endStats.tiebreaker,  // Add full tiebreaker data
+            clusters: endStats.clusters       // Add all cluster sizes
         }
     });
 };

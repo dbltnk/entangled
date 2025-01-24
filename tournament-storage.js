@@ -55,10 +55,7 @@ class TournamentStorage {
                 ais: selectedAIs,
                 board1: board1Info,
                 board2: board2Info,
-                startingConfig: config.startingConfig,
-                superpositionConfig: config.superpositionConfig,
-                swapRuleEnabled: config.swapRuleEnabled,
-                aiConfigs: config.aiConfigs || {}
+                startingConfig: config.startingConfig || 'empty'
             });
             const runId = await this.hashString(configString);
 
@@ -71,9 +68,6 @@ class TournamentStorage {
                     board2: board2Info
                 },
                 startingConfig: config.startingConfig || 'empty',
-                superpositionConfig: config.superpositionConfig,
-                swapRuleEnabled: config.swapRuleEnabled,
-                aiConfigs: config.aiConfigs || {},
                 totalGames: this.calculateTotalGames(selectedAIs)
             };
 
@@ -136,32 +130,15 @@ class TournamentStorage {
         }
 
         const result = this.stats.results[matchupKey];
-        const gameHistory = gameData.result.history;
-        const enhancedMoves = [];
-
-        for (let i = 1; i < gameHistory.length; i++) {
-            const state = gameHistory[i];
-            if (state.move === 'SWAP') {
-                enhancedMoves.push({ type: 'swap' });
-            } else {
-                enhancedMoves.push({
-                    type: 'move',
-                    move: state.move
-                });
-            }
-        }
+        const moves = gameData.result.history.slice(1).map(state => state.move);
 
         result.games.push({
             winner: gameData.result.winner === 'TIE' ? 'draw' : gameData.result.winner.toLowerCase(),
             black: gameData.result.blackScore,
             white: gameData.result.whiteScore,
-            moves: enhancedMoves,
-            tiebreaker: gameData.result.tiebreaker,
-            clusters: gameData.result.clusters,
-            config: {
-                ...gameData.result.config,
-                superpositionCollapse: undefined
-            }
+            moves: moves,
+            tiebreaker: gameData.result.tiebreaker,  // Add tiebreaker data
+            clusters: gameData.result.clusters       // Add cluster data
         });
     }
 
