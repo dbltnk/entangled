@@ -8,8 +8,12 @@ self.onmessage = function (e) {
     const game = new EntangledGame(
         boardConfig.board1Layout,
         boardConfig.board2Layout,
-        boardConfig.startingConfig
+        boardConfig.startingConfig,
+        boardConfig.superpositionConfig
     );
+
+    // Track superposition stones from game creation
+    const superpositionStones = Array.from(game.superpositionStones.keys());
 
     // Create players
     const blackPlayer = createPlayer(matchup.black, game, PLAYERS.BLACK);
@@ -66,8 +70,12 @@ self.onmessage = function (e) {
             blackScore: endStats.scores.black,
             whiteScore: endStats.scores.white,
             history,
-            tiebreaker: endStats.tiebreaker,  // Add full tiebreaker data
-            clusters: endStats.clusters       // Add all cluster sizes
+            tiebreaker: endStats.tiebreaker,
+            clusters: endStats.clusters,
+            superposition: {
+                config: boardConfig.superpositionConfig,
+                stones: superpositionStones
+            }
         }
     });
 };
