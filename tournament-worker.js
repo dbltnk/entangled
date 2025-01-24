@@ -1,27 +1,8 @@
 import { EntangledGame, PLAYERS } from './gameplay.js';
-import { createPlayer, DeterministicPlayer, RandomPlayer, GreedyPlayer, DefensivePlayer, MinimaxPlayer, MCTSPlayer } from './players.js';
-
-// Map of strategy IDs to their class implementations
-const PLAYER_CLASSES = {
-    'deterministic': DeterministicPlayer,
-    'random': RandomPlayer,
-    'greedy': GreedyPlayer,
-    'greedy-some-rng': GreedyPlayer,
-    'defensive': DefensivePlayer,
-    'defensive-some-rng': DefensivePlayer,
-    'minimax': MinimaxPlayer,
-    'minimax-some-rng': MinimaxPlayer,
-    'mcts': MCTSPlayer
-};
-
-// Log imports to check what we're getting
-console.log('Worker imports:', { createPlayer, PLAYER_CLASSES });
+import { createPlayer } from './players.js';
 
 self.onmessage = function (e) {
-    const { matchup, boardConfig, matchIndex, aiPlayers } = e.data;
-
-    // Log received data
-    console.log('Worker received:', { matchup, aiPlayers });
+    const { matchup, boardConfig, matchIndex, aiConfigs } = e.data;
 
     // Create game instance with all configuration options
     const game = new EntangledGame(
@@ -32,42 +13,15 @@ self.onmessage = function (e) {
         boardConfig.swapRuleEnabled
     );
 
-    // Validate AI configurations are available
-    if (!aiPlayers) {
-        throw new Error('aiPlayers is not defined in worker message');
-    }
-
-    // Validate matchup players exist
-    if (!aiPlayers[matchup.black]) {
-        throw new Error(`Black player strategy '${matchup.black}' not found in aiPlayers`);
-    }
-    if (!aiPlayers[matchup.white]) {
-        throw new Error(`White player strategy '${matchup.white}' not found in aiPlayers`);
-    }
-
     // Create players with their specific configurations
-    // Use provided aiConfigs if available, otherwise use default config from aiPlayers
-    const blackConfig = {
-        ...aiPlayers[matchup.black].config,
-        ...(boardConfig.aiConfigs[matchup.black] || {})
-    };
-    const whiteConfig = {
-        ...aiPlayers[matchup.white].config,
-        ...(boardConfig.aiConfigs[matchup.white] || {})
-    };
+    const blackConfig = aiConfigs[matchup.black];
+    const whiteConfig = aiConfigs[matchup.white];
 
-    console.log('Player configs:', {
-        black: { strategy: matchup.black, config: blackConfig },
-        white: { strategy: matchup.white, config: whiteConfig }
-    });
-
-    // Create players using the PLAYER_CLASSES map
-    const blackPlayer = new PLAYER_CLASSES[matchup.black](game, PLAYERS.BLACK, blackConfig);
-    const whitePlayer = new PLAYER_CLASSES[matchup.white](game, PLAYERS.WHITE, whiteConfig);
+    const blackPlayer = createPlayer(matchup.black, game, PLAYERS.BLACK, blackConfig);
+    const whitePlayer = createPlayer(matchup.white, game, PLAYERS.WHITE, whiteConfig);
 
     // Track game history
     const history = [];
-    let swapOccurred = false;  // Track if a swap happened
     const recordState = () => {
         const state = game.getGameState();
         history.push({
@@ -81,12 +35,7 @@ self.onmessage = function (e) {
             board1Layout: boardConfig.board1Layout,
             board2Layout: boardConfig.board2Layout,
             swapAvailable: game.isSwapAvailable(),
-            superpositionState: game.getSuperpositionState(),
-            ...(history.length === 0 && {
-                startingConfig: boardConfig.startingConfig,
-                superpositionConfig: boardConfig.superpositionConfig,
-                swapRuleEnabled: boardConfig.swapRuleEnabled
-            })
+            superpositionState: game.getSuperpositionState()
         });
     };
 
@@ -103,7 +52,6 @@ self.onmessage = function (e) {
             if (game.isSwapAvailable() && currentPlayer === PLAYERS.WHITE) {
                 if (player.shouldSwap()) {
                     game.swapFirstMove();
-                    swapOccurred = true;  // Mark that a swap happened
                     recordState();
                     continue;
                 }
@@ -136,7 +84,6 @@ self.onmessage = function (e) {
             history,
             tiebreaker: endStats.tiebreaker,
             clusters: endStats.clusters,
-            swapOccurred,  // Include in result
             config: {
                 swapRuleEnabled: boardConfig.swapRuleEnabled,
                 superpositionConfig: boardConfig.superpositionConfig,
