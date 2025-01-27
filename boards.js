@@ -481,6 +481,18 @@ const BOARD_LAYOUTS = {
             ['.', '.', 'S', 'W', 'L', '.', '.'],
         ]
     },
+    board220120251955: {
+        name: "evolved 8.1",
+        grid: [git
+        ['.', '.', '1', 'K', '4', '.', '.'],
+        ['.', 'M', 'U', 'B', 'V', 'Z', '.'],
+        ['R', '9', 'I', '2', 'H', 'D', '6'],
+        ['5', 'E', 'O', '.', '3', '8', 'G'],
+        ['T', 'J', 'A', '0', 'P', 'F', 'Q'],
+        ['.', 'X', '7', 'N', 'C', 'Y', '.'],
+        ['.', '.', 'S', 'W', 'L', '.', '.'],
+        ]
+    },
     board1828771697only: {
         name: "pathfind evo",
         grid: [
@@ -517,6 +529,7 @@ const BOARD_LAYOUTS = {
             ['.', '.', 'K', '1', 'G', '.', '.'],
         ]
     },
+
     centeredRandom7x7: {
         name: "Centered Random (7x7)",
         board: new CenteredRandomBoard(7, 'Y'),
