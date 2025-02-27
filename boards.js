@@ -73,6 +73,7 @@ class CenteredRandomBoard {
 const BOARD_LAYOUTS = {
     board1: {
         name: "Top left to bottom right (5x5)",
+        type: "rect",
         grid: [
             ['A', 'B', 'C', 'D', 'E'],
             ['F', 'G', 'H', 'I', 'J'],
@@ -83,6 +84,7 @@ const BOARD_LAYOUTS = {
     },
     board2: {
         name: "Knight's Jump (5x5)",
+        type: "rect",
         grid: [
             ['Y', 'C', 'F', 'N', 'Q'],
             ['K', 'S', 'V', 'E', 'H'],
@@ -93,6 +95,7 @@ const BOARD_LAYOUTS = {
     },
     board3: {
         name: "Ali 24/11/2024 (5x5)",
+        type: "rect",
         grid: [
             ['L', 'W', 'I', 'T', 'A'],
             ['D', 'O', 'U', 'G', 'R'],
@@ -103,6 +106,7 @@ const BOARD_LAYOUTS = {
     },
     board4: {
         name: "asymmetric (5x5)",
+        type: "rect",
         grid: [
             ['P', 'Y', 'N', 'C', 'G'],
             ['D', 'H', 'Q', 'U', 'O'],
@@ -113,6 +117,7 @@ const BOARD_LAYOUTS = {
     },
     board7: {
         name: "asymmetric 2",
+        type: "rect",
         grid: [
             ['M', 'V', 'F', 'T', 'D'],
             ['J', 'S', 'C', 'L', 'U'],
@@ -123,6 +128,7 @@ const BOARD_LAYOUTS = {
     },
     board8: {
         name: "asymmetric 3",
+        type: "rect",
         grid: [
             ['M', 'V', 'P', 'J', 'D'],
             ['T', 'I', 'C', 'L', 'U'],
@@ -133,6 +139,7 @@ const BOARD_LAYOUTS = {
     },
     board9: {
         name: "asymmetric 4",
+        type: "rect",
         grid: [
             ['M', 'X', 'F', 'T', 'B'],
             ['J', 'Q', 'C', 'N', 'U'],
@@ -143,6 +150,7 @@ const BOARD_LAYOUTS = {
     },
     board10: {
         name: "asymmetric 5",
+        type: "rect",
         grid: [
             ['S', 'C', 'L', 'U', 'J'],
             ['K', 'Y', 'I', 'R', 'B'],
@@ -153,6 +161,7 @@ const BOARD_LAYOUTS = {
     },
     board11: {
         name: "asymmetric 6",
+        type: "rect",
         grid: [
             ['I', 'C', 'L', 'U', 'T'],
             ['K', 'Y', 'S', 'H', 'B'],
@@ -163,6 +172,7 @@ const BOARD_LAYOUTS = {
     },
     board12: {
         name: "asymmetric 7",
+        type: "rect",
         grid: [
             ['Q', 'C', 'N', 'U', 'J'],
             ['K', 'Y', 'G', 'R', 'D'],
@@ -173,6 +183,7 @@ const BOARD_LAYOUTS = {
     },
     board20: {
         name: "b+w initial stones 5",
+        type: "rect",
         grid: [
             ['H', 'O', 'S', 'U', 'B'],
             ['P', 'V', 'C', 'J', 'N'],
@@ -183,6 +194,7 @@ const BOARD_LAYOUTS = {
     },
     board21: {
         name: "b+w initial stones 6",
+        type: "rect",
         grid: [
             ['H', 'L', 'T', 'U', 'D'],
             ['P', 'X', 'C', 'G', 'O'],
@@ -193,6 +205,7 @@ const BOARD_LAYOUTS = {
     },
     board3893435730left: {
         name: "evolved left",
+        type: "rect",
         grid: [
             ['G', 'B', 'H', 'O', 'U'],
             ['P', 'D', 'X', 'F', 'C'],
@@ -203,6 +216,7 @@ const BOARD_LAYOUTS = {
     },
     board3893435730right: {
         name: "evolved right",
+        type: "rect",
         grid: [
             ['F', 'D', 'J', 'T', 'L'],
             ['S', 'I', 'C', 'B', 'K'],
@@ -213,6 +227,7 @@ const BOARD_LAYOUTS = {
     },
     board4047117779right: {
         name: "evolved to match A-Z",
+        type: "rect",
         grid: [
             ['S', 'H', 'C', 'K', 'G'],
             ['I', 'E', 'J', 'X', 'B'],
@@ -223,6 +238,7 @@ const BOARD_LAYOUTS = {
     },
     board23: {
         name: "asymmetric +Z 1",
+        type: "rect",
         grid: [
             ['Y', 'V', 'I', 'E', 'P'],
             ['J', 'A', 'R', 'L', 'X'],
@@ -233,6 +249,7 @@ const BOARD_LAYOUTS = {
     },
     board24: {
         name: "asymmetric +Z 2",
+        type: "rect",
         grid: [
             ['G', 'V', 'I', 'E', 'P'],
             ['J', 'A', 'R', 'L', 'X'],
@@ -243,6 +260,7 @@ const BOARD_LAYOUTS = {
     },
     board25: {
         name: "asymmetric +Z 3",
+        type: "rect",
         grid: [
             ['J', 'A', 'N', 'W', 'Q'],
             ['P', 'R', 'G', 'E', 'K'],
@@ -253,6 +271,7 @@ const BOARD_LAYOUTS = {
     },
     board4x4: {
         name: "Top left to bottom right (4x4)",
+        type: "rect",
         grid: [
             ['A', 'B', 'C', 'D'],
             ['E', 'F', 'G', 'H'],
@@ -262,6 +281,7 @@ const BOARD_LAYOUTS = {
     },
     board6x6: {
         name: "Top left to bottom right (6x6)",
+        type: "rect",
         grid: [
             ['A', 'B', 'C', 'D', 'E', 'F'],
             ['G', 'H', 'I', 'J', 'K', 'L'],
@@ -273,6 +293,7 @@ const BOARD_LAYOUTS = {
     },
     minidonutleft: {
         name: "mini donut A-Z",
+        type: "rect",
         grid: [
             ['.', '.', 'A', 'B', '.', '.'],
             ['.', 'C', 'D', 'E', 'F', '.'],
@@ -284,6 +305,7 @@ const BOARD_LAYOUTS = {
     },
     board3072731079only: {
         name: "mini donut right proximity",
+        type: "rect",
         grid: [
             ['.', '.', 'A', 'E', '.', '.'],
             ['.', 'V', 'S', 'H', 'T', '.'],
@@ -295,6 +317,7 @@ const BOARD_LAYOUTS = {
     },
     board3747648197only: {
         name: "mini donut evo righ",
+        type: "rect",
         grid: [
             ['.', '.', 'I', 'B', '.', '.'],
             ['.', 'M', 'E', 'H', 'S', '.'],
@@ -306,6 +329,7 @@ const BOARD_LAYOUTS = {
     },
     board6x5: {
         name: "Top left to bottom right (6x5)",
+        type: "rect",
         grid: [
             ['A', 'B', 'C', 'D', 'E', 'F'],
             ['G', 'H', 'I', 'J', 'K', 'L'],
@@ -317,6 +341,7 @@ const BOARD_LAYOUTS = {
     },
     board6x4: {
         name: "Top left to bottom right (6x4)",
+        type: "rect",
         grid: [
             ['.', '.', '.', '.', '.', '.'],
             ['A', 'B', 'C', 'D', 'E', 'F'],
@@ -328,6 +353,7 @@ const BOARD_LAYOUTS = {
     },
     board22: {
         name: "6x6 board 1",
+        type: "rect",
         grid: [
             ['V', 'O', 'J', 'Z', 'D', 'K'],
             ['X', 'S', '6', 'B', '2', 'I'],
@@ -339,6 +365,7 @@ const BOARD_LAYOUTS = {
     },
     board7x7: {
         name: "Top left to bottom right (7x7)",
+        type: "rect",
         grid: [
             ['A', 'B', 'C', 'D', 'E', 'F', 'G'],
             ['H', 'I', 'J', 'K', 'L', 'M', 'N'],
@@ -351,6 +378,7 @@ const BOARD_LAYOUTS = {
     },
     donutleft: {
         name: "Donut, left",
+        type: "rect",
         grid: [
             ['.', '.', 'A', 'B', 'C', '.', '.'],
             ['.', 'D', 'E', 'F', 'G', 'H', '.'],
@@ -363,6 +391,7 @@ const BOARD_LAYOUTS = {
     },
     donutright: {
         name: "Donut, right",
+        type: "rect",
         grid: [
             ['.', '.', 'Y', 'M', 'G', '.', '.'],
             ['.', 'F', '1', 'O', 'I', 'T', '.'],
@@ -375,6 +404,7 @@ const BOARD_LAYOUTS = {
     },
     board2494836417right: {
         name: "evolved to match Donut A-Z",
+        type: "rect",
         grid: [
             ['.', '.', 'F', 'O', '5', '.', '.'],
             ['.', 'X', 'K', 'Q', 'Y', 'P', '.'],
@@ -387,6 +417,7 @@ const BOARD_LAYOUTS = {
     },
     board3568831416only: {
         name: "Proximity donut right",
+        type: "rect",
         grid: [
             ['.', '.', '8', 'W', 'M', '.', '.'],
             ['.', 'U', 'Y', 'E', 'T', '9', '.'],
@@ -399,6 +430,7 @@ const BOARD_LAYOUTS = {
     },
     board1090660186only: {
         name: "evolved second",
+        type: "rect",
         grid: [
             ['.', '.', '7', 'K', '6', '.', '.'],
             ['.', 'M', 'C', 'E', 'V', 'D', '.'],
@@ -411,6 +443,7 @@ const BOARD_LAYOUTS = {
     },
     board160120251804: {
         name: "evolved third",
+        type: "rect",
         grid: [
             ['.', '.', '7', 'K', '6', '.', '.'],
             ['.', 'M', 'C', 'E', 'V', 'Z', '.'],
@@ -423,6 +456,7 @@ const BOARD_LAYOUTS = {
     },
     board170120251254: {
         name: "evolved fifth",
+        type: "rect",
         grid: [
             ['.', '.', '1', 'K', '6', '.', '.'],
             ['.', 'M', 'C', 'E', 'V', 'Z', '.'],
@@ -435,6 +469,7 @@ const BOARD_LAYOUTS = {
     },
     board170120251329: {
         name: "evolved sixth",
+        type: "rect",
         grid: [
             ['.', '.', '1', 'K', '6', '.', '.'],
             ['.', 'M', 'U', 'B', 'V', 'Z', '.'],
@@ -447,6 +482,7 @@ const BOARD_LAYOUTS = {
     },
     board170120251435: {
         name: "evolved seventh",
+        type: "rect",
         grid: [
             ['.', '.', '1', 'K', '4', '.', '.'],
             ['.', 'M', 'U', 'B', 'V', 'Z', '.'],
@@ -459,6 +495,7 @@ const BOARD_LAYOUTS = {
     },
     board170120251455: {
         name: "evolved eighth",
+        type: "rect",
         grid: [
             ['.', '.', '1', 'K', '4', '.', '.'],
             ['.', 'M', 'U', 'B', 'V', 'Z', '.'],
@@ -471,6 +508,7 @@ const BOARD_LAYOUTS = {
     },
     board170120251459: {
         name: "evolved ninth",
+        type: "rect",
         grid: [
             ['.', '.', 'M', 'K', '4', '.', '.'],
             ['.', 'F', 'U', 'B', 'V', 'Z', '.'],
@@ -483,6 +521,7 @@ const BOARD_LAYOUTS = {
     },
     board220120251955: {
         name: "evolved 8.1",
+        type: "rect",
         grid: [
             ['.', '.', '1', 'K', '4', '.', '.'],
             ['.', 'M', 'U', 'B', 'V', 'Z', '.'],
@@ -495,6 +534,7 @@ const BOARD_LAYOUTS = {
     },
     board1828771697only: {
         name: "pathfind evo",
+        type: "rect",
         grid: [
             ['.', '.', 'F', 'L', 'T', '.', '.'],
             ['.', 'H', '5', '7', '8', 'G', '.'],
@@ -507,6 +547,7 @@ const BOARD_LAYOUTS = {
     },
     circleleft: {
         name: "Circle, left",
+        type: "rect",
         grid: [
             ['.', '.', 'A', 'B', 'C', '.', '.'],
             ['.', 'D', 'E', 'F', 'G', 'H', '.'],
@@ -519,6 +560,7 @@ const BOARD_LAYOUTS = {
     },
     board3511490284right: {
         name: "Circle right evolved",
+        type: "rect",
         grid: [
             ['.', '.', '9', 'V', '#', '.', '.'],
             ['.', 'M', 'N', 'W', 'Z', 'D', '.'],
@@ -531,6 +573,7 @@ const BOARD_LAYOUTS = {
     },
     hex_donut_36p_rainbow_left: {
         name: "Hex Donut 36p Rainbow Left",
+        type: "hex",
         grid: [
             ['.', '.', '.', 'A', 'B', 'C', 'D'],
             ['.', '.', 'E', 'F', 'G', 'H', 'I'],
@@ -543,6 +586,7 @@ const BOARD_LAYOUTS = {
     },
     hex_donut_36p_chaos_right: {
         name: "Hex Donut 36p Chaos Right",
+        type: "hex",
         grid: [
             ['.', '.', '.', 'Z', 'M', 'O', 'G'],
             ['.', '.', 'X', 'H', 'S', 'F', 'T'],
@@ -555,6 +599,7 @@ const BOARD_LAYOUTS = {
     },
     centeredRandom7x7: {
         name: "Centered Random (7x7)",
+        type: "rect",
         board: new CenteredRandomBoard(7, 'Y'),
         get grid() {
             return this.board.grid;
@@ -562,24 +607,28 @@ const BOARD_LAYOUTS = {
     },
     random4x4: {
         name: "Random Board (4x4)",
+        type: "rect",
         get grid() {
             return createRandomGrid(4);
         }
     },
     random5x5: {
         name: "Random Board (5x5)",
+        type: "rect",
         get grid() {
             return createRandomGrid(5);
         }
     },
     random6x6: {
         name: "Random Board (6x6)",
+        type: "rect",
         get grid() {
             return createRandomGrid(6);
         }
     },
     random7x7: {
         name: "Random Board (7x7)",
+        type: "rect",
         get grid() {
             return createRandomGrid(7);
         }

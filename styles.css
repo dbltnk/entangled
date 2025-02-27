@@ -885,3 +885,145 @@ button:disabled {
 .toast span {
     font-size: 1.1em;
 }
+
+/* Add hex grid styles after the existing board styles */
+
+/* Board type specific styles */
+.board.hex-grid {
+    --hex-size: 35px;
+    --hex-margin: 2px;
+    padding: 25px;
+    display: grid;
+    grid-template-columns: repeat(10, var(--hex-size));
+    position: relative;
+}
+
+/* Adjust hex size based on board dimensions */
+.board.board-7.hex-grid {
+    --hex-size: 35px;
+}
+
+.board.board-6.hex-grid {
+    --hex-size: 40px;
+}
+
+.board.board-5.hex-grid {
+    --hex-size: 45px;
+}
+
+.board.board-4.hex-grid {
+    --hex-size: 50px;
+}
+
+/* Hex cell styles */
+.hex-cell {
+    width: var(--hex-size);
+    height: calc(var(--hex-size) * 1.732);
+    position: relative;
+    margin: var(--hex-margin);
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    background-color: rgba(0, 0, 0, 0.1);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+/* Adjust positioning for odd rows */
+.hex-row:nth-child(odd) .hex-cell-container {
+    transform: translateX(calc(var(--hex-size) / 2 + var(--hex-margin)));
+}
+
+/* Container for hex cells to handle proper positioning */
+.hex-cell-container {
+    position: relative;
+    width: var(--hex-size);
+    height: calc(var(--hex-size) * 1.732);
+}
+
+/* Hover, highlight and stone styles for hex cells */
+.hex-cell:hover {
+    background-color: rgba(0, 0, 0, 0.2);
+}
+
+.hex-cell.highlighted {
+    background-color: rgba(255, 255, 0, 0.3);
+}
+
+.hex-cell.cell-highlight-black {
+    background-color: rgba(0, 0, 0, 0.15);
+}
+
+.hex-cell.cell-highlight-white {
+    background-color: rgba(255, 255, 255, 0.3);
+}
+
+.hex-cell .cell-letter {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-weight: bold;
+    pointer-events: none;
+    color: #333;
+    font-size: calc(var(--hex-size) * 0.5);
+    z-index: 1;
+}
+
+.hex-cell .cell-icon {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: calc(var(--hex-size) * 0.4);
+    color: rgba(0, 0, 0, 0.5);
+    z-index: 1;
+}
+
+.hex-cell.has-stone .stone {
+    width: 85%;
+    height: 85%;
+    border-radius: 50%;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 2;
+}
+
+.hex-cell.has-stone .cell-letter,
+.hex-cell.has-stone .cell-icon {
+    color: white;
+    z-index: 3;
+}
+
+.hex-cell.has-stone .stone.black {
+    background-color: #000;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+}
+
+.hex-cell.has-stone .stone.white {
+    background-color: #fff;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+}
+
+.hex-cell.has-stone .stone.superposition {
+    background: linear-gradient(135deg, #000 0%, #000 49%, #fff 51%, #fff 100%);
+}
+
+/* Group size positioning for hex cells */
+.hex-cell .group-size {
+    position: absolute;
+    font-size: calc(var(--hex-size) * 0.3);
+    font-weight: bold;
+    color: white;
+    background-color: rgba(0, 0, 0, 0.7);
+    border-radius: 50%;
+    width: calc(var(--hex-size) * 0.45);
+    height: calc(var(--hex-size) * 0.45);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10;
+}

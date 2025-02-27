@@ -9,6 +9,29 @@ const DIRECTIONS = [
     [0, 1]    // right
 ];
 
+// Hex grid directions for pointy-topped hexagons
+// For hex grids, the coordinate system is slightly different:
+// - Even rows: neighbors are at (-1,0), (-1,1), (0,-1), (0,1), (1,0), (1,1)
+// - Odd rows: neighbors are at (-1,-1), (-1,0), (0,-1), (0,1), (1,-1), (1,0)
+const HEX_DIRECTIONS = {
+    even: [
+        [-1, 0],  // northeast
+        [-1, 1],  // northwest
+        [0, -1],  // east
+        [0, 1],   // west
+        [1, 0],   // southeast
+        [1, 1]    // southwest
+    ],
+    odd: [
+        [-1, -1], // northeast
+        [-1, 0],  // northwest
+        [0, -1],  // east
+        [0, 1],   // west
+        [1, -1],  // southeast
+        [1, 0]    // southwest
+    ]
+};
+
 const PLAYERS = {
     BLACK: 'BLACK',
     WHITE: 'WHITE',
@@ -21,12 +44,18 @@ class EntangledGame {
         board2Layout = BOARD_LAYOUTS.board2.grid,
         startingConfig = '',
         superpositionConfig = '',
-        enableSwapRule = true
+        enableSwapRule = true,
+        board1Type = 'rect',
+        board2Type = 'rect'
     ) {
         // Store the symbol layouts and determine board size
         this.board1Layout = board1Layout;
         this.board2Layout = board2Layout;
         this.boardSize = board1Layout.length;
+
+        // Store the board types
+        this.board1Type = board1Type;
+        this.board2Type = board2Type;
 
         // Calculate stones per player excluding dot positions
         this.stonesPerPlayer = this.calculatePlayablePositions() / 2;
@@ -90,10 +119,19 @@ class EntangledGame {
         let bestCell = null;
         let maxScore = -1;
 
-        // First, find the cell with the most connections to other cells in cluster
+        // First, determine which board we're working with
+        const sampleCell = cluster[0];
+        const board = this.board1.some(row => row.includes(PLAYERS.BLACK) || row.includes(PLAYERS.WHITE)) ? this.board1 : this.board2;
+        const boardType = board === this.board1 ? this.board1Type : this.board2Type;
+
+        // Find the cell with the most connections to other cells in cluster
         for (const cell of cluster) {
             let connections = 0;
-            for (const [dRow, dCol] of DIRECTIONS) {
+
+            // Get the appropriate directions based on board type
+            const directions = this.getDirections(boardType, cell.row);
+
+            for (const [dRow, dCol] of directions) {
                 const newRow = cell.row + dRow;
                 const newCol = cell.col + dCol;
                 if (cluster.some(c => c.row === newRow && c.col === newCol)) {
@@ -194,6 +232,15 @@ class EntangledGame {
             }
         }
         return null;
+    }
+
+    // Helper method to get the right directions based on board type and row
+    getDirections(boardType, row) {
+        if (boardType === "hex") {
+            return row % 2 === 0 ? HEX_DIRECTIONS.even : HEX_DIRECTIONS.odd;
+        } else {
+            return DIRECTIONS;
+        }
     }
 
     placeSuperpositionStones(config) {
@@ -413,24 +460,22 @@ class EntangledGame {
     }
 
     checkSuperpositionCollapses(board1Pos, board2Pos) {
-        const checkPosition = (board, pos) => {
+        const checkPosition = (board, pos, boardType) => {
             if (!pos) return;
             const { row, col } = pos;
 
-            // Check all orthogonal neighbors
-            const neighbors = [
-                [row - 1, col], // up
-                [row + 1, col], // down
-                [row, col - 1], // left
-                [row, col + 1]  // right
-            ];
+            // Get the appropriate directions based on board type
+            const directions = this.getDirections(boardType, row);
 
             // Find superposition stones that need to collapse
-            for (const [nRow, nCol] of neighbors) {
+            for (const [dRow, dCol] of directions) {
+                const nRow = row + dRow;
+                const nCol = col + dCol;
+
                 if (nRow < 0 || nRow >= this.boardSize || nCol < 0 || nCol >= this.boardSize) continue;
                 if (board[nRow][nCol] === PLAYERS.SUPERPOSITION) {
                     // Check if all neighbors are filled
-                    const allNeighborsFilled = this.checkAllNeighborsFilled(board, nRow, nCol);
+                    const allNeighborsFilled = this.checkAllNeighborsFilled(board, nRow, nCol, boardType);
                     if (allNeighborsFilled) {
                         // Find the symbol at this position
                         const symbol = this.findSymbolAtPosition(board === this.board1 ? 1 : 2, nRow, nCol);
@@ -442,19 +487,18 @@ class EntangledGame {
             }
         };
 
-        checkPosition(this.board1, board1Pos);
-        checkPosition(this.board2, board2Pos);
+        checkPosition(this.board1, board1Pos, this.board1Type);
+        checkPosition(this.board2, board2Pos, this.board2Type);
     }
 
-    checkAllNeighborsFilled(board, row, col) {
-        const neighbors = [
-            [row - 1, col], // up
-            [row + 1, col], // down
-            [row, col - 1], // left
-            [row, col + 1]  // right
-        ];
+    checkAllNeighborsFilled(board, row, col, boardType) {
+        // Get the appropriate directions based on board type
+        const directions = this.getDirections(boardType, row);
 
-        return neighbors.every(([nRow, nCol]) => {
+        return directions.every(([dRow, dCol]) => {
+            const nRow = row + dRow;
+            const nCol = col + dCol;
+
             // Edge of board counts as filled
             if (nRow < 0 || nRow >= this.boardSize || nCol < 0 || nCol >= this.boardSize) {
                 return true;
@@ -620,6 +664,7 @@ class EntangledGame {
 
     exploreCluster(board, row, col, player, visited) {
         const layout = board === this.board1 ? this.board1Layout : this.board2Layout;
+        const boardType = board === this.board1 ? this.board1Type : this.board2Type;
 
         if (row < 0 || row >= this.boardSize ||
             col < 0 || col >= this.boardSize ||
@@ -632,7 +677,10 @@ class EntangledGame {
         visited[row][col] = true;
         let size = 1;
 
-        for (const [dRow, dCol] of DIRECTIONS) {
+        // Get the appropriate directions based on board type
+        const directions = this.getDirections(boardType, row);
+
+        for (const [dRow, dCol] of directions) {
             size += this.exploreCluster(
                 board,
                 row + dRow,
@@ -666,6 +714,7 @@ class EntangledGame {
 
     exploreClusterCells(board, row, col, player, visited) {
         const layout = board === this.board1 ? this.board1Layout : this.board2Layout;
+        const boardType = board === this.board1 ? this.board1Type : this.board2Type;
 
         if (row < 0 || row >= this.boardSize ||
             col < 0 || col >= this.boardSize ||
@@ -678,7 +727,10 @@ class EntangledGame {
         visited[row][col] = true;
         let cells = [{ row, col }];
 
-        for (const [dRow, dCol] of DIRECTIONS) {
+        // Get the appropriate directions based on board type
+        const directions = this.getDirections(boardType, row);
+
+        for (const [dRow, dCol] of directions) {
             cells = cells.concat(this.exploreClusterCells(
                 board,
                 row + dRow,

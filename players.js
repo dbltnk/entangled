@@ -261,7 +261,15 @@ class EntangledPlayer {
 
 class SimulatedGame extends EntangledGame {
     constructor(originalGame, state) {
-        super(originalGame.board1Layout, originalGame.board2Layout);
+        super(
+            originalGame.board1Layout,
+            originalGame.board2Layout,
+            '',
+            '',
+            originalGame.enableSwapRule,
+            originalGame.board1Type,
+            originalGame.board2Type
+        );
 
         // Copy board state from passed state
         for (let i = 0; i < state.board1.length; i++) {
