@@ -400,9 +400,7 @@ function generateColorForLetter(letter, boardNum, row, col) {
 }
 
 function getBackgroundColor(letter, boardNum, row, col) {
-    console.log(`Getting background color: letter=${letter}, boardNum=${boardNum}, row=${row}, col=${col}`);
     const color = generateColorForLetter(letter, boardNum, row, col);
-    console.log(`Generated color: ${color}`);
     if (!color) return { background: 'transparent', icon: 'transparent' };
 
     // Extract the hue from the HSL color
