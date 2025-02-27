@@ -445,22 +445,25 @@ body.rules-hidden .game-container {
 .group-size {
     position: absolute;
     z-index: 5;
-    font-weight: 700;
-    font-size: var(--font-size-lg);
+    font-weight: bold;
+    font-size: 14px;
+    color: var(--color-white);
+    background-color: rgba(0, 0, 0, 0.7);
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     pointer-events: none;
-    text-align: center;
-    padding: 2px 6px;
-    border-radius: var(--border-radius);
+    top: 50%;
+    left: 50%;
     transform: translate(-50%, -50%);
 }
 
-.group-size.on-black {
-    color: var(--color-white);
-    text-shadow:
-        -1px -1px 0 var(--color-black),
-        1px -1px 0 var(--color-black),
-        -1px 1px 0 var(--color-black),
-        1px 1px 0 var(--color-black);
+.group-size.on-white {
+    background-color: rgba(255, 255, 255, 0.7);
+    color: var(--color-black);
 }
 
 /* Controls section */
@@ -1027,18 +1030,7 @@ button:disabled {
 
 /* Group size positioning for hex cells */
 .hex-cell .group-size {
-    position: absolute;
-    font-size: calc(var(--hex-size) * 0.25);
-    font-weight: bold;
-    color: var(--color-white);
-    background-color: rgba(0, 0, 0, 0.7);
-    border-radius: 50%;
-    width: calc(var(--hex-size) * 0.4);
-    height: calc(var(--hex-size) * 0.4);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 3;
+    /* No special styling needed - using the standard above */
 }
 
 .hex-cell.symbols-hidden .cell-letter {
