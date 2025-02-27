@@ -894,7 +894,6 @@ button:disabled {
 /* Board type specific styles */
 .board.hex-grid {
     --hex-margin: 1px;
-    padding: var(--spacing-lg);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -922,7 +921,7 @@ button:disabled {
 /* Hex cell styles */
 .hex-cell {
     width: var(--hex-size);
-    height: var(--hex-size);
+    height: calc(var(--hex-size) * 1.15);
     position: relative;
     margin: var(--hex-margin);
     clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
@@ -1004,8 +1003,8 @@ button:disabled {
 }
 
 .hex-cell.has-stone .stone {
-    width: 75%;
-    height: 75%;
+    width: calc(var(--hex-size) * 0.8);
+    height: calc(var(--hex-size) * 0.8);
     border-radius: 50%;
     position: absolute;
     top: 50%;
@@ -1022,15 +1021,20 @@ button:disabled {
 .hex-cell.has-stone .stone.white {
     background-color: #fff;
     box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+    border: 2px solid var(--color-black);
 }
 
 .hex-cell.has-stone .stone.superposition {
     background: linear-gradient(135deg, #000 0%, #000 49%, #fff 51%, #fff 100%);
+    border: 2px solid var(--color-black);
 }
 
 /* Group size positioning for hex cells */
 .hex-cell .group-size {
-    /* No special styling needed - using the standard above */
+    font-size: 14px;
+    width: 24px;
+    height: 24px;
+    z-index: 5;
 }
 
 .hex-cell.symbols-hidden .cell-letter {
@@ -1049,9 +1053,9 @@ button:disabled {
 .hex-cell.highlighted.black-turn:not(.has-stone)::before {
     content: '';
     position: absolute;
-    width: 75%;
-    height: 75%;
-    background: rgba(0, 0, 0, 0.2);
+    width: calc(var(--hex-size) * 0.8);
+    height: calc(var(--hex-size) * 0.8);
+    background: rgba(0, 0, 0, 0.5);
     border-radius: 50%;
     top: 50%;
     left: 50%;
@@ -1063,24 +1067,31 @@ button:disabled {
 .hex-cell.highlighted.white-turn:not(.has-stone)::before {
     content: '';
     position: absolute;
-    width: 75%;
-    height: 75%;
+    width: calc(var(--hex-size) * 0.8);
+    height: calc(var(--hex-size) * 0.8);
     background: rgba(255, 255, 255, 0.5);
     border-radius: 50%;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
     z-index: 1;
-    border: 1px solid rgba(0, 0, 0, 0.2);
+    border: 2px solid var(--color-black);
 }
 
-.hex-cell.has-stone .stone {
-    width: 75%;
-    height: 75%;
-    border-radius: 50%;
+.hex-cell.has-stone .stone.superposition::after {
+    content: attr(data-number);
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    z-index: 2;
+    color: #FFD700;
+    /* Gold */
+    font-weight: 900;
+    font-size: calc(var(--hex-size) * 0.3);
+    text-shadow:
+        -1px -1px 0 #000,
+        1px -1px 0 #000,
+        -1px 1px 0 #000,
+        1px 1px 0 #000,
+        0 0 4px rgba(0, 0, 0, 0.8);
 }
