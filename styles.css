@@ -944,6 +944,16 @@ button:disabled {
     align-items: center;
 }
 
+/* Add gap for center dot */
+.hex-cell-container+.hex-cell-container {
+    margin-left: var(--hex-margin);
+}
+
+/* Special spacing for cells after a missing center cell */
+.hex-row:nth-child(4) .hex-cell-container:nth-child(4) {
+    margin-left: calc(var(--hex-size) + var(--hex-margin) * 2);
+}
+
 /* Hover, highlight and stone styles for hex cells */
 .hex-cell:hover {
     background-color: var(--color-hover);
