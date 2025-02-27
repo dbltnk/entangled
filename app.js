@@ -255,17 +255,25 @@ function getSelectedBoardLayout(boardSelect) {
         if (!currentRandomBoards[boardSelect.id]) {
             currentRandomBoards[boardSelect.id] = BOARD_LAYOUTS[`random${currentSize}x${currentSize}`].grid;
         }
-        return currentRandomBoards[boardSelect.id];
+        return {
+            grid: currentRandomBoards[boardSelect.id],
+            type: "rect" // Random boards are always rectangular
+        };
     }
 
     // Check custom boards first
     if (customBoards.has(selectedValue)) {
-        console.log('Using custom board:', selectedValue);
-        console.log('Board data:', customBoards.get(selectedValue));
-        return customBoards.get(selectedValue).grid;
+        const customBoard = customBoards.get(selectedValue);
+        return {
+            grid: customBoard.grid,
+            type: customBoard.type || "rect" // Default to rect if not specified
+        };
     }
 
-    return BOARD_LAYOUTS[selectedValue].grid;
+    return {
+        grid: BOARD_LAYOUTS[selectedValue].grid,
+        type: BOARD_LAYOUTS[selectedValue].type || "rect"
+    };
 }
 
 const uniqueColors = new Map();
@@ -397,24 +405,34 @@ function getBackgroundColor(letter, boardNum, row, col) {
     };
 }
 
-function createCell(symbol, boardNum, row, col) {
+function createCell(symbol, boardNum, row, col, cellType = "rect") {
     if (symbol === '.') return null;
 
+    // Create the appropriate cell type
     const cell = document.createElement('div');
-    cell.className = 'cell';
+
+    if (cellType === "hex") {
+        cell.className = 'hex-cell';
+    } else {
+        cell.className = 'cell';
+        // Rect specific positioning
+        cell.style.gridColumn = (col + 1).toString();
+        cell.style.gridRow = (row + 1).toString();
+    }
+
+    // Common properties
     cell.dataset.symbol = symbol;
     cell.dataset.board = boardNum;
     cell.dataset.row = row;
     cell.dataset.col = col;
-    cell.style.gridColumn = (col + 1).toString();
-    cell.style.gridRow = (row + 1).toString();
+    cell.dataset.cellType = cellType;
 
     const colors = getBackgroundColor(symbol, boardNum, row, col);
     cell.style.backgroundColor = colors.background;
 
     // Add icon
     const icon = document.createElement('i');
-    icon.className = `cell-icon fa-solid ${ICON_MAPPINGS[symbol] || 'fa-circle'}`;
+    icon.className = `${cellType === "hex" ? "cell-icon" : "cell-icon"} fa-solid ${ICON_MAPPINGS[symbol] || 'fa-circle'}`;
     icon.style.color = colors.icon;
     cell.appendChild(icon);
 
@@ -469,60 +487,72 @@ function calculateClusterPosition(cluster, boardElement) {
 }
 
 function updateCellHighlights(boardNum, row, col, largestClusters) {
-    const cell = document.querySelector(
-        `.cell[data-board="${boardNum}"][data-row="${row}"][data-col="${col}"]`
-    );
+    const selector = `[data-board="${boardNum}"][data-row="${row}"][data-col="${col}"]`;
+    const cell = document.querySelector(selector);
 
     if (!cell) return;
 
+    // Reset highlights
     cell.classList.remove('cell-highlight-black', 'cell-highlight-white');
 
-    if (!gameSettings.groups) {
-        cell.classList.add('groups-hidden');
-        return;
-    }
+    // Apply new highlights if in largest cluster
+    const inBlackCluster = largestClusters.black.some(c => c.row === row && c.col === col);
+    const inWhiteCluster = largestClusters.white.some(c => c.row === row && c.col === col);
 
-    const isInBlackCluster = largestClusters.black[`board${boardNum}`]
-        .some(pos => pos.row === row && pos.col === col);
-    if (isInBlackCluster) {
+    if (inBlackCluster) {
         cell.classList.add('cell-highlight-black');
-    }
-
-    const isInWhiteCluster = largestClusters.white[`board${boardNum}`]
-        .some(pos => pos.row === row && pos.col === col);
-    if (isInWhiteCluster) {
+    } else if (inWhiteCluster) {
         cell.classList.add('cell-highlight-white');
     }
 }
 
 function updateGroupSizes(boardElement, clusters, isBoard1) {
-    const existingSizes = boardElement.querySelectorAll('.group-size');
-    existingSizes.forEach(el => el.remove());
+    // Remove existing group size elements
+    boardElement.querySelectorAll('.group-size').forEach(el => el.remove());
 
-    if (!gameSettings.size) return;
+    // No groups to display or setting is off
+    if (!gameSettings.size || !clusters || clusters.length === 0) return;
 
-    const blackCluster = clusters.black[isBoard1 ? 'board1' : 'board2'];
-    const whiteCluster = clusters.white[isBoard1 ? 'board1' : 'board2'];
+    // Create group size elements for each cluster
+    clusters.forEach(cluster => {
+        if (cluster.cells.length < 2) return; // Only show for groups of 2+
 
-    if (blackCluster.length >= 2) {
-        const pos = calculateClusterPosition(blackCluster, boardElement);
-        if (pos) {
-            const sizeElement = createGroupSizeElement(blackCluster.length, true);
-            sizeElement.style.left = `${pos.left}px`;
-            sizeElement.style.top = `${pos.top}px`;
-            boardElement.appendChild(sizeElement);
+        // Find a good cell to place the size indicator
+        const centerCell = findMostCenteredCell(cluster.cells, boardElement, isBoard1);
+        if (!centerCell) return;
+
+        // Create size element
+        const sizeEl = createGroupSizeElement(cluster.size, cluster.player === PLAYERS.BLACK);
+        centerCell.appendChild(sizeEl);
+    });
+}
+
+// Find the most centered cell in a cluster for placing the group size
+function findMostCenteredCell(cells, boardElement, isBoard1) {
+    if (!cells || cells.length === 0) return null;
+
+    // First try to find the most connected cell
+    let bestCell = null;
+    let bestScore = -1;
+
+    for (const { row, col } of cells) {
+        const cellSelector = `[data-board="${isBoard1 ? 1 : 2}"][data-row="${row}"][data-col="${col}"]`;
+        const cell = boardElement.querySelector(cellSelector);
+
+        if (!cell) continue;
+
+        // Calculate score based on position and neighbor count
+        const distX = Math.abs(col - (game.boardSize / 2));
+        const distY = Math.abs(row - (game.boardSize / 2));
+        const centralityScore = 10 - (distX + distY); // Higher for more central cells
+
+        if (centralityScore > bestScore) {
+            bestScore = centralityScore;
+            bestCell = cell;
         }
     }
 
-    if (whiteCluster.length >= 2) {
-        const pos = calculateClusterPosition(whiteCluster, boardElement);
-        if (pos) {
-            const sizeElement = createGroupSizeElement(whiteCluster.length, false);
-            sizeElement.style.left = `${pos.left}px`;
-            sizeElement.style.top = `${pos.top}px`;
-            boardElement.appendChild(sizeElement);
-        }
-    }
+    return bestCell;
 }
 
 function stopGame() {
@@ -556,28 +586,87 @@ function initializeBoards() {
     // Get layouts once and reuse
     const board1Layout = getSelectedBoardLayout(board1Select);
     const board2Layout = getSelectedBoardLayout(board2Select);
-    const currentSize = board1Layout.length;
+    const currentSize = board1Layout.grid.length;
+
+    // Get board types
+    const board1Type = BOARD_LAYOUTS[board1Select.value]?.type || "rect";
+    const board2Type = BOARD_LAYOUTS[board2Select.value]?.type || "rect";
 
     board1Element.innerHTML = '';
     board2Element.innerHTML = '';
 
-    board1Element.className = `board board-${currentSize}`;
-    board2Element.className = `board board-${currentSize}`;
+    // Set up the base classes for each board
+    board1Element.className = `board board-${currentSize} ${board1Type === "hex" ? "hex-grid" : ""}`;
+    board2Element.className = `board board-${currentSize} ${board2Type === "hex" ? "hex-grid" : ""}`;
 
-    board1Element.style.gridTemplateRows = `repeat(${currentSize}, 1fr)`;
-    board1Element.style.gridTemplateColumns = `repeat(${currentSize}, 1fr)`;
-    board2Element.style.gridTemplateRows = `repeat(${currentSize}, 1fr)`;
-    board2Element.style.gridTemplateColumns = `repeat(${currentSize}, 1fr)`;
+    // For rectangular grids, use CSS grid
+    if (board1Type === "rect") {
+        board1Element.style.gridTemplateRows = `repeat(${currentSize}, 1fr)`;
+        board1Element.style.gridTemplateColumns = `repeat(${currentSize}, 1fr)`;
+    } else {
+        // For hex grids, clear any grid template
+        board1Element.style.gridTemplateRows = '';
+        board1Element.style.gridTemplateColumns = '';
+    }
 
-    // Create all cells in one pass
+    if (board2Type === "rect") {
+        board2Element.style.gridTemplateRows = `repeat(${currentSize}, 1fr)`;
+        board2Element.style.gridTemplateColumns = `repeat(${currentSize}, 1fr)`;
+    } else {
+        // For hex grids, clear any grid template
+        board2Element.style.gridTemplateRows = '';
+        board2Element.style.gridTemplateColumns = '';
+    }
+
+    // Create all cells
+    if (board1Type === "hex") {
+        createHexGrid(board1Element, board1Layout.grid, 1);
+    } else {
+        createRectGrid(board1Element, board1Layout.grid, 1);
+    }
+
+    if (board2Type === "hex") {
+        createHexGrid(board2Element, board2Layout.grid, 2);
+    } else {
+        createRectGrid(board2Element, board2Layout.grid, 2);
+    }
+}
+
+// Helper function to create rectangular grid
+function createRectGrid(boardElement, layout, boardNum) {
+    const currentSize = layout.length;
     for (let i = 0; i < currentSize; i++) {
         for (let j = 0; j < currentSize; j++) {
-            const cell1 = createCell(board1Layout[i][j], 1, i, j);
-            const cell2 = createCell(board2Layout[i][j], 2, i, j);
-
-            if (cell1) board1Element.appendChild(cell1);
-            if (cell2) board2Element.appendChild(cell2);
+            const cell = createCell(layout[i][j], boardNum, i, j, "rect");
+            if (cell) boardElement.appendChild(cell);
         }
+    }
+}
+
+// Helper function to create hexagonal grid
+function createHexGrid(boardElement, layout, boardNum) {
+    const currentSize = layout.length;
+
+    for (let i = 0; i < currentSize; i++) {
+        const rowDiv = document.createElement('div');
+        rowDiv.className = 'hex-row';
+
+        for (let j = 0; j < currentSize; j++) {
+            if (layout[i][j] === '.') continue;
+
+            // Create container for hex cell
+            const cellContainer = document.createElement('div');
+            cellContainer.className = 'hex-cell-container';
+
+            // Create hex cell
+            const cell = createCell(layout[i][j], boardNum, i, j, "hex");
+            if (cell) {
+                cellContainer.appendChild(cell);
+                rowDiv.appendChild(cellContainer);
+            }
+        }
+
+        boardElement.appendChild(rowDiv);
     }
 }
 
@@ -591,7 +680,7 @@ function isHumanTurn() {
 
 function highlightCorrespondingCells(symbol) {
     if (!gameSettings.hover || symbol === '.') return;
-    const cells = document.querySelectorAll(`.cell[data-symbol="${symbol}"]`);
+    const cells = document.querySelectorAll(`[data-symbol="${symbol}"]`);
     const showHoverStones = isHumanTurn();
 
     cells.forEach(cell => {
@@ -607,45 +696,48 @@ function highlightCorrespondingCells(symbol) {
 }
 
 function removeHighlights() {
-    if (!gameSettings.hover) return;
-    const cells = document.querySelectorAll('.cell');
-    cells.forEach(cell => {
-        cell.classList.remove('highlighted');
-        cell.classList.remove('black-turn', 'white-turn');
+    document.querySelectorAll('.cell.highlighted, .hex-cell.highlighted').forEach(cell => {
+        cell.classList.remove('highlighted', 'black-turn', 'white-turn');
     });
 }
 
 function updateCell(boardNum, row, col, player) {
-    const cell = document.querySelector(
-        `.cell[data-board="${boardNum}"][data-row="${row}"][data-col="${col}"]`
-    );
+    // Find the cell by data attributes
+    const selector = `[data-board="${boardNum}"][data-row="${row}"][data-col="${col}"]`;
+    const cell = document.querySelector(selector);
 
     if (!cell) return;
 
+    // Remove any existing stone
     const existingStone = cell.querySelector('.stone');
     if (existingStone) {
         cell.removeChild(existingStone);
     }
 
-    if (player) {
-        const stone = document.createElement('div');
-        if (player === PLAYERS.SUPERPOSITION) {
-            stone.className = 'stone superposition';
-            // Find the superposition number for this cell
-            const symbol = cell.dataset.symbol;
-            const spState = game.getSuperpositionState();
-            const spStone = spState.stones.find(s => s.symbol === symbol);
-            if (spStone) {
-                stone.dataset.number = spStone.number;
-            }
-        } else {
-            stone.className = `stone ${player.toLowerCase()}`;
-        }
-        cell.appendChild(stone);
-        cell.classList.add('has-stone');
-    } else {
+    // Don't add a stone for null player (removal)
+    if (player === null) {
         cell.classList.remove('has-stone');
+        return;
     }
+
+    // Create and add the stone
+    const stone = document.createElement('div');
+
+    if (player === PLAYERS.SUPERPOSITION) {
+        stone.className = 'stone superposition';
+        // Find the superposition number for this cell
+        const symbol = cell.dataset.symbol;
+        const spState = game.getSuperpositionState();
+        const spStone = spState.stones.find(s => s.symbol === symbol);
+        if (spStone) {
+            stone.dataset.number = spStone.number;
+        }
+    } else {
+        stone.className = `stone ${player.toLowerCase()}`;
+    }
+
+    cell.appendChild(stone);
+    cell.classList.add('has-stone');
 }
 
 function updateDisplay() {
@@ -976,11 +1068,13 @@ function initializeGame() {
 
     try {
         game = new EntangledGame(
-            board1Layout,
-            board2Layout,
+            board1Layout.grid,
+            board2Layout.grid,
             gameConfig.startingStones,
             gameConfig.superpositionStones,
-            gameConfig.enableSwapRule
+            gameConfig.enableSwapRule,
+            board1Layout.type,
+            board2Layout.type
         );
     } catch (error) {
         alert(error.message);

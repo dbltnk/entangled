@@ -26,8 +26,24 @@ class GameController {
             BOARD_LAYOUTS[board2Select.value].grid :
             BOARD_LAYOUTS.board2.grid;
 
+        const board1Type = board1Select ?
+            BOARD_LAYOUTS[board1Select.value].type || 'rect' :
+            'rect';
+
+        const board2Type = board2Select ?
+            BOARD_LAYOUTS[board2Select.value].type || 'rect' :
+            'rect';
+
         // Create new game instance
-        const game = new EntangledGame(board1Layout, board2Layout);
+        const game = new EntangledGame(
+            board1Layout,
+            board2Layout,
+            '',
+            '',
+            true,
+            board1Type,
+            board2Type
+        );
 
         // Dispatch board size change event
         document.dispatchEvent(new CustomEvent('boardSizeChange', {
