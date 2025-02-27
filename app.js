@@ -220,7 +220,7 @@ function populateBoardsBySize(size) {
         4: ['board4x4', 'random4x4'],
         5: ['board1', 'board7'],
         6: ['minidonutleft', 'board3072731079only'],
-        7: ['donutleft', 'board220120251955']
+        7: ['donutleft', 'hex_donut_36p_chaos_right']
     };
 
     const defaultConfigs = {
