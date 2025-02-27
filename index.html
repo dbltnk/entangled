@@ -121,6 +121,36 @@
             opacity: 0.1;
             pointer-events: none;
         }
+
+        .disabled-card {
+            cursor: not-allowed;
+            opacity: 0.8;
+            filter: grayscale(0.7);
+            position: relative;
+        }
+
+        .under-construction {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-15deg);
+            background: rgba(255, 0, 0, 0.8);
+            color: white;
+            padding: 5px 10px;
+            font-weight: bold;
+            border-radius: 4px;
+            font-size: 1.2rem;
+            z-index: 2;
+            white-space: nowrap;
+        }
+
+        .construction-icon {
+            position: absolute;
+            right: 1rem;
+            top: 1rem;
+            font-size: 1.8rem;
+            z-index: 2;
+        }
     </style>
 </head>
 
@@ -140,34 +170,42 @@
             </a>
 
             <div class="grid-row">
-                <a href="generate-boards.html" target="_blank" class="card generator-card">
+                <div class="card generator-card disabled-card">
+                    <span class="construction-icon">🚧</span>
+                    <span class="under-construction">UNDER CONSTRUCTION</span>
                     <h2>🧬 Board Generator</h2>
                     <p>Evolutionary algorithm to generate board layouts optimized for balanced play and strategic depth.
                     </p>
                     <span class="emoji-bg">🔄</span>
-                </a>
+                </div>
 
-                <a href="starting-pos-comparison.html" target="_blank" class="card analysis-card">
+                <div class="card analysis-card disabled-card">
+                    <span class="construction-icon">🚧</span>
+                    <span class="under-construction">UNDER CONSTRUCTION</span>
                     <h2>📊 Position Analysis</h2>
                     <p>Statistical analysis of board layouts and opening moves, including connectivity metrics and
                         tournament move frequencies.</p>
                     <span class="emoji-bg">📈</span>
-                </a>
+                </div>
             </div>
 
             <div class="grid-row">
-                <a href="tournament.html" target="_blank" class="card tournament-card">
+                <div class="card tournament-card disabled-card">
+                    <span class="construction-icon">🚧</span>
+                    <span class="under-construction">UNDER CONSTRUCTION</span>
                     <h2>🏆 Tournament Runner</h2>
                     <p>Configure and execute parallel AI matches across multiple board configurations with customizable
                         parameters.</p>
                     <span class="emoji-bg">🤖</span>
-                </a>
+                </div>
 
-                <a href="results.html" target="_blank" class="card results-card">
+                <div class="card results-card disabled-card">
+                    <span class="construction-icon">🚧</span>
+                    <span class="under-construction">UNDER CONSTRUCTION</span>
                     <h2>🔍 Tournament Results</h2>
                     <p>View tournament statistics, ELO ratings, and game replays with move-by-move analysis.</p>
                     <span class="emoji-bg">🔬</span>
-                </a>
+                </div>
             </div>
         </div>
     </div>
