@@ -1048,3 +1048,47 @@ button:disabled {
 .hex-cell.icons-hidden .cell-icon {
     display: none;
 }
+
+.hex-cell.highlighted {
+    opacity: 0.8;
+}
+
+.hex-cell.black-turn:not(.has-stone)::before,
+.hex-cell.highlighted.black-turn:not(.has-stone)::before {
+    content: '';
+    position: absolute;
+    width: 75%;
+    height: 75%;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 50%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1;
+}
+
+.hex-cell.white-turn:not(.has-stone)::before,
+.hex-cell.highlighted.white-turn:not(.has-stone)::before {
+    content: '';
+    position: absolute;
+    width: 75%;
+    height: 75%;
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: 50%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+}
+
+.hex-cell.has-stone .stone {
+    width: 75%;
+    height: 75%;
+    border-radius: 50%;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 2;
+}
