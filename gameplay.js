@@ -486,8 +486,8 @@ class EntangledGame {
         const positions = this.symbolToPosition.get(symbol);
         if (!positions) return;
 
-        // Collapse to the last placed stone's color
-        const newColor = this.lastPlacedStone;
+        // Calculate optimal color instead of defaulting to last placed stone
+        let newColor = this.determineOptimalColor(symbol);
 
         // Update both boards
         if (positions.board1) {
@@ -519,6 +519,73 @@ class EntangledGame {
 
         // Remove from superposition stones
         this.superpositionStones.delete(symbol);
+    }
+
+    determineOptimalColor(symbol) {
+        const positions = this.symbolToPosition.get(symbol);
+        if (!positions) return this.lastPlacedStone;
+
+        // Get the board and position where the last stone was placed that triggered the collapse
+        const lastMoveSymbol = this._lastMove;
+        if (!lastMoveSymbol || !this.symbolToPosition.has(lastMoveSymbol)) {
+            return this.lastPlacedStone;
+        }
+
+        const lastMovePos = this.symbolToPosition.get(lastMoveSymbol);
+
+        // Determine which board the last move was on that caused this collapse
+        // In case the stone was placed on both boards, we prioritize board1 for consistency
+        const board1Used = lastMovePos.board1 && this.board1Layout[lastMovePos.board1.row][lastMovePos.board1.col] !== '.' &&
+            this.board1[lastMovePos.board1.row][lastMovePos.board1.col] === this.lastPlacedStone;
+
+        let blackClusterSize = 0;
+        let whiteClusterSize = 0;
+
+        // Check board1 if it was used in the last move
+        if (board1Used && positions.board1) {
+            const { row, col } = positions.board1;
+            if (this.board1Layout[row][col] !== '.') {
+                blackClusterSize = this.calculatePotentialClusterSize(this.board1, row, col, PLAYERS.BLACK);
+                whiteClusterSize = this.calculatePotentialClusterSize(this.board1, row, col, PLAYERS.WHITE);
+            }
+        }
+        // Otherwise check board2
+        else {
+            const board2Used = lastMovePos.board2 && this.board2Layout[lastMovePos.board2.row][lastMovePos.board2.col] !== '.' &&
+                this.board2[lastMovePos.board2.row][lastMovePos.board2.col] === this.lastPlacedStone;
+
+            if (board2Used && positions.board2) {
+                const { row, col } = positions.board2;
+                if (this.board2Layout[row][col] !== '.') {
+                    blackClusterSize = this.calculatePotentialClusterSize(this.board2, row, col, PLAYERS.BLACK);
+                    whiteClusterSize = this.calculatePotentialClusterSize(this.board2, row, col, PLAYERS.WHITE);
+                }
+            }
+        }
+
+        // Determine optimal color based on the largest potential cluster on the relevant board
+        if (blackClusterSize > whiteClusterSize) {
+            return PLAYERS.BLACK;
+        } else if (whiteClusterSize > blackClusterSize) {
+            return PLAYERS.WHITE;
+        } else {
+            // If equal, use the last placed stone's color as tiebreaker
+            return this.lastPlacedStone;
+        }
+    }
+
+    calculatePotentialClusterSize(board, row, col, player) {
+        // Create a copy of the board for simulation
+        const boardCopy = board.map(row => [...row]);
+
+        // Temporarily place a stone of the given player's color
+        boardCopy[row][col] = player;
+
+        // Get the size of the connected group at this position
+        const visited = Array(this.boardSize).fill(false)
+            .map(() => Array(this.boardSize).fill(false));
+
+        return this.exploreCluster(boardCopy, row, col, player, visited);
     }
 
     getSuperpositionState() {
