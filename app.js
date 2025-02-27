@@ -322,78 +322,87 @@ function calculateManhattanDistances(board, size) {
 function generateColorForLetter(letter, boardNum, row, col) {
     if (letter === '.') return null;
 
-    // If we already computed this letter's color, reuse it
-    if (uniqueColors.has(letter)) {
-        return uniqueColors.get(letter);
+    const currentSize = getBoardSize(boardNum);
+    if (!currentSize) return null;
+
+    // Cache check - use board-specific cache to handle different layouts
+    const cacheKey = `${letter}-${currentSize}-${boardNum}`;
+    if (uniqueColors.has(cacheKey)) {
+        return uniqueColors.get(cacheKey);
     }
 
-    // For board 2, force computation using board 1's position
+    // For board 2, we want to use the same colors as board 1
     if (boardNum === 2) {
-        return generateColorForLetter(letter, 1, row, col);
+        const board1Color = generateColorForLetter(letter, 1, row, col);
+        uniqueColors.set(cacheKey, board1Color);
+        return board1Color;
     }
 
-    // Only compute colors for board 1
-    const currentSize = parseInt(document.getElementById('board-size').value);
-    const board = getSelectedBoardLayout(document.getElementById('board1-select'));
-
-    // First, collect all actual tiles and their positions
+    // Get all symbols for current board size
     const tiles = [];
-    for (let r = 0; r < board.length; r++) {
-        for (let c = 0; c < board[r].length; c++) {
-            if (board[r][c] !== '.') {
-                tiles.push({
-                    symbol: board[r][c],
-                    row: r,
-                    col: c
-                });
+    const layout = getSelectedBoardLayout(document.getElementById(`board${boardNum}-select`));
+    const isHexGrid = layout.type === 'hex';
+
+    if (layout && layout.grid) {
+        for (let r = 0; r < layout.grid.length; r++) {
+            for (let c = 0; c < layout.grid[r].length; c++) {
+                const symbol = layout.grid[r][c];
+                if (symbol !== '.') {
+                    tiles.push({ symbol, row: r, col: c });
+                }
             }
         }
     }
 
-    // Find the position of our current letter
-    const currentTile = tiles.find(t => t.symbol === letter);
-    if (!currentTile) {
-        const color = 'hsl(240, 85%, 60%)';
-        uniqueColors.set(letter, color);
-        return color;
+    if (tiles.length === 0) {
+        console.warn('No layout found for color generation');
+        return 'hsl(240, 85%, 60%)';
     }
 
-    // Calculate angle from center for each tile
+    // Calculate center for the current board size
     const centerRow = (currentSize - 1) / 2;
     const centerCol = (currentSize - 1) / 2;
 
+    // Calculate positions and angles
     tiles.forEach(tile => {
         const deltaY = tile.row - centerRow;
         const deltaX = tile.col - centerCol;
-        // Start from top (negative Y-axis) and go clockwise
-        tile.angle = ((-Math.atan2(deltaY, deltaX) + Math.PI / 2) * (180 / Math.PI) + 360) % 360;
-
-        // Calculate distance from center (normalized)
+        // Adjust angle calculation for hex grids
+        if (isHexGrid) {
+            // Hex grid uses 60-degree spacing
+            tile.angle = ((-Math.atan2(deltaY * Math.sqrt(3) / 2, deltaX) + Math.PI / 2) * (180 / Math.PI) + 360) % 360;
+        } else {
+            tile.angle = ((-Math.atan2(deltaY, deltaX) + Math.PI / 2) * (180 / Math.PI) + 360) % 360;
+        }
         tile.dist = Math.sqrt(Math.pow(deltaY, 2) + Math.pow(deltaX, 2)) /
             Math.sqrt(Math.pow(centerRow, 2) + Math.pow(centerCol, 2));
     });
 
-    // Sort tiles by angle to distribute colors evenly around the spectrum
+    // Sort tiles by angle to distribute colors evenly
     tiles.sort((a, b) => a.angle - b.angle);
 
-    // Find our tile's index in the sorted array
+    // Find our tile's index
     const index = tiles.findIndex(t => t.symbol === letter);
+    if (index === -1) {
+        console.warn(`Letter ${letter} not found in tiles array`);
+        return 'hsl(240, 85%, 60%)';
+    }
 
-    // Map index to hue (0-360), distribute evenly across the spectrum
-    const hue = ((index / tiles.length) * 360 + 0) % 360;  // Add offset here (e.g., 120 degrees)
-
-    // Use the distance from center to adjust saturation and lightness
+    // Generate color
+    const hue = ((index / tiles.length) * 360 + 0) % 360;
     const currentDist = tiles[index].dist;
-    const saturation = 85 + (currentDist * 15); // 85-100%
-    const lightness = 60 - (currentDist * 10);  // 50-60%
+    const saturation = 85 + (currentDist * 15);
+    const lightness = 60 - (currentDist * 10);
 
     const color = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
-    uniqueColors.set(letter, color);
+    uniqueColors.set(cacheKey, color);
     return color;
 }
 
 function getBackgroundColor(letter, boardNum, row, col) {
+    console.log(`Getting background color: letter=${letter}, boardNum=${boardNum}, row=${row}, col=${col}`);
     const color = generateColorForLetter(letter, boardNum, row, col);
+    console.log(`Generated color: ${color}`);
     if (!color) return { background: 'transparent', icon: 'transparent' };
 
     // Extract the hue from the HSL color
@@ -420,8 +429,11 @@ function createCell(symbol, boardNum, row, col, cellType = "rect") {
         cell.style.gridRow = (row + 1).toString();
     }
 
+    // Set data attributes
+    cell.setAttribute('data-symbol', symbol);
+    cell.setAttribute('data-position', `${row},${col}`);
+
     // Common properties
-    cell.dataset.symbol = symbol;
     cell.dataset.board = boardNum;
     cell.dataset.row = row;
     cell.dataset.col = col;
