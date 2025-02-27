@@ -96,7 +96,7 @@ function saveSettings() {
 
 function applySettings() {
     // Apply hover setting
-    const cells = document.querySelectorAll('.cell');
+    const cells = document.querySelectorAll('.cell, .hex-cell');
     cells.forEach(cell => {
         cell.removeEventListener('mouseenter', () => highlightCorrespondingCells(cell.dataset.symbol));
         cell.removeEventListener('mouseleave', removeHighlights);
