@@ -1135,7 +1135,7 @@ function init() {
     setupThinkingTimeHandlers();
 
     // Set default value for superposition input
-    document.getElementById('superposition').value = 'rng,rng,rng,rng,rng,rng';
+    document.getElementById('superposition').value = 'rng,rng,rng,rng';
 
     document.getElementById('toggle-settings').addEventListener('click', () => {
         const content = document.querySelector('.settings-content');
