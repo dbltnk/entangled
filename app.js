@@ -467,9 +467,9 @@ function createCell(symbol, boardNum, row, col, cellType = "rect") {
     return cell;
 }
 
-function createGroupSizeElement(size, isBlackStone) {
+function createGroupSizeElement(size, isWhiteStone) {
     const sizeElement = document.createElement('div');
-    sizeElement.className = `group-size ${isBlackStone ? 'on-black' : ''}`;
+    sizeElement.className = `group-size ${isWhiteStone ? 'on-white' : ''}`;
     if (!gameSettings.size) {
         sizeElement.classList.add('size-hidden');
     }
@@ -536,7 +536,8 @@ function updateGroupSizes(boardElement, clusters, isBoard1) {
     if (blackClusters && blackClusters.length > 0) {
         const centerCell = findMostCenteredCell(blackClusters, boardElement, isBoard1);
         if (centerCell) {
-            const sizeEl = createGroupSizeElement(blackClusters.length, true);
+            // Black stones should have white text on dark background (default style)
+            const sizeEl = createGroupSizeElement(blackClusters.length, false);
             centerCell.appendChild(sizeEl);
         }
     }
@@ -545,7 +546,8 @@ function updateGroupSizes(boardElement, clusters, isBoard1) {
     if (whiteClusters && whiteClusters.length > 0) {
         const centerCell = findMostCenteredCell(whiteClusters, boardElement, isBoard1);
         if (centerCell) {
-            const sizeEl = createGroupSizeElement(whiteClusters.length, false);
+            // White stones should have black text on light background (on-white class)
+            const sizeEl = createGroupSizeElement(whiteClusters.length, true);
             centerCell.appendChild(sizeEl);
         }
     }
@@ -555,23 +557,28 @@ function updateGroupSizes(boardElement, clusters, isBoard1) {
 function findMostCenteredCell(cells, boardElement, isBoard1) {
     if (!cells || cells.length === 0) return null;
 
-    // First try to find the most connected cell
+    // Calculate the center of the board
+    const boardCenter = game.boardSize / 2;
+
+    // Find the most central cell
     let bestCell = null;
-    let bestScore = -1;
+    let bestDistance = Infinity;
 
     for (const { row, col } of cells) {
+        // Find the cell element
         const cellSelector = `[data-board="${isBoard1 ? 1 : 2}"][data-row="${row}"][data-col="${col}"]`;
         const cell = boardElement.querySelector(cellSelector);
 
         if (!cell) continue;
 
-        // Calculate score based on position and neighbor count
-        const distX = Math.abs(col - (game.boardSize / 2));
-        const distY = Math.abs(row - (game.boardSize / 2));
-        const centralityScore = 10 - (distX + distY); // Higher for more central cells
+        // Calculate distance from center (Euclidean distance for better centrality)
+        const distX = col - boardCenter;
+        const distY = row - boardCenter;
+        const distance = Math.sqrt(distX * distX + distY * distY);
 
-        if (centralityScore > bestScore) {
-            bestScore = centralityScore;
+        // Keep the cell with the smallest distance to center
+        if (distance < bestDistance) {
+            bestDistance = distance;
             bestCell = cell;
         }
     }
