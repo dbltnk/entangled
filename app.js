@@ -495,9 +495,14 @@ function updateCellHighlights(boardNum, row, col, largestClusters) {
     // Reset highlights
     cell.classList.remove('cell-highlight-black', 'cell-highlight-white');
 
+    // Get the correct clusters for this board
+    const boardKey = boardNum === 1 ? 'board1' : 'board2';
+    const blackClusters = largestClusters?.black[boardKey] || [];
+    const whiteClusters = largestClusters?.white[boardKey] || [];
+
     // Apply new highlights if in largest cluster
-    const inBlackCluster = largestClusters.black.some(c => c.row === row && c.col === col);
-    const inWhiteCluster = largestClusters.white.some(c => c.row === row && c.col === col);
+    const inBlackCluster = blackClusters.some(c => c.row === row && c.col === col);
+    const inWhiteCluster = whiteClusters.some(c => c.row === row && c.col === col);
 
     if (inBlackCluster) {
         cell.classList.add('cell-highlight-black');
@@ -511,20 +516,29 @@ function updateGroupSizes(boardElement, clusters, isBoard1) {
     boardElement.querySelectorAll('.group-size').forEach(el => el.remove());
 
     // No groups to display or setting is off
-    if (!gameSettings.size || !clusters || clusters.length === 0) return;
+    if (!gameSettings.size || !clusters) return;
 
-    // Create group size elements for each cluster
-    clusters.forEach(cluster => {
-        if (cluster.cells.length < 2) return; // Only show for groups of 2+
+    // Get the clusters for the current board
+    const blackClusters = clusters.black[isBoard1 ? 'board1' : 'board2'];
+    const whiteClusters = clusters.white[isBoard1 ? 'board1' : 'board2'];
 
-        // Find a good cell to place the size indicator
-        const centerCell = findMostCenteredCell(cluster.cells, boardElement, isBoard1);
-        if (!centerCell) return;
+    // Create group size elements for black clusters
+    if (blackClusters && blackClusters.length > 0) {
+        const centerCell = findMostCenteredCell(blackClusters, boardElement, isBoard1);
+        if (centerCell) {
+            const sizeEl = createGroupSizeElement(blackClusters.length, true);
+            centerCell.appendChild(sizeEl);
+        }
+    }
 
-        // Create size element
-        const sizeEl = createGroupSizeElement(cluster.size, cluster.player === PLAYERS.BLACK);
-        centerCell.appendChild(sizeEl);
-    });
+    // Create group size elements for white clusters
+    if (whiteClusters && whiteClusters.length > 0) {
+        const centerCell = findMostCenteredCell(whiteClusters, boardElement, isBoard1);
+        if (centerCell) {
+            const sizeEl = createGroupSizeElement(whiteClusters.length, false);
+            centerCell.appendChild(sizeEl);
+        }
+    }
 }
 
 // Find the most centered cell in a cluster for placing the group size
