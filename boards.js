@@ -529,7 +529,30 @@ const BOARD_LAYOUTS = {
             ['.', '.', 'K', '1', 'G', '.', '.'],
         ]
     },
-
+    hex_donut_36p_rainbow_left: {
+        name: "Hex Donut 36p Rainbow Left",
+        grid: [
+            ['.', '.', '.', 'A', 'B', 'C', 'D'],
+            ['.', '.', 'E', 'F', 'G', 'H', 'I'],
+            ['.', 'J', 'K', 'L', 'M', 'N', 'O'],
+            ['P', 'Q', 'R', '.', 'S', 'T', 'U'],
+            ['V', 'W', 'X', 'Y', 'Z', '1', '.'],
+            ['2', '3', '4', '5', '6', '.', '.'],
+            ['7', '8', '9', '0', '.', '.', '.']
+        ]
+    },
+    hex_donut_36p_chaos_right: {
+        name: "Hex Donut 36p Chaos Right",
+        grid: [
+            ['.', '.', '.', 'Z', 'M', 'O', 'G'],
+            ['.', '.', 'X', 'H', 'S', 'F', 'T'],
+            ['.', 'Y', '1', 'N', 'I', 'A', 'J'],
+            ['4', 'L', 'K', '.', 'D', 'V', 'B'],
+            ['9', 'P', 'U', 'C', 'E', 'R', '.'],
+            ['7', '0', '5', '6', 'W', '.', '.'],
+            ['8', 'Q', '2', '3', '.', '.', '.']
+        ]
+    },
     centeredRandom7x7: {
         name: "Centered Random (7x7)",
         board: new CenteredRandomBoard(7, 'Y'),
