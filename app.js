@@ -836,6 +836,31 @@ function updateDisplay() {
             updateCellHighlights(2, i, j, state.largestClusters);
         }
     }
+
+    // Update mobile score display
+    const mobileScoreDisplay = document.getElementById('mobile-score-display');
+    if (mobileScoreDisplay) {
+        mobileScoreDisplay.textContent = ` ${blackScore} : ${whiteScore} `;
+    }
+
+    // Update mobile current player display
+    const mobileBlackPlayer = document.getElementById('mobile-black-player');
+    const mobileWhitePlayer = document.getElementById('mobile-white-player');
+    if (mobileBlackPlayer && mobileWhitePlayer) {
+        if (state.currentPlayer === PLAYERS.BLACK) {
+            mobileBlackPlayer.classList.add('active');
+            mobileWhitePlayer.classList.remove('active');
+        } else {
+            mobileBlackPlayer.classList.remove('active');
+            mobileWhitePlayer.classList.add('active');
+        }
+    }
+
+    // Update mobile start button text
+    const mobileStartButton = document.getElementById('mobile-start-game');
+    if (mobileStartButton) {
+        mobileStartButton.textContent = 'Restart';
+    }
 }
 
 function showWinner(winnerData) {
@@ -1261,6 +1286,15 @@ function init() {
 
     // Set default value for superposition input
     document.getElementById('superposition').value = 'rng,rng,rng,rng';
+
+    // Add event listener for mobile start button
+    const mobileStartButton = document.getElementById('mobile-start-game');
+    if (mobileStartButton) {
+        mobileStartButton.addEventListener('click', function () {
+            // Call the same function as the main start button
+            document.getElementById('start-game').click();
+        });
+    }
 
     document.getElementById('toggle-settings').addEventListener('click', () => {
         const content = document.querySelector('.settings-content');
