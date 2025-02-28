@@ -1436,10 +1436,22 @@ function setupResponsiveNavigation() {
                     section.classList.toggle('active', section.id === targetId);
                 });
             } else if (tabButtons.length > 0) {
-                // If no active button, activate the first one
-                tabButtons[0].classList.add('active');
-                const firstTargetId = tabButtons[0].getAttribute('data-target');
-                document.getElementById(firstTargetId)?.classList.add('active');
+                // If no active button, activate the Game tab by default
+                const gameButton = document.querySelector('.tab-button[data-target="game-section"]');
+                if (gameButton) {
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    gameButton.classList.add('active');
+
+                    // Show game section, hide others
+                    sections.forEach(section => {
+                        section.classList.toggle('active', section.id === 'game-section');
+                    });
+                } else {
+                    // Fallback to first tab if game tab not found
+                    tabButtons[0].classList.add('active');
+                    const firstTargetId = tabButtons[0].getAttribute('data-target');
+                    document.getElementById(firstTargetId)?.classList.add('active');
+                }
             }
 
             // Add mobile-view class to body
