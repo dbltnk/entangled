@@ -1386,35 +1386,14 @@ function setupResponsiveNavigation() {
 
     // Add game stats to game section for mobile view
     function moveStatsForMobile() {
-        const statsElement = document.querySelector('.stats');
-        const gameSection = document.getElementById('game-section');
-
-        if (isMobileView() && statsElement) {
-            // Create a container for the stats in the game section if it doesn't exist
-            let gameStatsContainer = document.getElementById('game-stats-container');
-            if (!gameStatsContainer) {
-                gameStatsContainer = document.createElement('div');
-                gameStatsContainer.id = 'game-stats-container';
-                gameStatsContainer.className = 'panel game-stats';
-                gameSection.appendChild(gameStatsContainer);
-            }
-
-            // Clone the stats and add to game section
-            if (!document.getElementById('game-stats-content')) {
-                const statsClone = statsElement.cloneNode(true);
-                statsClone.id = 'game-stats-content';
-                gameStatsContainer.appendChild(statsClone);
-            }
-
-            // Show the game stats container
-            gameStatsContainer.style.display = 'block';
-        } else {
-            // Hide the game stats container in desktop view
-            const gameStatsContainer = document.getElementById('game-stats-container');
-            if (gameStatsContainer) {
-                gameStatsContainer.style.display = 'none';
-            }
+        // Remove the game stats container if it exists
+        const gameStatsContainer = document.getElementById('game-stats-container');
+        if (gameStatsContainer) {
+            gameStatsContainer.remove();
         }
+
+        // We're no longer creating the game stats container on mobile
+        // Stats will only be visible in the controls section
     }
 
     // Update both stats displays when they change
@@ -1422,23 +1401,7 @@ function setupResponsiveNavigation() {
     updateDisplay = function () {
         originalUpdateDisplay();
 
-        // Update the cloned stats if they exist
-        const gameStatsContent = document.getElementById('game-stats-content');
-        if (gameStatsContent) {
-            const originalScoreDisplay = document.getElementById('score-display');
-            const originalPlayerDisplay = document.getElementById('current-player-display');
-
-            const clonedScoreDisplay = gameStatsContent.querySelector('[id$="score-display"]');
-            const clonedPlayerDisplay = gameStatsContent.querySelector('[id$="current-player-display"]');
-
-            if (clonedScoreDisplay && originalScoreDisplay) {
-                clonedScoreDisplay.textContent = originalScoreDisplay.textContent;
-            }
-
-            if (clonedPlayerDisplay && originalPlayerDisplay) {
-                clonedPlayerDisplay.textContent = originalPlayerDisplay.textContent;
-            }
-        }
+        // We no longer need to update the cloned stats since we removed the container
     };
 
     // Run initial setup

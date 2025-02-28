@@ -211,7 +211,6 @@ body.rules-hidden .game-container {
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-md);
     position: fixed;
     left: calc(320px + var(--spacing-md));
     right: calc(280px + var(--spacing-md) * 2);
@@ -220,6 +219,8 @@ body.rules-hidden .game-container {
     overflow-y: auto;
     transition: left var(--transition-slow) ease, right var(--transition-slow) ease;
     padding-right: var(--spacing-md);
+    justify-content: space-evenly;
+    gap: 0;
 }
 
 body.rules-hidden .boards {
@@ -230,12 +231,15 @@ body.rules-hidden .boards {
     display: flex;
     flex-direction: column;
     align-items: center;
-    margin-bottom: var(--spacing-sm);
+    margin-bottom: 0;
+    flex: 0 1 auto;
+    width: 100%;
+    justify-content: center;
 }
 
 .board-container:last-child {
     margin-bottom: 0;
-    padding-bottom: var(--spacing-md);
+    padding-bottom: 0;
 }
 
 .board {
@@ -1285,7 +1289,7 @@ button:disabled {
     .section {
         display: none;
         width: 100%;
-        margin-top: var(--spacing-md);
+        margin-top: var(--spacing-xs);
     }
 
     .section.active {
@@ -1306,39 +1310,60 @@ button:disabled {
         display: none;
     }
 
-    /* Boards */
+    /* Boards - Improved layout for mobile */
     .boards {
         width: 100%;
-        flex: 1;
         display: flex;
         flex-direction: column;
-        gap: var(--spacing-md);
+        box-sizing: border-box;
+        /* Remove max-height and overflow to ensure both boards are always visible */
+        max-height: none;
+        overflow-y: visible;
+        /* Create equal spacing between boards and from top/bottom */
+        justify-content: space-evenly;
+        /* Add padding to create equal spacing from top/bottom */
+        padding: var(--spacing-md) var(--spacing-xs);
+        /* Calculate height to ensure equal spacing */
+        height: calc(100vh - 100px);
     }
 
     .board-container {
-        flex: 1;
         display: flex;
-        flex-direction: column;
+        justify-content: center;
         align-items: center;
-        margin-bottom: var(--spacing-md);
+        width: 100%;
+        /* Each container takes equal height */
+        flex: 0 1 auto;
     }
 
+    /* Make boards equal size and fully visible */
     .board[class*="board-"] {
-        max-width: 100%;
         width: 100%;
+        max-width: min(100vw - 40px, 40vh);
         height: auto;
-    }
-
-    /* Make sure the board is centered and properly sized */
-    .board {
-        width: 100%;
-        max-width: min(100%, 80vh);
+        aspect-ratio: 1/1;
         margin: 0 auto;
     }
 
-    /* Add some space between the boards */
-    .board-container+.board-container {
-        margin-top: var(--spacing-md);
+    /* Hex grid adjustments for mobile */
+    .board.hex-grid {
+        max-width: min(100vw - 40px, 40vh);
+    }
+
+    .board.board-7.hex-grid {
+        --hex-size: calc(min(100vw - 40px, 40vh) / 7);
+    }
+
+    .board.board-6.hex-grid {
+        --hex-size: calc(min(100vw - 40px, 40vh) / 6);
+    }
+
+    .board.board-5.hex-grid {
+        --hex-size: calc(min(100vw - 40px, 40vh) / 5);
+    }
+
+    .board.board-4.hex-grid {
+        --hex-size: calc(min(100vw - 40px, 40vh) / 4);
     }
 
     /* Controls */
@@ -1348,12 +1373,9 @@ button:disabled {
         padding-left: 0;
     }
 
-    /* Game stats in mobile view */
+    /* Game stats in mobile view - hide in game section */
     .game-stats {
-        margin-top: var(--spacing-md);
-        padding: var(--spacing-md);
-        position: relative;
-        z-index: 1;
+        display: none;
     }
 
     /* Adjust font sizes for mobile */
@@ -1371,23 +1393,6 @@ button:disabled {
 
     .board.board-7 .cell-letter {
         font-size: calc(1.1rem * 0.8);
-    }
-
-    /* Adjust icon sizes for mobile */
-    .board.board-4 .cell-icon {
-        font-size: calc(2rem * 0.8);
-    }
-
-    .board.board-5 .cell-icon {
-        font-size: calc(1.8rem * 0.8);
-    }
-
-    .board.board-6 .cell-icon {
-        font-size: calc(1.6rem * 0.8);
-    }
-
-    .board.board-7 .cell-icon {
-        font-size: calc(1.4rem * 0.8);
     }
 
     /* Adjust modal for mobile */
@@ -1412,8 +1417,21 @@ button:disabled {
         padding-bottom: var(--spacing-sm);
     }
 
-    .board-container {
-        margin-bottom: var(--spacing-xs);
+    /* Explicitly set icon sizes for mobile to match desktop */
+    .board.board-4 .cell-icon {
+        font-size: 2rem;
+    }
+
+    .board.board-5 .cell-icon {
+        font-size: 1.8rem;
+    }
+
+    .board.board-6 .cell-icon {
+        font-size: 1.6rem;
+    }
+
+    .board.board-7 .cell-icon {
+        font-size: 1.4rem;
     }
 }
 
@@ -1430,10 +1448,44 @@ button:disabled {
     }
 
     .panel {
-        padding: var(--spacing-sm);
+        padding: var(--spacing-xs);
     }
 
-    /* Further reduce sizes for very small screens */
+    .boards {
+        /* Adjust height for smaller screens */
+        height: calc(100vh - 70px);
+        /* Add vertical padding for equal spacing */
+        padding: var(--spacing-sm) 0;
+        /* Keep using space-evenly for equal spacing */
+        justify-content: space-evenly;
+    }
+
+    /* Optimize board size for very small screens */
+    .board[class*="board-"] {
+        max-width: min(100vw - 20px, 40vh);
+    }
+
+    .board.hex-grid {
+        max-width: min(100vw - 20px, 40vh);
+    }
+
+    .board.board-7.hex-grid {
+        --hex-size: calc(min(100vw - 20px, 40vh) / 7);
+    }
+
+    .board.board-6.hex-grid {
+        --hex-size: calc(min(100vw - 20px, 40vh) / 6);
+    }
+
+    .board.board-5.hex-grid {
+        --hex-size: calc(min(100vw - 20px, 40vh) / 5);
+    }
+
+    .board.board-4.hex-grid {
+        --hex-size: calc(min(100vw - 20px, 40vh) / 4);
+    }
+
+    /* Further reduce sizes for very small screens - but keep icon sizes consistent */
     .board.board-4 .cell-letter,
     .board.board-5 .cell-letter,
     .board.board-6 .cell-letter,
@@ -1441,10 +1493,20 @@ button:disabled {
         font-size: calc(1rem * 0.8);
     }
 
-    .board.board-4 .cell-icon,
-    .board.board-5 .cell-icon,
-    .board.board-6 .cell-icon,
+    /* Explicitly set icon sizes for small phones to match desktop */
+    .board.board-4 .cell-icon {
+        font-size: 2rem;
+    }
+
+    .board.board-5 .cell-icon {
+        font-size: 1.8rem;
+    }
+
+    .board.board-6 .cell-icon {
+        font-size: 1.6rem;
+    }
+
     .board.board-7 .cell-icon {
-        font-size: calc(1.2rem * 0.8);
+        font-size: 1.4rem;
     }
 }
