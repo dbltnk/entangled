@@ -592,6 +592,19 @@ function stopGame() {
     if (existingWinner) {
         existingWinner.remove();
     }
+
+    // Hide mobile game over elements
+    const mobileGameOver = document.getElementById('mobile-game-over');
+    const showGameOverButton = document.getElementById('show-game-over');
+
+    if (mobileGameOver) {
+        mobileGameOver.classList.remove('show');
+    }
+
+    if (showGameOverButton) {
+        showGameOverButton.classList.remove('visible');
+    }
+
     document.getElementById('score-display').textContent = 'Black: 0 - White: 0';
     document.getElementById('current-player-display').textContent = '';
     const cells = document.querySelectorAll('.cell');
@@ -937,6 +950,27 @@ function showWinner(winnerData) {
 
     winnerDisplay.innerHTML = content;
     document.querySelector('.stats').appendChild(winnerDisplay);
+
+    // Handle mobile game over display
+    const mobileGameOverDetails = document.getElementById('mobile-game-over-details');
+    const showGameOverButton = document.getElementById('show-game-over');
+    const mobileGameOver = document.getElementById('mobile-game-over');
+
+    if (mobileGameOverDetails && showGameOverButton) {
+        // Copy the same content to the mobile popup
+        mobileGameOverDetails.innerHTML = content;
+
+        // Only show on mobile devices
+        if (window.innerWidth <= 1024) {
+            // Show the button to open the popup
+            showGameOverButton.classList.add('visible');
+
+            // Automatically show the popup
+            if (mobileGameOver) {
+                mobileGameOver.classList.add('show');
+            }
+        }
+    }
 }
 
 function handleCellClick(symbol) {
@@ -1376,6 +1410,9 @@ function init() {
 
     // Setup responsive tab navigation
     setupResponsiveNavigation();
+
+    // Setup mobile game over popup handlers
+    setupMobileGameOverHandlers();
 }
 
 // Function to handle responsive tab navigation
@@ -1480,6 +1517,31 @@ function setupResponsiveNavigation() {
             }
         });
     });
+}
+
+function setupMobileGameOverHandlers() {
+    const mobileGameOver = document.getElementById('mobile-game-over');
+    const closeGameOver = document.getElementById('close-game-over');
+    const showGameOver = document.getElementById('show-game-over');
+
+    if (mobileGameOver && closeGameOver && showGameOver) {
+        // Show popup when button is clicked
+        showGameOver.addEventListener('click', () => {
+            mobileGameOver.classList.add('show');
+        });
+
+        // Hide popup when close button is clicked
+        closeGameOver.addEventListener('click', () => {
+            mobileGameOver.classList.remove('show');
+        });
+
+        // Also hide popup when clicking outside the content
+        mobileGameOver.addEventListener('click', (e) => {
+            if (e.target === mobileGameOver) {
+                mobileGameOver.classList.remove('show');
+            }
+        });
+    }
 }
 
 document.addEventListener('DOMContentLoaded', init);
