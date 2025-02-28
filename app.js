@@ -1373,6 +1373,14 @@ function init() {
     document.getElementById('start-game').addEventListener('click', () => {
         stopGame();
         initializeGame();
+
+        // Switch to game tab if we're in mobile view
+        if (window.innerWidth <= 1024) {
+            const gameTabButton = document.querySelector('.tab-button[data-target="game-section"]');
+            if (gameTabButton) {
+                gameTabButton.click();
+            }
+        }
     });
 
     const settingsElements = [
