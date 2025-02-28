@@ -1339,6 +1339,150 @@ function init() {
 
     initializeBoards();
     document.getElementById('start-game').click();
+
+    // Setup responsive tab navigation
+    setupResponsiveNavigation();
+}
+
+// Function to handle responsive tab navigation
+function setupResponsiveNavigation() {
+    const tabButtons = document.querySelectorAll('.tab-button');
+    const sections = document.querySelectorAll('.section');
+
+    // Function to check if we're in mobile view
+    function isMobileView() {
+        return window.innerWidth <= 1024;
+    }
+
+    // Initial setup based on screen size
+    function updateSectionsVisibility() {
+        if (isMobileView()) {
+            // In mobile view, only show the active section
+            const activeButton = document.querySelector('.tab-button.active');
+            if (activeButton) {
+                const targetId = activeButton.getAttribute('data-target');
+                sections.forEach(section => {
+                    section.classList.toggle('active', section.id === targetId);
+                });
+            } else if (tabButtons.length > 0) {
+                // If no active button, activate the first one
+                tabButtons[0].classList.add('active');
+                const firstTargetId = tabButtons[0].getAttribute('data-target');
+                document.getElementById(firstTargetId)?.classList.add('active');
+            }
+
+            // Add mobile-view class to body
+            document.body.classList.add('mobile-view');
+        } else {
+            // In desktop view, show all sections
+            sections.forEach(section => {
+                section.classList.add('active');
+            });
+
+            // Remove mobile-view class from body
+            document.body.classList.remove('mobile-view');
+        }
+    }
+
+    // Add game stats to game section for mobile view
+    function moveStatsForMobile() {
+        const statsElement = document.querySelector('.stats');
+        const gameSection = document.getElementById('game-section');
+
+        if (isMobileView() && statsElement) {
+            // Create a container for the stats in the game section if it doesn't exist
+            let gameStatsContainer = document.getElementById('game-stats-container');
+            if (!gameStatsContainer) {
+                gameStatsContainer = document.createElement('div');
+                gameStatsContainer.id = 'game-stats-container';
+                gameStatsContainer.className = 'panel game-stats';
+                gameSection.appendChild(gameStatsContainer);
+            }
+
+            // Clone the stats and add to game section
+            if (!document.getElementById('game-stats-content')) {
+                const statsClone = statsElement.cloneNode(true);
+                statsClone.id = 'game-stats-content';
+                gameStatsContainer.appendChild(statsClone);
+            }
+
+            // Show the game stats container
+            gameStatsContainer.style.display = 'block';
+        } else {
+            // Hide the game stats container in desktop view
+            const gameStatsContainer = document.getElementById('game-stats-container');
+            if (gameStatsContainer) {
+                gameStatsContainer.style.display = 'none';
+            }
+        }
+    }
+
+    // Update both stats displays when they change
+    const originalUpdateDisplay = updateDisplay;
+    updateDisplay = function () {
+        originalUpdateDisplay();
+
+        // Update the cloned stats if they exist
+        const gameStatsContent = document.getElementById('game-stats-content');
+        if (gameStatsContent) {
+            const originalScoreDisplay = document.getElementById('score-display');
+            const originalPlayerDisplay = document.getElementById('current-player-display');
+
+            const clonedScoreDisplay = gameStatsContent.querySelector('[id$="score-display"]');
+            const clonedPlayerDisplay = gameStatsContent.querySelector('[id$="current-player-display"]');
+
+            if (clonedScoreDisplay && originalScoreDisplay) {
+                clonedScoreDisplay.textContent = originalScoreDisplay.textContent;
+            }
+
+            if (clonedPlayerDisplay && originalPlayerDisplay) {
+                clonedPlayerDisplay.textContent = originalPlayerDisplay.textContent;
+            }
+        }
+    };
+
+    // Run initial setup
+    updateSectionsVisibility();
+    moveStatsForMobile();
+
+    // Update on window resize
+    window.addEventListener('resize', () => {
+        updateSectionsVisibility();
+        moveStatsForMobile();
+    });
+
+    // Handle tab button clicks
+    tabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const targetId = button.getAttribute('data-target');
+
+            // Update active tab
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+
+            // Only change section visibility in mobile view
+            if (isMobileView()) {
+                // Show target section, hide others
+                sections.forEach(section => {
+                    if (section.id === targetId) {
+                        section.classList.add('active');
+                        // Scroll to top when changing tabs
+                        window.scrollTo({
+                            top: 0,
+                            behavior: 'smooth'
+                        });
+                    } else {
+                        section.classList.remove('active');
+                    }
+                });
+
+                // Special handling for rules panel
+                if (targetId === 'rules-section') {
+                    document.getElementById('rules-panel').classList.remove('hidden');
+                }
+            }
+        });
+    });
 }
 
 document.addEventListener('DOMContentLoaded', init);

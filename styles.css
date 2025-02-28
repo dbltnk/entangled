@@ -49,9 +49,9 @@ body {
     line-height: 1.5;
     height: 100vh;
     display: flex;
-    padding: var(--spacing-xl);
-    gap: var(--spacing-xl);
-    background: var(--color-background);
+    padding: var(--spacing-md);
+    gap: var(--spacing-md);
+    background: var(--color-white);
     color: var(--color-text);
     position: relative;
     transition: padding-left var(--transition-slow) ease;
@@ -59,23 +59,25 @@ body {
 
 /* Panel styles */
 .panel {
-    background: var(--color-white);
-    padding: var(--spacing-xl);
-    border-radius: var(--border-radius);
-    box-shadow: var(--shadow-default);
+    background: transparent;
+    padding: var(--spacing-md);
+    border-radius: 0;
+    box-shadow: none;
     overflow-y: auto;
 }
 
 /* Rules panel */
 .rules {
     position: fixed;
-    left: var(--spacing-xl);
-    top: var(--spacing-xl);
-    bottom: var(--spacing-xl);
-    width: 350px;
+    left: var(--spacing-md);
+    top: var(--spacing-md);
+    bottom: var(--spacing-md);
+    width: 320px;
     transform: translateX(0);
     transition: transform var(--transition-slow) ease;
     z-index: 10;
+    border-right: 1px solid var(--color-border);
+    padding-right: var(--spacing-md);
 }
 
 .rules.hidden {
@@ -191,13 +193,13 @@ body {
 .game-container {
     flex: 1;
     display: flex;
-    gap: var(--spacing-xl);
-    margin-left: 350px;
+    gap: var(--spacing-md);
+    margin-left: 320px;
     transition: margin-left var(--transition-slow) ease;
 }
 
 body.rules-hidden {
-    padding-left: 4rem;
+    padding-left: 2rem;
 }
 
 body.rules-hidden .game-container {
@@ -209,21 +211,38 @@ body.rules-hidden .game-container {
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-lg);
+    gap: var(--spacing-md);
+    position: fixed;
+    left: calc(320px + var(--spacing-md));
+    right: calc(280px + var(--spacing-md) * 2);
+    top: var(--spacing-md);
+    bottom: var(--spacing-md);
+    overflow-y: auto;
+    transition: left var(--transition-slow) ease, right var(--transition-slow) ease;
+    padding-right: var(--spacing-md);
+}
+
+body.rules-hidden .boards {
+    left: var(--spacing-md);
 }
 
 .board-container {
-    flex: 1;
     display: flex;
     flex-direction: column;
     align-items: center;
+    margin-bottom: var(--spacing-sm);
+}
+
+.board-container:last-child {
+    margin-bottom: 0;
+    padding-bottom: var(--spacing-md);
 }
 
 .board {
     display: grid;
     gap: 2px;
-    background: var(--color-border);
-    padding: 2px;
+    background: transparent;
+    padding: 0;
     width: 100%;
     aspect-ratio: 1;
     position: relative;
@@ -231,7 +250,41 @@ body.rules-hidden .game-container {
 
 /* Board size classes */
 .board[class*="board-"] {
-    max-width: 245px;
+    max-width: 100%;
+    width: 100%;
+}
+
+@media (min-width: 1025px) {
+    .board[class*="board-"] {
+        max-width: 245px;
+    }
+
+    /* Ensure proper scrollbar appearance */
+    .boards::-webkit-scrollbar,
+    .rules::-webkit-scrollbar,
+    .controls::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .boards::-webkit-scrollbar-track,
+    .rules::-webkit-scrollbar-track,
+    .controls::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.05);
+        border-radius: 4px;
+    }
+
+    .boards::-webkit-scrollbar-thumb,
+    .rules::-webkit-scrollbar-thumb,
+    .controls::-webkit-scrollbar-thumb {
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 4px;
+    }
+
+    .boards::-webkit-scrollbar-thumb:hover,
+    .rules::-webkit-scrollbar-thumb:hover,
+    .controls::-webkit-scrollbar-thumb:hover {
+        background: rgba(0, 0, 0, 0.3);
+    }
 }
 
 .board.board-4 {
@@ -295,10 +348,12 @@ body.rules-hidden .game-container {
     transition: background-color var(--transition-default);
     grid-row: var(--grid-row);
     grid-column: var(--grid-column);
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.05);
 }
 
 .cell:hover {
     background: var(--color-hover);
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
 }
 
 .cell.highlighted {
@@ -468,15 +523,28 @@ body.rules-hidden .game-container {
 
 /* Controls section */
 .controls {
-    width: 300px;
+    width: 280px;
     flex-shrink: 0;
+    position: fixed;
+    right: var(--spacing-md);
+    top: var(--spacing-md);
+    bottom: var(--spacing-md);
+    overflow-y: auto;
+    border-left: 1px solid var(--color-border);
+    padding-left: var(--spacing-md);
 }
 
 .control-group {
     display: flex;
     flex-direction: column;
     gap: var(--spacing-sm);
-    margin-bottom: var(--spacing-lg);
+    margin-bottom: var(--spacing-md);
+    border-bottom: 1px solid var(--color-hover);
+    padding-bottom: var(--spacing-sm);
+}
+
+.control-group:last-child {
+    border-bottom: none;
 }
 
 .control-group h3 {
@@ -528,7 +596,7 @@ body.rules-hidden .game-container {
     border: 1px solid var(--color-border);
     border-radius: var(--border-radius-sm);
     font-size: calc(var(--font-size-base) * 0.67);
-    background: var(--color-white);
+    background: transparent;
     line-height: 1.2;
     height: calc(var(--font-size-base) * 1.6);
 }
@@ -548,14 +616,14 @@ body.rules-hidden .game-container {
 .player-select select:focus {
     outline: none;
     border-color: var(--color-text);
-    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+    box-shadow: none;
 }
 
 /* Button styles */
 button {
     padding: var(--spacing-sm) var(--spacing-md);
-    background: var(--color-white);
-    border: 1px solid var(--color-text);
+    background: transparent;
+    border: 1px solid var(--color-border);
     border-radius: var(--border-radius-sm);
     cursor: pointer;
     font-size: var(--font-size-sm);
@@ -567,6 +635,7 @@ button {
 
 button:hover {
     background: var(--color-hover);
+    border-color: var(--color-text);
 }
 
 button:active {
@@ -587,6 +656,8 @@ button:disabled {
     width: 100%;
     margin-top: var(--spacing-sm);
     justify-content: center;
+    border: 1px solid var(--color-text);
+    background: var(--color-white);
 }
 
 #start-game span {
@@ -612,7 +683,8 @@ button:disabled {
     color: var(--color-black);
     padding: var(--spacing-md);
     text-align: center;
-    background: var(--color-hover);
+    background: transparent;
+    border: 1px solid var(--color-border);
     border-radius: var(--border-radius-sm);
     margin-top: var(--spacing-md);
 }
@@ -648,6 +720,8 @@ button:disabled {
     gap: var(--spacing-sm);
     transition: max-height var(--transition-slow) ease-out;
     overflow: hidden;
+    border-top: 1px solid var(--color-hover);
+    padding-top: var(--spacing-sm);
 }
 
 .settings-content.hidden {
@@ -702,7 +776,7 @@ button:disabled {
     font-size: var(--font-size-base);
     line-height: 1;
     border-radius: var(--border-radius-sm);
-    background: var(--color-white);
+    background: transparent;
     border: 1px solid var(--color-border);
     cursor: pointer;
     min-width: 28px;
@@ -737,11 +811,11 @@ button:disabled {
 
 .modal-content {
     background-color: var(--color-white);
-    padding: var(--spacing-xl);
+    padding: var(--spacing-md);
     border-radius: var(--border-radius);
     width: 90%;
     max-width: 600px;
-    box-shadow: var(--shadow-default);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
 }
 
 .modal-content h3 {
@@ -775,8 +849,8 @@ button:disabled {
     width: 100%;
     margin-bottom: var(--spacing-md);
     padding: var(--spacing-sm) var(--spacing-md);
-    background: var(--color-white);
-    border: 2px solid var(--color-text);
+    background: transparent;
+    border: 1px solid var(--color-text);
     border-radius: var(--border-radius-sm);
     font-weight: 600;
     display: flex;
@@ -850,6 +924,7 @@ button:disabled {
     border: 1px solid var(--color-border);
     border-radius: var(--border-radius-sm);
     font-size: calc(var(--font-size-sm) * 0.75);
+    background: transparent;
 }
 
 .thinking-time-container .field-label {
@@ -866,7 +941,7 @@ button:disabled {
     position: fixed;
     top: 20px;
     right: 20px;
-    background: rgba(0, 0, 0, 0.8);
+    background: rgba(0, 0, 0, 0.7);
     color: white;
     padding: 12px 24px;
     border-radius: var(--border-radius);
@@ -878,6 +953,7 @@ button:disabled {
     display: flex;
     align-items: center;
     gap: 8px;
+    box-shadow: none;
 }
 
 .toast.show {
@@ -931,6 +1007,7 @@ button:disabled {
     align-items: center;
     cursor: pointer;
     transition: all 0.2s;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.05);
 }
 
 /* Container for hex cells to handle proper positioning */
@@ -959,6 +1036,7 @@ button:disabled {
 /* Hover, highlight and stone styles for hex cells */
 .hex-cell:hover {
     background-color: var(--color-hover);
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
 }
 
 .hex-cell.highlighted {
@@ -1094,4 +1172,279 @@ button:disabled {
         -1px 1px 0 #000,
         1px 1px 0 #000,
         0 0 4px rgba(0, 0, 0, 0.8);
+}
+
+/* Tab navigation - hidden by default on larger screens */
+.tab-navigation {
+    display: none;
+}
+
+/* Section visibility - show all sections by default on larger screens */
+.section {
+    display: block;
+}
+
+/* Responsive styles for mobile and tablet portrait mode */
+@media (max-width: 1024px) {
+    body {
+        flex-direction: column;
+        padding: var(--spacing-sm);
+        padding-top: calc(var(--spacing-sm) + 50px);
+        /* Space for fixed nav */
+        gap: var(--spacing-sm);
+        overflow-x: hidden;
+        margin: 0;
+        /* Remove any default margin */
+    }
+
+    .game-container {
+        margin-left: 0;
+        flex-direction: column;
+    }
+
+    /* Reset fixed positioning for mobile */
+    .boards,
+    .controls {
+        position: static;
+        width: 100%;
+        left: auto;
+        right: auto;
+        top: auto;
+        bottom: auto;
+    }
+
+    /* Tab navigation - fixed position, visible on mobile */
+    .tab-navigation {
+        display: flex;
+        width: 100vw;
+        /* Full viewport width */
+        max-width: 100vw;
+        margin: 0;
+        padding: 0;
+        background: var(--color-white);
+        border-radius: 0;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 100;
+        height: 50px;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        box-sizing: border-box;
+        /* Include borders in width calculation */
+    }
+
+    .tab-button {
+        flex: 1;
+        padding: var(--spacing-xs) var(--spacing-sm);
+        text-align: center;
+        background: transparent;
+        border: none;
+        border-right: 1px solid rgba(0, 0, 0, 0.05);
+        font-weight: bold;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 2px;
+        transition: all 0.2s ease;
+        color: #666;
+        margin: 0;
+        /* Remove any margin */
+        box-sizing: border-box;
+        /* Include borders in width calculation */
+    }
+
+    .tab-button:last-child {
+        border-right: none;
+    }
+
+    .tab-button.active {
+        background: transparent;
+        color: var(--color-text);
+        font-weight: bold;
+        border-bottom: 2px solid var(--color-text);
+    }
+
+    .tab-button:not(.active):hover {
+        background-color: transparent;
+        color: var(--color-text);
+    }
+
+    .tab-button i {
+        font-size: 1rem;
+    }
+
+    .tab-button span {
+        font-size: 0.8rem;
+    }
+
+    /* Section visibility - hide sections by default on mobile */
+    .section {
+        display: none;
+        width: 100%;
+        margin-top: var(--spacing-md);
+    }
+
+    .section.active {
+        display: block;
+    }
+
+    /* Rules panel */
+    .rules {
+        position: static;
+        width: 100%;
+        transform: none;
+        margin-bottom: var(--spacing-md);
+        border-right: none;
+        padding-right: 0;
+    }
+
+    .rules.hidden {
+        display: none;
+    }
+
+    /* Boards */
+    .boards {
+        width: 100%;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-md);
+    }
+
+    .board-container {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin-bottom: var(--spacing-md);
+    }
+
+    .board[class*="board-"] {
+        max-width: 100%;
+        width: 100%;
+        height: auto;
+    }
+
+    /* Make sure the board is centered and properly sized */
+    .board {
+        width: 100%;
+        max-width: min(100%, 80vh);
+        margin: 0 auto;
+    }
+
+    /* Add some space between the boards */
+    .board-container+.board-container {
+        margin-top: var(--spacing-md);
+    }
+
+    /* Controls */
+    .controls {
+        width: 100%;
+        border-left: none;
+        padding-left: 0;
+    }
+
+    /* Game stats in mobile view */
+    .game-stats {
+        margin-top: var(--spacing-md);
+        padding: var(--spacing-md);
+        position: relative;
+        z-index: 1;
+    }
+
+    /* Adjust font sizes for mobile */
+    .board.board-4 .cell-letter {
+        font-size: calc(1.7rem * 0.8);
+    }
+
+    .board.board-5 .cell-letter {
+        font-size: calc(1.5rem * 0.8);
+    }
+
+    .board.board-6 .cell-letter {
+        font-size: calc(1.3rem * 0.8);
+    }
+
+    .board.board-7 .cell-letter {
+        font-size: calc(1.1rem * 0.8);
+    }
+
+    /* Adjust icon sizes for mobile */
+    .board.board-4 .cell-icon {
+        font-size: calc(2rem * 0.8);
+    }
+
+    .board.board-5 .cell-icon {
+        font-size: calc(1.8rem * 0.8);
+    }
+
+    .board.board-6 .cell-icon {
+        font-size: calc(1.6rem * 0.8);
+    }
+
+    .board.board-7 .cell-icon {
+        font-size: calc(1.4rem * 0.8);
+    }
+
+    /* Adjust modal for mobile */
+    .modal-content {
+        width: 95%;
+        padding: var(--spacing-md);
+    }
+
+    /* Toast positioning for mobile */
+    .toast {
+        width: 90%;
+        left: 5%;
+        right: 5%;
+    }
+
+    .panel {
+        padding: var(--spacing-sm);
+    }
+
+    .control-group {
+        margin-bottom: var(--spacing-sm);
+        padding-bottom: var(--spacing-sm);
+    }
+
+    .board-container {
+        margin-bottom: var(--spacing-xs);
+    }
+}
+
+/* Small phones */
+@media (max-width: 480px) {
+    body {
+        padding: var(--spacing-xs);
+        padding-top: calc(var(--spacing-xs) + 50px);
+        /* Space for fixed nav */
+    }
+
+    .tab-button {
+        padding: var(--spacing-xs);
+    }
+
+    .panel {
+        padding: var(--spacing-sm);
+    }
+
+    /* Further reduce sizes for very small screens */
+    .board.board-4 .cell-letter,
+    .board.board-5 .cell-letter,
+    .board.board-6 .cell-letter,
+    .board.board-7 .cell-letter {
+        font-size: calc(1rem * 0.8);
+    }
+
+    .board.board-4 .cell-icon,
+    .board.board-5 .cell-icon,
+    .board.board-6 .cell-icon,
+    .board.board-7 .cell-icon {
+        font-size: calc(1.2rem * 0.8);
+    }
 }
