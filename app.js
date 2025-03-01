@@ -1048,14 +1048,24 @@ function makeAIMove() {
     try {
         // First check if we should swap
         if (game.isSwapAvailable()) {
+            // First show that AI is considering the swap
+            showToast('🤔 Opponent is considering whether to swap...');
+
             const shouldSwap = player.shouldSwap();
             if (shouldSwap) {
-                game.swapFirstMove();
-                showToast('🔄 AI decided to take over first move');
-                updateDisplay();
-                enableUI();
-                // Schedule next AI move
-                setTimeout(makeAIMove, 100);
+                // Wait a moment before showing the decision
+                setTimeout(() => {
+                    showToast('🔄 Opponent took over the first move.');
+                    updateDisplay();
+                    enableUI();
+                    // Delay the swap until the toast is gone, then schedule next AI move
+                    setTimeout(() => {
+                        game.swapFirstMove();
+                        updateDisplay();
+                        // Schedule next AI move after swap is complete
+                        setTimeout(makeAIMove, 100);
+                    }, 100);
+                }, 2000);
                 return;
             }
         }
