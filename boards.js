@@ -597,6 +597,19 @@ const BOARD_LAYOUTS = {
             ['Z', 'R', 'N', 'W', '.', '.', '.']
         ]
     },
+    hex_donut_36p_chaos_right_ali_2: {
+        name: "Hex Donut 36p Chaos Right Ali 2",
+        type: "hex",
+        grid: [
+            ['.', '.', '.', 'W', 'G', 'S', 'Q'],
+            ['.', '.', 'L', 'E', '8', '1', 'Y'],
+            ['.', '5', 'U', 'P', '0', 'B', '2'],
+            ['K', 'D', '7', '.', '3', 'J', 'M'],
+            ['T', 'V', 'A', 'O', '9', 'F', '.'],
+            ['4', 'I', 'C', '6', 'H', '.', '.'],
+            ['Z', 'R', 'N', 'X', '.', '.', '.']
+        ]
+    },
     centeredRandom7x7: {
         name: "Centered Random (7x7)",
         type: "rect",
