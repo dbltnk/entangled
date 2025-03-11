@@ -183,8 +183,21 @@ function populatePlayerDropdowns() {
 }
 
 function getBoardSize(boardId) {
+
+    // Check if it's a custom board first
+    if (customBoards.has(boardId)) {
+        const customBoard = customBoards.get(boardId);
+        return customBoard.grid.length;
+    }
+
+    // If not custom, try standard board layouts
     const layout = BOARD_LAYOUTS[boardId];
-    return layout ? layout.grid.length : 5;
+    if (layout) {
+        return layout.grid.length;
+    }
+
+    // Default fallback
+    return 7;
 }
 
 function populateBoardsBySize(size) {
@@ -199,20 +212,25 @@ function populateBoardsBySize(size) {
     board1Select.innerHTML = '';
     board2Select.innerHTML = '';
 
+    // Add standard boards first
+    let standardBoardCount = 0;
     Object.entries(BOARD_LAYOUTS).forEach(([id, layout]) => {
         if (getBoardSize(id) === size) {
             const option = new Option(layout.name, id);
             board1Select.add(option.cloneNode(true));
             board2Select.add(option.cloneNode(true));
+            standardBoardCount++;
         }
     });
 
     // Add custom boards for this size
+    let customBoardCount = 0;
     customBoards.forEach((board, id) => {
         if (getBoardSize(id) === size) {
             const option = new Option(`Custom: ${board.name}`, id);
             board1Select.add(option.cloneNode(true));
             board2Select.add(option.cloneNode(true));
+            customBoardCount++;
         }
     });
 
@@ -231,14 +249,16 @@ function populateBoardsBySize(size) {
     };
 
     // Try to restore previous selections if they're valid for this size
-    const options = Array.from(board1Select.options).map(opt => opt.value);
-    if (options.includes(currentBoard1)) {
+    const board1Options = Array.from(board1Select.options).map(opt => opt.value);
+    const board2Options = Array.from(board2Select.options).map(opt => opt.value);
+
+    if (board1Options.includes(currentBoard1)) {
         board1Select.value = currentBoard1;
     } else {
         board1Select.value = defaultBoards[size][0];
     }
 
-    if (options.includes(currentBoard2)) {
+    if (board2Options.includes(currentBoard2)) {
         board2Select.value = currentBoard2;
     } else {
         board2Select.value = defaultBoards[size][1];
@@ -251,9 +271,29 @@ function getSelectedBoardLayout(boardSelect) {
     const selectedValue = boardSelect.value;
     const currentSize = parseInt(document.getElementById('board-size').value);
 
+
+    // Safety check for empty selection
+    if (!selectedValue) {
+        console.error(`Empty board selection for ${boardSelect.id}`);
+        // Default to the first option in the dropdown
+        const firstOption = boardSelect.options[0]?.value;
+        if (firstOption) {
+            console.log(`Defaulting to first option: ${firstOption}`);
+            boardSelect.value = firstOption;
+            return getSelectedBoardLayout(boardSelect);
+        }
+        // If no options available, use a fallback board
+        console.log(`No options available, using fallback board`);
+        return {
+            grid: BOARD_LAYOUTS[`board${currentSize}x${currentSize}`].grid,
+            type: "rect"
+        };
+    }
+
     if (selectedValue.startsWith('random')) {
         if (!currentRandomBoards[boardSelect.id]) {
             currentRandomBoards[boardSelect.id] = BOARD_LAYOUTS[`random${currentSize}x${currentSize}`].grid;
+        } else {
         }
         return {
             grid: currentRandomBoards[boardSelect.id],
@@ -270,6 +310,17 @@ function getSelectedBoardLayout(boardSelect) {
         };
     }
 
+    // Check if the selected board exists in BOARD_LAYOUTS
+    if (!BOARD_LAYOUTS[selectedValue]) {
+        console.error(`Board layout not found for ${selectedValue}, using fallback`);
+        const fallbackKey = Object.keys(BOARD_LAYOUTS)[0];
+        return {
+            grid: BOARD_LAYOUTS[fallbackKey].grid,
+            type: BOARD_LAYOUTS[fallbackKey].type || "rect"
+        };
+    }
+
+    console.log(`Using predefined board layout: ${BOARD_LAYOUTS[selectedValue].name}, type: ${BOARD_LAYOUTS[selectedValue].type || 'rect'}`);
     return {
         grid: BOARD_LAYOUTS[selectedValue].grid,
         type: BOARD_LAYOUTS[selectedValue].type || "rect"
@@ -622,54 +673,59 @@ function stopGame() {
 function initializeBoards() {
     currentDistances = null;
     uniqueColors.clear();
+
     const board1Element = document.getElementById('board1');
     const board2Element = document.getElementById('board2');
     const board1Select = document.getElementById('board1-select');
     const board2Select = document.getElementById('board2-select');
 
-    // Get layouts once and reuse
-    const board1Layout = getSelectedBoardLayout(board1Select);
-    const board2Layout = getSelectedBoardLayout(board2Select);
-    const currentSize = board1Layout.grid.length;
 
-    // Get board types
-    const board1Type = BOARD_LAYOUTS[board1Select.value]?.type || "rect";
-    const board2Type = BOARD_LAYOUTS[board2Select.value]?.type || "rect";
 
+    // Clear previous boards
     board1Element.innerHTML = '';
     board2Element.innerHTML = '';
 
+    // Get selected board layouts
+    const board1Layout = getSelectedBoardLayout(board1Select);
+    const board2Layout = getSelectedBoardLayout(board2Select);
+
+
+    // Add board size class
+    const currentSize = board1Layout.grid.length;
+
     // Set up the base classes for each board
-    board1Element.className = `board board-${currentSize} ${board1Type === "hex" ? "hex-grid" : ""}`;
-    board2Element.className = `board board-${currentSize} ${board2Type === "hex" ? "hex-grid" : ""}`;
+    board1Element.className = `board board-${currentSize}`;
+    board2Element.className = `board board-${currentSize}`;
 
     // For rectangular grids, use CSS grid
-    if (board1Type === "rect") {
+    if (board1Layout.type === "rect") {
         board1Element.style.gridTemplateRows = `repeat(${currentSize}, 1fr)`;
         board1Element.style.gridTemplateColumns = `repeat(${currentSize}, 1fr)`;
     } else {
+        board1Element.classList.add('hex-grid');
         // For hex grids, clear any grid template
         board1Element.style.gridTemplateRows = '';
         board1Element.style.gridTemplateColumns = '';
     }
 
-    if (board2Type === "rect") {
+    if (board2Layout.type === "rect") {
         board2Element.style.gridTemplateRows = `repeat(${currentSize}, 1fr)`;
         board2Element.style.gridTemplateColumns = `repeat(${currentSize}, 1fr)`;
     } else {
+        board2Element.classList.add('hex-grid');
         // For hex grids, clear any grid template
         board2Element.style.gridTemplateRows = '';
         board2Element.style.gridTemplateColumns = '';
     }
 
-    // Create all cells
-    if (board1Type === "hex") {
+    // Create grids based on board type
+    if (board1Layout.type === "hex") {
         createHexGrid(board1Element, board1Layout.grid, 1);
     } else {
         createRectGrid(board1Element, board1Layout.grid, 1);
     }
 
-    if (board2Type === "hex") {
+    if (board2Layout.type === "hex") {
         createHexGrid(board2Element, board2Layout.grid, 2);
     } else {
         createRectGrid(board2Element, board2Layout.grid, 2);
@@ -1197,42 +1253,128 @@ function parseCustomBoard(input) {
         // Clean up input
         input = input.trim();
 
-        // Extract the board object part
-        const match = input.match(/^[^{]*({[\s\S]*})[^}]*$/);
-        if (!match) {
-            throw new Error('Invalid board format');
+        // First, try to detect if input is a property of an object
+        const propertyMatch = input.match(/^([a-zA-Z0-9_]+):\s*({[\s\S]*})[\s,]*$/);
+
+        let boardStr;
+        let extractedKey = null;
+
+        if (propertyMatch) {
+            // We have a property format: key: {...}
+            extractedKey = propertyMatch[1];
+            boardStr = propertyMatch[2];
+        } else {
+            // Try a more flexible pattern to match property
+            const flexMatch = input.match(/^([a-zA-Z0-9_]+[a-zA-Z0-9_\-]*):\s*\{/);
+
+            if (flexMatch) {
+                // Just prepend with return to make it a valid object
+                boardStr = `return {${input}}`;
+            } else {
+                // Try to extract a standalone board object
+                const objectMatch = input.match(/^[^{]*({[\s\S]*})[^}]*$/);
+
+                if (!objectMatch) {
+                    console.error('Could not extract valid JSON object');
+                    throw new Error('Invalid board format - cannot extract object');
+                }
+                boardStr = objectMatch[1];
+            }
         }
 
-        const boardStr = match[1];
-        console.log('Parsing board string:', boardStr);
 
-        // Parse the board object
-        const boardObj = Function(`return ${boardStr}`)();
-        console.log('Parsed board object:', boardObj);
+        // Try different parsing approaches
+        let boardObj;
 
-        if (!boardObj.name || !boardObj.grid || !Array.isArray(boardObj.grid)) {
-            throw new Error('Invalid board structure');
+        try {
+            // Try Function approach first
+            if (extractedKey) {
+                // For property format, make a temporary object
+                const tempObj = Function(`return {${extractedKey}: ${boardStr}}`)();
+                boardObj = tempObj[extractedKey];
+            } else if (boardStr.startsWith('return')) {
+                // For property with return statement
+                boardObj = Function(boardStr)();
+            } else {
+                // For standalone object
+                boardObj = Function(`return ${boardStr}`)();
+            }
+        } catch (e) {
+            console.error('Function parsing failed:', e);
+
+            try {
+                // Try direct JSON parsing as fallback
+                // This will only work for properly formatted JSON without comments
+                boardObj = JSON.parse(boardStr);
+            } catch (jsonError) {
+                console.error('JSON parsing also failed:', jsonError);
+                throw new Error('Could not parse board configuration');
+            }
+        }
+
+
+        if (!boardObj.name) {
+            console.error('Missing name property');
+            throw new Error('Board must have a name property');
+        }
+
+        if (!boardObj.grid) {
+            console.error('Missing grid property');
+            throw new Error('Board must have a grid property');
+        }
+
+        if (!Array.isArray(boardObj.grid)) {
+            console.error('Grid is not an array:', boardObj.grid);
+            throw new Error('Grid must be an array');
+        }
+
+
+        // Check board type - should be either 'rect' or 'hex'
+        console.log('Board type:', boardObj.type);
+        if (boardObj.type && boardObj.type !== 'rect' && boardObj.type !== 'hex') {
+            console.error('Invalid board type:', boardObj.type);
+            throw new Error('Board type must be either "rect" or "hex"');
+        }
+
+        // Set default type to 'rect' if not specified
+        if (!boardObj.type) {
+            boardObj.type = 'rect';
+            console.log('No board type specified, defaulting to rectangular grid');
         }
 
         // Validate grid
         const size = boardObj.grid.length;
         const validSymbols = getSymbolsForSize(size);
 
-        for (const row of boardObj.grid) {
-            if (!Array.isArray(row) || row.length !== size) {
-                throw new Error('Invalid grid dimensions');
+        for (let i = 0; i < boardObj.grid.length; i++) {
+            const row = boardObj.grid[i];
+
+            if (!Array.isArray(row)) {
+                console.error(`Row ${i} is not an array:`, row);
+                throw new Error(`Invalid grid: row ${i} is not an array`);
             }
 
-            for (const cell of row) {
+            if (row.length !== size) {
+                console.error(`Row ${i} has incorrect length:`, row.length, 'expected:', size);
+                throw new Error(`Invalid grid dimensions: row ${i} has length ${row.length}, expected ${size}`);
+            }
+
+            for (let j = 0; j < row.length; j++) {
+                const cell = row[j];
                 if (cell !== '.' && !validSymbols.includes(cell)) {
-                    throw new Error(`Invalid symbol: ${cell}`);
+                    console.error(`Invalid symbol at [${i},${j}]:`, cell);
+                    throw new Error(`Invalid symbol: ${cell} at position [${i},${j}]`);
                 }
             }
         }
 
         return boardObj;
     } catch (error) {
+        console.error('----------- PARSE CUSTOM BOARD ERROR -----------');
         console.error('Board parsing error:', error);
+        console.error('Original input:', input);
+        console.error('Stack trace:', error.stack);
+        console.error('----------- PARSE CUSTOM BOARD ERROR END -----------');
         throw new Error(`Failed to parse board: ${error.message}`);
     }
 }
@@ -1262,24 +1404,95 @@ function setupCustomBoardHandling() {
 
     saveBtn.addEventListener('click', () => {
         try {
+            console.log('--- ADDING CUSTOM BOARD ---');
+            console.log('Raw textarea input:', textarea.value);
+
+            // Simple pre-validation to inform user before parsing fails
+            if (!textarea.value.trim()) {
+                throw new Error('Please enter a board configuration');
+            }
+
+            // Try to find the key if it's in property format
+            const propMatch = textarea.value.trim().match(/^([a-zA-Z0-9_]+[a-zA-Z0-9_\-]*):\s*\{/);
+            let customName = '';
+
+            if (propMatch) {
+                console.log('Detected property format with key:', propMatch[1]);
+                customName = propMatch[1];
+            }
+
             const boardObj = parseCustomBoard(textarea.value);
-            const id = `custom_${Date.now()}`;
+            console.log('Board parsed successfully:', boardObj);
+
+            // Use timestamp or detected name for the custom board ID
+            const id = customName ? `custom_${customName}_${Date.now()}` : `custom_${Date.now()}`;
+            console.log('Generated custom board ID:', id);
+
             customBoards.set(id, boardObj);
+            console.log('Added custom board to customBoards map');
 
             // Refresh board options
             const currentSize = parseInt(document.getElementById('board-size').value);
+            console.log('Refreshing board options for size:', currentSize);
             populateBoardsBySize(currentSize);
 
             // Select the new custom board
             const targetSelect = document.getElementById(currentTarget);
-            targetSelect.value = id;
+            if (!targetSelect) {
+                console.error(`Target select not found: ${currentTarget}`);
+            } else {
+                console.log(`Target select found: ${currentTarget}`);
+                console.log(`Setting value to: ${id}`);
+                console.log(`Dropdown options:`, Array.from(targetSelect.options).map(opt => opt.value));
+
+                // Make sure the option exists
+                let optionExists = false;
+                for (let i = 0; i < targetSelect.options.length; i++) {
+                    if (targetSelect.options[i].value === id) {
+                        optionExists = true;
+                        break;
+                    }
+                }
+
+                if (!optionExists) {
+                    console.error(`Option with value ${id} not found in dropdown`);
+                    // Create the option if it doesn't exist
+                    const newOption = document.createElement('option');
+                    newOption.value = id;
+                    newOption.textContent = `Custom: ${boardObj.name}`;
+                    targetSelect.appendChild(newOption);
+                    console.log(`Added option to dropdown`);
+                }
+
+                targetSelect.value = id;
+                console.log(`Selected new custom board in dropdown: ${id}, now selected: ${targetSelect.value}`);
+
+                // Make sure the value actually got set
+                if (targetSelect.value !== id) {
+                    console.error(`Failed to set dropdown value. Trying again...`);
+                    setTimeout(() => {
+                        targetSelect.value = id;
+                        console.log(`Retry result: ${targetSelect.value}`);
+                    }, 0);
+                }
+            }
 
             hideModal();
+            console.log('Modal hidden');
 
             // Initialize boards once
+            console.log('Initializing boards with new custom board');
             initializeBoards();
+            console.log('--- CUSTOM BOARD ADDED SUCCESSFULLY ---');
+
+            // Show a success toast
+            showToast(`Added custom board: ${boardObj.name}`);
         } catch (error) {
-            alert(error.message);
+            console.error('--- CUSTOM BOARD ADDITION FAILED ---');
+            console.error('Error adding custom board:', error);
+            console.error('Input was:', textarea.value);
+            console.error('Stack trace:', error.stack);
+            alert(`Error: ${error.message}`);
         }
     });
 }

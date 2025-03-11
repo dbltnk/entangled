@@ -313,8 +313,13 @@
         <div class="modal-content">
             <h3>Add Custom Board</h3>
             <p>Paste your board configuration below:</p>
-            <textarea id="custom-board-input" rows="10" placeholder="board1706420738only: {
-    name: 'evolved second',
+            <p class="modal-note"><strong>Important:</strong> For hex boards, make sure to include
+                <code>type: "hex"</code> in your configuration. You can paste directly from boards.js.
+            </p>
+            <textarea id="custom-board-input" rows="10" placeholder="// Option 1: Direct object format
+{
+    name: 'Custom Rectangular Board',
+    type: 'rect', // Optional - defaults to 'rect' if not specified
     grid: [
         ['.', '.', 'D', 'U', 'E', '.', '.'],
         ['.', 'S', 'B', 'K', 'A', 'R', '.'],
@@ -323,6 +328,21 @@
         ['4', 'F', '0', '7', 'O', '5', 'H'],
         ['.', 'N', '9', '8', 'Q', '6', '.'],
         ['.', '.', 'T', 'L', 'V', '.', '.'],
+    ]
+}
+
+// Option 2: Property format (paste directly from boards.js)
+my_custom_hex_board: {
+    name: 'Custom Hex Board',
+    type: 'hex', // Important for hex boards!
+    grid: [
+        ['.', '.', '.', 'W', 'G', 'S', 'Q'],
+        ['.', '.', 'L', 'E', '8', '1', 'Y'],
+        ['.', '5', 'U', 'P', '0', 'B', '2'],
+        ['K', 'D', '7', '.', '3', 'J', 'M'],
+        ['T', 'V', 'A', 'O', '9', 'F', '.'],
+        ['4', 'I', 'C', '6', 'H', '.', '.'],
+        ['Z', 'R', 'N', 'X', '.', '.', '.']
     ]
 },"></textarea>
             <div class="modal-buttons">
