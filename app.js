@@ -463,6 +463,66 @@ function getBackgroundColor(letter, boardNum, row, col) {
     };
 }
 
+// Function to assign gradient numbers to cells on the bottom board
+function assignGradientNumbers() {
+    // Create a mapping from symbols to gradient numbers
+    const symbolToGradient = new Map();
+    const boardSize = game?.boardSize || parseInt(document.getElementById('board-size').value);
+
+    // Get all unique symbols that exist on both boards
+    const allSymbols = new Set();
+    const board1Select = document.getElementById('board1-select');
+    const board2Select = document.getElementById('board2-select');
+    const board1Layout = getSelectedBoardLayout(board1Select);
+    const board2Layout = getSelectedBoardLayout(board2Select);
+
+    // We'll use board2 as our reference for the gradient (bottom board)
+    const referenceBoard = board2Layout.grid;
+
+    // Collect all symbols from the reference board
+    for (let i = 0; i < boardSize; i++) {
+        for (let j = 0; j < boardSize; j++) {
+            const symbol = referenceBoard[i][j];
+            if (symbol !== '.') {
+                allSymbols.add(symbol);
+            }
+        }
+    }
+
+    // Create a position map for each symbol in the reference board
+    const symbolPositions = new Map();
+    for (let i = 0; i < boardSize; i++) {
+        for (let j = 0; j < boardSize; j++) {
+            const symbol = referenceBoard[i][j];
+            if (symbol !== '.') {
+                symbolPositions.set(symbol, { row: i, col: j });
+            }
+        }
+    }
+
+    // Sort symbols by position (top to bottom, left to right)
+    const sortedSymbols = Array.from(allSymbols).sort((a, b) => {
+        const posA = symbolPositions.get(a);
+        const posB = symbolPositions.get(b);
+
+        if (!posA || !posB) return 0;
+
+        // Sort by row first, then by column
+        if (posA.row !== posB.row) {
+            return posA.row - posB.row;
+        }
+        return posA.col - posB.col;
+    });
+
+    // Assign numbers in ascending order (lowest at top-left)
+    let currentNumber = 1; // Start from 1 instead of the length
+    sortedSymbols.forEach(symbol => {
+        symbolToGradient.set(symbol, currentNumber++); // Increment instead of decrement
+    });
+
+    return symbolToGradient;
+}
+
 function createCell(symbol, boardNum, row, col, cellType = "rect") {
     if (symbol === '.') return null;
 
@@ -497,10 +557,14 @@ function createCell(symbol, boardNum, row, col, cellType = "rect") {
     icon.style.color = colors.icon;
     cell.appendChild(icon);
 
-    // Add letter
+    // Add letter element for display number
     const letter = document.createElement('div');
     letter.className = 'cell-letter';
-    letter.textContent = symbol;
+
+    // Keep the original symbol in a data attribute for functionality
+    letter.dataset.originalSymbol = symbol;
+
+    // Add the letter element to the cell
     cell.appendChild(letter);
 
     if (gameSettings.hover) {
@@ -679,8 +743,6 @@ function initializeBoards() {
     const board1Select = document.getElementById('board1-select');
     const board2Select = document.getElementById('board2-select');
 
-
-
     // Clear previous boards
     board1Element.innerHTML = '';
     board2Element.innerHTML = '';
@@ -689,6 +751,8 @@ function initializeBoards() {
     const board1Layout = getSelectedBoardLayout(board1Select);
     const board2Layout = getSelectedBoardLayout(board2Select);
 
+    // Generate symbol to gradient number mapping
+    const symbolToGradient = assignGradientNumbers();
 
     // Add board size class
     const currentSize = board1Layout.grid.length;
@@ -696,6 +760,10 @@ function initializeBoards() {
     // Set up the base classes for each board
     board1Element.className = `board board-${currentSize}`;
     board2Element.className = `board board-${currentSize}`;
+
+    // Store the gradient mapping on the boards for later use
+    board1Element.dataset.gradientMap = JSON.stringify(Array.from(symbolToGradient.entries()));
+    board2Element.dataset.gradientMap = JSON.stringify(Array.from(symbolToGradient.entries()));
 
     // For rectangular grids, use CSS grid
     if (board1Layout.type === "rect") {
@@ -730,6 +798,33 @@ function initializeBoards() {
     } else {
         createRectGrid(board2Element, board2Layout.grid, 2);
     }
+
+    // Apply gradient numbers to all cells after boards are created
+    applyGradientNumbers();
+}
+
+// Function to apply gradient numbers to all cells
+function applyGradientNumbers() {
+    const board1Element = document.getElementById('board1');
+    const board2Element = document.getElementById('board2');
+
+    // Get the gradient mapping from the board
+    let symbolToGradient;
+    try {
+        symbolToGradient = new Map(JSON.parse(board1Element.dataset.gradientMap));
+    } catch (e) {
+        console.error("Error parsing gradient map:", e);
+        return;
+    }
+
+    // Apply to all cells on both boards
+    document.querySelectorAll('.cell-letter, .hex-cell .cell-letter').forEach(letter => {
+        const symbol = letter.dataset.originalSymbol;
+        const gradientNumber = symbolToGradient.get(symbol) || 0;
+
+        // Format as two-digit number with leading zero if needed
+        letter.textContent = gradientNumber.toString().padStart(2, '0');
+    });
 }
 
 // Helper function to create rectangular grid
@@ -849,6 +944,9 @@ function updateDisplay() {
 
     updateGroupSizes(board1Element, state.largestClusters, true);
     updateGroupSizes(board2Element, state.largestClusters, false);
+
+    // Make sure gradient numbers are still displayed correctly
+    applyGradientNumbers();
 
     const blackScore = game.getScore(PLAYERS.BLACK);
     const blackBoard1Score = game.findLargestCluster(game.getBoard1(), PLAYERS.BLACK);

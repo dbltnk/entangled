@@ -310,19 +310,19 @@ body.rules-hidden .boards {
 
 /* Board font sizes */
 .board.board-4 .cell-letter {
-    font-size: 1.7rem;
+    font-size: 0.75rem;
 }
 
 .board.board-5 .cell-letter {
-    font-size: 1.5rem;
+    font-size: 0.65rem;
 }
 
 .board.board-6 .cell-letter {
-    font-size: 1.3rem;
+    font-size: 0.6rem;
 }
 
 .board.board-7 .cell-letter {
-    font-size: 1.1rem;
+    font-size: 0.5rem;
 }
 
 /* Board icon sizes */
@@ -402,15 +402,18 @@ body.rules-hidden .boards {
 
 .cell-letter {
     position: absolute;
-    z-index: 3;
-    color: var(--color-letter);
-    transition: color var(--transition-default);
-    font-weight: 900;
-    text-shadow:
-        -1px -1px 0 white,
-        1px -1px 0 white,
-        -1px 1px 0 white,
-        1px 1px 0 white;
+    left: 75%;
+    font-weight: 500;
+    font-family: 'Courier New', monospace;
+    pointer-events: none;
+    color: var(--color-text);
+    z-index: 1;
+    font-size: calc(var(--hex-size) * 0.18);
+    background-color: var(--color-white);
+    padding: 0px 1px;
+    border-radius: var(--radius-sm);
+    transform: translateX(-50%);
+    bottom: 3px;
 }
 
 .cell.has-stone .cell-letter {
@@ -1074,14 +1077,16 @@ button:disabled {
 
 .hex-cell .cell-letter {
     position: absolute;
-    top: 50%;
     left: 50%;
-    transform: translate(-50%, -50%);
-    font-weight: bold;
+    font-weight: 500;
+    font-family: 'Courier New', monospace;
     pointer-events: none;
     color: var(--color-text);
-    font-size: calc(var(--hex-size) * 0.4);
     z-index: 1;
+    font-size: calc(var(--hex-size) * 0.18);
+    background-color: var(--color-white);
+    padding: 0px 2px;
+    border-radius: var(--radius-sm);
 }
 
 .hex-cell .cell-icon {
@@ -1397,19 +1402,19 @@ button:disabled {
 
     /* Adjust font sizes for mobile */
     .board.board-4 .cell-letter {
-        font-size: calc(1.7rem * 0.8);
+        font-size: calc(0.75rem * 0.8);
     }
 
     .board.board-5 .cell-letter {
-        font-size: calc(1.5rem * 0.8);
+        font-size: calc(0.65rem * 0.8);
     }
 
     .board.board-6 .cell-letter {
-        font-size: calc(1.3rem * 0.8);
+        font-size: calc(0.6rem * 0.8);
     }
 
     .board.board-7 .cell-letter {
-        font-size: calc(1.1rem * 0.8);
+        font-size: calc(0.5rem * 0.8);
     }
 
     /* Adjust modal for mobile */
@@ -1611,12 +1616,12 @@ button:disabled {
         --hex-size: calc(min(100vw - 20px, 40vh) / 4);
     }
 
-    /* Further reduce sizes for very small screens - but keep icon sizes consistent */
+    /* Further reduce sizes for very small screens */
     .board.board-4 .cell-letter,
     .board.board-5 .cell-letter,
     .board.board-6 .cell-letter,
     .board.board-7 .cell-letter {
-        font-size: calc(1rem * 0.8);
+        font-size: calc(0.5rem * 0.8);
     }
 
     /* Explicitly set icon sizes for small phones to match desktop */
