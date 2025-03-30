@@ -1106,6 +1106,10 @@ button:disabled {
     z-index: 1;
 }
 
+.hex-cell.has-stone .cell-letter {
+    display: none;
+}
+
 .hex-cell.has-stone .stone {
     width: calc(var(--hex-size) * 0.8);
     height: calc(var(--hex-size) * 0.8);
