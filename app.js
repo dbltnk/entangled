@@ -320,7 +320,6 @@ function getSelectedBoardLayout(boardSelect) {
         };
     }
 
-    console.log(`Using predefined board layout: ${BOARD_LAYOUTS[selectedValue].name}, type: ${BOARD_LAYOUTS[selectedValue].type || 'rect'}`);
     return {
         grid: BOARD_LAYOUTS[selectedValue].grid,
         type: BOARD_LAYOUTS[selectedValue].type || "rect"
