@@ -1639,7 +1639,7 @@ function init() {
     setupThinkingTimeHandlers();
 
     // Set default value for superposition input
-    document.getElementById('superposition').value = 'rng,rng,rng,rng';
+    document.getElementById('superposition').value = '';
 
     // Add event listener for mobile start button
     const mobileStartButton = document.getElementById('mobile-start-game');
