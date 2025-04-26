@@ -243,6 +243,15 @@ body.rules-hidden .game-container {
     padding-right: var(--spacing-md);
     justify-content: space-evenly;
     gap: 0;
+    scrollbar-width: none;
+    /* Firefox */
+    -ms-overflow-style: none;
+    /* Internet Explorer 10+ */
+}
+
+/* Webkit browsers (Chrome, Safari, etc.) */
+.boards::-webkit-scrollbar {
+    display: none;
 }
 
 body.rules-hidden .boards {
@@ -671,6 +680,16 @@ body.rules-hidden .boards {
     overflow-y: auto;
     border-left: 1px solid var(--color-border);
     padding-left: var(--spacing-md);
+    padding-bottom: calc(var(--spacing-lg) + 50px);
+    scrollbar-width: none;
+    /* Firefox */
+    -ms-overflow-style: none;
+    /* Internet Explorer 10+ */
+}
+
+/* Webkit browsers (Chrome, Safari, etc.) */
+.controls::-webkit-scrollbar {
+    display: none;
 }
 
 .control-group {
@@ -797,10 +816,12 @@ button:disabled {
     justify-content: center;
     border: 1px solid var(--color-text);
     background: var(--color-white);
+    transition: all 0.2s ease;
 }
 
-#start-game span {
-    display: none;
+#start-game:hover {
+    background: var(--color-text);
+    color: var(--color-white);
 }
 
 /* Stats and winner display */
@@ -829,10 +850,21 @@ button:disabled {
 }
 
 /* Settings styles */
+.settings-group {
+    position: fixed;
+    bottom: var(--spacing-md);
+    right: var(--spacing-md);
+    width: 280px;
+    background: var(--color-white);
+    padding-top: var(--spacing-sm);
+    margin-bottom: 0;
+}
+
 .settings-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    cursor: pointer;
     color: rgb(85, 85, 85);
 }
 
@@ -847,14 +879,16 @@ button:disabled {
 .toggle-icon {
     display: inline-block;
     transition: transform var(--transition-slow);
+    transform: rotate(180deg);
+    /* Default to upward arrow */
 }
 
 .toggle-icon.rotated {
-    transform: rotate(-180deg);
+    transform: rotate(0deg);
+    /* Rotate to downward when active */
 }
 
 .settings-content {
-    margin-top: var(--spacing-sm);
     display: flex;
     flex-direction: column;
     gap: var(--spacing-sm);
@@ -862,6 +896,7 @@ button:disabled {
     overflow: hidden;
     border-top: none;
     padding-top: var(--spacing-sm);
+    background: var(--color-white);
 }
 
 .settings-content.hidden {
