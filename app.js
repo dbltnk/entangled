@@ -1154,7 +1154,8 @@ function handleCellClick(symbol) {
         if (game.isGameOver()) {
             showWinner(game.getWinner());
         } else {
-            makeAIMove();
+            // Schedule AI move to happen after a short delay
+            setTimeout(makeAIMove, 100);
         }
     }
 }
