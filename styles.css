@@ -471,24 +471,131 @@ body.rules-hidden .boards {
 .stone.superposition::after {
     content: attr(data-number);
     position: absolute;
-    top: 50%;
-    left: 50%;
+    top: 55%;
+    left: 49%;
     transform: translate(-50%, -50%);
-    color: #FFD700;
-    /* Yellow */
     font-weight: 900;
-    /* Increased from bold */
     font-size: 1.2em;
     text-shadow:
-        -1px -1px 0 #000,
-        1px -1px 0 #000,
-        -1px 1px 0 #000,
-        1px 1px 0 #000,
-        0 0 4px rgba(0, 0, 0, 0.8);
-    /* Added glow effect */
+        -1px -1px 0 rgba(0, 0, 0, 0.5),
+        1px -1px 0 rgba(0, 0, 0, 0.5),
+        -1px 1px 0 rgba(0, 0, 0, 0.5),
+        1px 1px 0 rgba(0, 0, 0, 0.5),
+        0 0 4px rgba(0, 0, 0, 0.4);
+    font-family: 'Courier New', monospace;
+    letter-spacing: -0.05em;
 }
 
-/* Adjust superposition stone number size based on board size */
+/* Color assignments for superposition stone letters */
+.stone.superposition[data-number="A"]::after {
+    color: #f41b1b;
+}
+
+/* Red */
+.stone.superposition[data-number="B"]::after {
+    color: #5879dc;
+}
+
+/* Lighter Blue */
+.stone.superposition[data-number="C"]::after {
+    color: #FFD700;
+}
+
+/* Yellow */
+.stone.superposition[data-number="D"]::after {
+    color: #04dd04;
+}
+
+/* Green */
+.stone.superposition[data-number="E"]::after {
+    color: #FF00FF;
+}
+
+.stone.superposition[data-number="F"]::after {
+    color: #00FFFF;
+}
+
+.stone.superposition[data-number="G"]::after {
+    color: #FFA500;
+}
+
+.stone.superposition[data-number="H"]::after {
+    color: #800080;
+}
+
+.stone.superposition[data-number="I"]::after {
+    color: #008000;
+}
+
+.stone.superposition[data-number="J"]::after {
+    color: #FF69B4;
+}
+
+.stone.superposition[data-number="K"]::after {
+    color: #FF00FF;
+}
+
+.stone.superposition[data-number="L"]::after {
+    color: #32CD32;
+}
+
+.stone.superposition[data-number="M"]::after {
+    color: #FF6347;
+}
+
+.stone.superposition[data-number="N"]::after {
+    color: #9370DB;
+}
+
+.stone.superposition[data-number="O"]::after {
+    color: #20B2AA;
+}
+
+.stone.superposition[data-number="P"]::after {
+    color: #FF4500;
+}
+
+.stone.superposition[data-number="Q"]::after {
+    color: #9932CC;
+}
+
+.stone.superposition[data-number="R"]::after {
+    color: #00CED1;
+}
+
+.stone.superposition[data-number="S"]::after {
+    color: #FF8C00;
+}
+
+.stone.superposition[data-number="T"]::after {
+    color: #8B008B;
+}
+
+.stone.superposition[data-number="U"]::after {
+    color: #2E8B57;
+}
+
+.stone.superposition[data-number="V"]::after {
+    color: #DAA520;
+}
+
+.stone.superposition[data-number="W"]::after {
+    color: #CD5C5C;
+}
+
+.stone.superposition[data-number="X"]::after {
+    color: #4B0082;
+}
+
+.stone.superposition[data-number="Y"]::after {
+    color: #B8860B;
+}
+
+.stone.superposition[data-number="Z"]::after {
+    color: #8B4513;
+}
+
+/* Adjust superposition stone letter size based on board size */
 .board.board-4 .stone.superposition::after {
     font-size: 1.4em;
 }
@@ -502,7 +609,7 @@ body.rules-hidden .boards {
 }
 
 .board.board-7 .stone.superposition::after {
-    font-size: 1.2em;
+    font-size: 1.5em;
 }
 
 /* Hover states for stones */

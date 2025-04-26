@@ -277,7 +277,7 @@ class EntangledGame {
         }
 
         // Place specific symbols
-        let spNumber = 1;
+        let spLetter = 'A'; // Start with 'A'
         for (const symbol of specificSymbols) {
             const positions = this.symbolToPosition.get(symbol);
             const validPositions = [];
@@ -292,11 +292,12 @@ class EntangledGame {
                 this.board2[positions.board2.row][positions.board2.col] = PLAYERS.SUPERPOSITION;
             }
 
-            // Store both the SP number and valid positions
+            // Store both the SP letter and valid positions
             this.superpositionStones.set(symbol, {
-                number: spNumber++,
+                number: spLetter,
                 validPositions
             });
+            spLetter = String.fromCharCode(spLetter.charCodeAt(0) + 1); // Increment to next letter
         }
 
         // Place RNG symbols
@@ -316,9 +317,10 @@ class EntangledGame {
             }
 
             this.superpositionStones.set(symbol, {
-                number: spNumber++,
+                number: spLetter,
                 validPositions
             });
+            spLetter = String.fromCharCode(spLetter.charCodeAt(0) + 1); // Increment to next letter
         }
     }
 
