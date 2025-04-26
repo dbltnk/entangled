@@ -732,7 +732,7 @@ function stopGame() {
         showGameOverButton.classList.remove('visible');
     }
 
-    document.getElementById('score-display').textContent = 'Black: 0 - White: 0';
+    document.getElementById('score-display').textContent = 'Dark: 0 - Light: 0';
     document.getElementById('current-player-display').textContent = '';
     const cells = document.querySelectorAll('.cell');
     cells.forEach(cell => {
@@ -982,7 +982,7 @@ function updateDisplay() {
     } else {
         currentPlayerDisplay.style.display = '';
         currentPlayerDisplay.textContent =
-            `Current player: ${state.currentPlayer === PLAYERS.BLACK ? '⚫ Black' : '⚪ White'}`;
+            `Current player: ${state.currentPlayer === PLAYERS.BLACK ? '⚫ Dark' : '⚪ Light'}`;
     }
 
     // Update swap button visibility
