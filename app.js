@@ -175,12 +175,12 @@ function populatePlayerDropdowns() {
     blackSelect.innerHTML = '';
     whiteSelect.innerHTML = '';
 
-    const humanOption = new Option('👤 Human', 'human');
+    const humanOption = new Option('Human', 'human');
     blackSelect.add(humanOption.cloneNode(true));
     whiteSelect.add(humanOption.cloneNode(true));
 
     Object.values(AI_PLAYERS).forEach(player => {
-        const option = new Option(`🤖 ${player.name}`, player.id);
+        const option = new Option(`${player.name}`, player.id);
         option.title = player.description;
         blackSelect.add(option.cloneNode(true));
         whiteSelect.add(option.cloneNode(true));
