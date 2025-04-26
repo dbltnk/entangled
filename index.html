@@ -36,11 +36,24 @@
         h1 {
             font-size: 3rem;
             margin-bottom: 0.5rem;
+            display: inline-block;
+            background: linear-gradient(to right,
+                    #ff0000 0%,
+                    #ff6b00 20%,
+                    #ffa500 40%,
+                    #00ff00 60%,
+                    #008080 80%,
+                    #0000ff 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            font-weight: bold;
         }
 
         .subtitle {
             font-size: 1.2rem;
             color: #666;
+            font-weight: 600;
         }
 
         .grid {
@@ -87,7 +100,13 @@
         }
 
         .main-card {
-            background: linear-gradient(45deg, #2196F3, #03A9F4);
+            background: linear-gradient(45deg,
+                    #ff0000 0%,
+                    #ff6b00 20%,
+                    #ffa500 40%,
+                    #00ff00 60%,
+                    #008080 80%,
+                    #0000ff 100%);
             color: white;
         }
 
@@ -157,19 +176,16 @@
 <body>
     <div class="container">
         <header>
-            <h1>🌀 Entangled</h1>
-            <p class="subtitle">Light abstract strategy game</p>
+            <h1>Entangled</h1>
+            <p class="subtitle">One move. Two dimensions. Infinite possibilities.</p>
         </header>
 
         <div class="grid">
             <a href="play.html" target="_blank" class="card main-card">
                 <h2>🎮 Play</h2>
-                <p><strong>Two boards with corresponding positions</strong>, inspired by <strong>quantum
-                        entanglement</strong>. Place stones simultaneously on both board and <strong>build the largest
-                        connected groups</strong> to win! <strong>Play against a friend</strong> or challenge our
-                    <strong>AI bots</strong> (from easy to expert). Built for <strong>desktop and mobile</strong> with a
-                    modern, clean interface.
-                </p>
+                <p>Cutting-edge science led us to create two quantum entangled worlds. Each turn, place two stones on
+                    matching symbols - one on each board. To win, score your largest connected group on each filled
+                    board.</p>
                 <span class="emoji-bg">🎲</span>
             </a>
 
