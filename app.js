@@ -13,7 +13,8 @@ let gameSettings = {
     currentPlayer: true,
     icons: true,
     symbols: false,
-    boardConfig: false
+    boardConfig: false,
+    additionalBots: false
 };
 
 let game = null;
@@ -87,6 +88,7 @@ function loadSettings() {
         icons: true,
         symbols: false,
         boardConfig: false,
+        additionalBots: false,
         ...settings
     };
 
@@ -1721,6 +1723,36 @@ function init() {
 
         // Set initial visibility
         boardConfigCheckbox.dispatchEvent(new Event('change'));
+    }
+
+    // Add additional bots visibility handler
+    const additionalBotsCheckbox = document.getElementById('setting-additional-bots');
+    if (additionalBotsCheckbox) {
+        additionalBotsCheckbox.addEventListener('change', (e) => {
+            const hiddenBots = [
+                'deterministic',
+                'random',
+                'greedy',
+                'greedy-some-rng',
+                'defensive',
+                'minimax'
+            ];
+
+            // Update both player dropdowns
+            ['black-player', 'white-player'].forEach(playerId => {
+                const select = document.getElementById(playerId);
+                if (select) {
+                    Array.from(select.options).forEach(option => {
+                        if (hiddenBots.includes(option.value)) {
+                            option.style.display = e.target.checked ? '' : 'none';
+                        }
+                    });
+                }
+            });
+        });
+
+        // Set initial visibility
+        additionalBotsCheckbox.dispatchEvent(new Event('change'));
     }
 
     // Add swap button handler

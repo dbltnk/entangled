@@ -950,7 +950,7 @@ export const AI_PLAYERS = {
     },
     'defensive-some-rng': {
         id: 'defensive-some-rng',
-        name: 'Defensive with RNG',
+        name: 'Easy',
         description: 'Like Defensive, but with some randomization.',
         class: DefensivePlayer,
         config: {
@@ -970,7 +970,7 @@ export const AI_PLAYERS = {
     },
     'minimax-some-rng': {
         id: 'minimax-some-rng',
-        name: 'Minimax with RNG',
+        name: 'Medium',
         description: 'Uses minimax algorithm with alpha-beta pruning and some randomization.',
         class: MinimaxPlayer,
         config: {
@@ -981,7 +981,7 @@ export const AI_PLAYERS = {
     },
     'mcts': {
         id: 'mcts',
-        name: 'Monte Carlo Tree Search',
+        name: 'Hard',
         description: 'Uses Monte Carlo Tree Search.',
         class: MCTSPlayer,
         config: {
