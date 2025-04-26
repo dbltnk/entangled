@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Entangled - Light Abstract Strategy Game</title>
+    <style>
+        :root {
+            --color-bg: #fafafa;
+            --color-text: #333;
+            --color-shadow: rgba(0, 0, 0, 0.1);
+            --radius: 12px;
+            --transition: all 0.2s ease;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 2rem;
+            background: var(--color-bg);
+            color: var(--color-text);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 0.5rem;
+            display: inline-block;
+            background: linear-gradient(to right,
+                    #ff0000 0%,
+                    #ff6b00 20%,
+                    #ffa500 40%,
+                    #00ff00 60%,
+                    #008080 80%,
+                    #0000ff 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            font-weight: bold;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: #666;
+            font-weight: 600;
+        }
+
+        .grid {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .grid-row {
+            display: grid;
+            gap: 2rem;
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .card {
+            padding: 2rem;
+            border-radius: var(--radius);
+            box-shadow: 0 4px 12px var(--color-shadow);
+            transition: var(--transition);
+            text-decoration: none;
+            color: var(--color-text);
+            position: relative;
+            z-index: 1;
+            overflow: hidden;
+            min-height: 200px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px var(--color-shadow);
+        }
+
+        .card h2 {
+            font-size: 1.8rem;
+            margin: 0 0 1rem 0;
+        }
+
+        .card p {
+            margin: 0;
+            font-size: 1.1rem;
+        }
+
+        .main-card {
+            background: linear-gradient(45deg,
+                    #ff0000 0%,
+                    #ff6b00 20%,
+                    #ffa500 40%,
+                    #00ff00 60%,
+                    #008080 80%,
+                    #0000ff 100%);
+            color: white;
+        }
+
+        .analysis-card {
+            background: linear-gradient(45deg, #4CAF50, #8BC34A);
+            color: white;
+        }
+
+        .generator-card {
+            background: linear-gradient(45deg, #673AB7, #3F51B5);
+            color: white;
+        }
+
+        .tournament-card {
+            background: linear-gradient(45deg, #FF9800, #FFC107);
+            color: white;
+        }
+
+        .results-card {
+            background: linear-gradient(45deg, #9C27B0, #E91E63);
+            color: white;
+        }
+
+        .emoji-bg {
+            position: absolute;
+            z-index: 0;
+            right: 2rem;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 8rem;
+            opacity: 0.1;
+            pointer-events: none;
+        }
+
+        .disabled-card {
+            cursor: not-allowed;
+            opacity: 0.8;
+            filter: grayscale(0.7);
+            position: relative;
+        }
+
+        .under-construction {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-15deg);
+            background: rgba(255, 0, 0, 0.8);
+            color: white;
+            padding: 5px 10px;
+            font-weight: bold;
+            border-radius: 4px;
+            font-size: 1.2rem;
+            z-index: 2;
+            white-space: nowrap;
+        }
+
+        .construction-icon {
+            position: absolute;
+            right: 1rem;
+            top: 1rem;
+            font-size: 1.8rem;
+            z-index: 2;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>Entangled</h1>
+            <p class="subtitle">One move. Two dimensions. Infinite possibilities.</p>
+        </header>
+
+        <div class="grid">
+            <a href="play.html" target="_blank" class="card main-card">
+                <h2>🎮 Play</h2>
+                <p>Cutting-edge science led us to create two quantum entangled worlds. Each turn, place two stones on
+                    matching symbols - one on each board. To win, score your largest connected group on each filled
+                    board.</p>
+                <span class="emoji-bg">🎲</span>
+            </a>
+
+            <div class="grid-row">
+                <div class="card generator-card disabled-card">
+                    <span class="construction-icon">🚧</span>
+                    <span class="under-construction">UNDER CONSTRUCTION</span>
+                    <h2>🧬 Board Generator</h2>
+                    <p>Evolutionary algorithm to generate board layouts optimized for balanced play and strategic depth.
+                    </p>
+                    <span class="emoji-bg">🔄</span>
+                </div>
+
+                <div class="card analysis-card disabled-card">
+                    <span class="construction-icon">🚧</span>
+                    <span class="under-construction">UNDER CONSTRUCTION</span>
+                    <h2>📊 Position Analysis</h2>
+                    <p>Statistical analysis of board layouts and opening moves, including connectivity metrics and
+                        tournament move frequencies.</p>
+                    <span class="emoji-bg">📈</span>
+                </div>
+            </div>
+
+            <div class="grid-row">
+                <div class="card tournament-card disabled-card">
+                    <span class="construction-icon">🚧</span>
+                    <span class="under-construction">UNDER CONSTRUCTION</span>
+                    <h2>🏆 Tournament Runner</h2>
+                    <p>Configure and execute parallel AI matches across multiple board configurations with customizable
+                        parameters.</p>
+                    <span class="emoji-bg">🤖</span>
+                </div>
+
+                <div class="card results-card disabled-card">
+                    <span class="construction-icon">🚧</span>
+                    <span class="under-construction">UNDER CONSTRUCTION</span>
+                    <h2>🔍 Tournament Results</h2>
+                    <p>View tournament statistics, ELO ratings, and game replays with move-by-move analysis.</p>
+                    <span class="emoji-bg">🔬</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
