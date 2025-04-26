@@ -1304,7 +1304,7 @@ function initializeGame() {
         board1Layout: document.getElementById('board1-select').value,
         board2Layout: document.getElementById('board2-select').value,
         startingStones: document.getElementById('starting-config').value,
-        superpositionStones: document.getElementById('superposition').value,
+        superpositionStones: document.getElementById('enable-superposition').checked ? document.getElementById('superposition').value : '',
         enableSwapRule: document.getElementById('swap-rule').checked,
         player1: document.getElementById('black-player').value,
         player2: document.getElementById('white-player').value,
@@ -1604,6 +1604,7 @@ function disableUI() {
     document.getElementById('white-player').disabled = true;
     document.getElementById('starting-config').disabled = true;
     document.getElementById('superposition').disabled = true;
+    document.getElementById('enable-superposition').disabled = true;
     document.getElementById('swap-rule').disabled = true;
     document.getElementById('swap-first-move').disabled = true;
 
@@ -1621,6 +1622,7 @@ function enableUI() {
     document.getElementById('white-player').disabled = false;
     document.getElementById('starting-config').disabled = false;
     document.getElementById('superposition').disabled = false;
+    document.getElementById('enable-superposition').disabled = false;
     document.getElementById('swap-rule').disabled = false;
     document.getElementById('swap-first-move').disabled = false;
 
@@ -1639,7 +1641,7 @@ function init() {
     setupThinkingTimeHandlers();
 
     // Set default value for superposition input
-    document.getElementById('superposition').value = '';
+    document.getElementById('superposition').value = 'rng,rng,rng,rng';
 
     // Add event listener for mobile start button
     const mobileStartButton = document.getElementById('mobile-start-game');
@@ -1710,6 +1712,7 @@ function init() {
         'white-player',
         'starting-config',
         'superposition',
+        'enable-superposition',
         'swap-rule'
     ];
 
@@ -1722,7 +1725,7 @@ function init() {
                 }
                 // Only reinitialize boards if a board selection changes
                 initializeBoards();
-            } else if (elementId === 'starting-config' || elementId === 'superposition' || elementId === 'swap-rule') {
+            } else if (elementId === 'starting-config' || elementId === 'superposition' || elementId === 'enable-superposition' || elementId === 'swap-rule') {
                 // For stone configurations and swap rule, restart the game immediately
                 stopGame();
                 initializeGame();
