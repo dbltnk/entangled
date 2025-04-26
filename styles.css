@@ -1819,6 +1819,24 @@ button:disabled {
     .board.board-7 .cell-icon {
         font-size: 1.4rem;
     }
+
+    /* Scorecard mobile styles */
+    .challenges-grid {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-sm);
+    }
+
+    .challenge-row {
+        padding: calc(var(--spacing-sm) / 2);
+    }
+
+    .challenge-header {
+        font-size: calc(var(--font-size-sm) * 0.8);
+    }
+
+    .achievement {
+        font-size: calc(var(--font-size-sm) * 0.7);
+    }
 }
 
 /* Hide mobile-only elements on desktop */
@@ -1921,4 +1939,178 @@ button:disabled {
 /* Player select styles */
 .player-select select option[value="human"] {
     color: rgb(85, 85, 85);
+}
+
+/* Scorecard styles */
+.scorecard {
+    margin-top: var(--spacing-md);
+    padding-top: var(--spacing-md);
+    border-top: 1px solid var(--color-border);
+}
+
+.scorecard h5 {
+    font-size: var(--font-size-base);
+    margin-bottom: var(--spacing-md);
+    color: var(--color-text);
+    font-weight: 600;
+}
+
+.challenges-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-md);
+}
+
+.challenge-row {
+    padding: var(--spacing-sm);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-white);
+}
+
+.challenge-header {
+    font-size: calc(var(--font-size-sm) * 0.9);
+    color: var(--color-text);
+    margin-bottom: calc(var(--spacing-xs) / 2);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.help-icon {
+    cursor: help;
+    opacity: 0.6;
+    transition: opacity 0.2s ease;
+    position: relative;
+}
+
+.help-icon:hover {
+    opacity: 1;
+}
+
+.help-icon::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 8px 12px;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    font-size: calc(var(--font-size-sm) * 0.8);
+    border-radius: var(--radius-sm);
+    z-index: 1000;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.1s ease, visibility 0.1s ease;
+    width: max(200px, 20vw);
+    /* Wider tooltip with minimum width */
+    white-space: normal;
+    text-align: center;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    margin-bottom: 8px;
+    /* Space between tooltip and icon */
+}
+
+.help-icon:hover::after {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Adjust mobile tooltip positioning and width */
+@media (max-width: 768px) {
+    .help-icon::after {
+        width: min(280px, 60vw);
+        /* Responsive width for mobile */
+        left: auto;
+        right: 0;
+        transform: none;
+    }
+}
+
+.best-score {
+    font-size: calc(var(--font-size-sm) * 0.85);
+    color: var(--color-text);
+    opacity: 0.8;
+    margin-bottom: calc(var(--spacing-xs) / 2);
+}
+
+.best-score.new-record {
+    color: #FFD700;
+    animation: glow 1s ease-in-out;
+}
+
+.achievements {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--spacing-xs) / 2);
+}
+
+.achievement {
+    font-size: calc(var(--font-size-sm) * 0.8);
+    color: var(--color-text);
+    opacity: 0.7;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.achievement.completed {
+    opacity: 1;
+}
+
+.achievement.next-target {
+    opacity: 0.9;
+    font-weight: 500;
+}
+
+.achievement-checkbox {
+    width: 14px;
+    height: 14px;
+    border: 1px solid var(--color-border);
+    border-radius: 2px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.achievement.completed .achievement-checkbox::after {
+    content: '✓';
+    font-size: 10px;
+    color: var(--color-text);
+}
+
+@keyframes glow {
+    0% {
+        text-shadow: none;
+    }
+
+    50% {
+        text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+    }
+
+    100% {
+        text-shadow: none;
+    }
+}
+
+/* Settings danger button */
+.setting-item.danger {
+    margin-top: var(--spacing-md);
+    padding-top: var(--spacing-md);
+    border-top: 1px solid var(--color-border);
+}
+
+.danger-button {
+    width: 100%;
+    color: #d32f2f;
+    border-color: #d32f2f;
+    font-weight: 500;
+    justify-content: center;
+}
+
+.danger-button:hover {
+    background: #ffebee;
+    border-color: #d32f2f;
 }

@@ -216,6 +216,44 @@
                     <button id="start-game">Start Game</button>
                 </div>
 
+                <div class="scorecard">
+                    <h5>Solo Challenges</h5>
+                    <div class="challenges-grid">
+                        <div class="challenge-row" id="maximum-entropy">
+                            <div class="challenge-header">
+                                Maximum Entropy <span class="help-icon"
+                                    data-tooltip="Create the highest total score for both players (sum of each player's largest group on each board)">❔</span>
+                            </div>
+                            <div class="best-score">Best: <span class="score">0</span></div>
+                            <div class="achievements"></div>
+                        </div>
+                        <div class="challenge-row" id="collapse-control">
+                            <div class="challenge-header">
+                                Collapse Control <span class="help-icon"
+                                    data-tooltip="Create the lowest total score for both players (sum of each player's largest group on each board)">❔</span>
+                            </div>
+                            <div class="best-score">Best: <span class="score">0</span></div>
+                            <div class="achievements"></div>
+                        </div>
+                        <div class="challenge-row" id="quantum-uncertainty">
+                            <div class="challenge-header">
+                                Quantum Uncertainty <span class="help-icon"
+                                    data-tooltip="Create the largest difference between players' scores (dark total minus light total)">❔</span>
+                            </div>
+                            <div class="best-score">Best: <span class="score">0</span></div>
+                            <div class="achievements"></div>
+                        </div>
+                        <div class="challenge-row" id="quantum-coherence">
+                            <div class="challenge-header">
+                                Quantum Coherence <span class="help-icon"
+                                    data-tooltip="Create perfectly balanced scores between players (first achieve basic tie, then try for perfect tie across all group sizes)">❔</span>
+                            </div>
+                            <div class="best-score">Best: <span class="score">0</span></div>
+                            <div class="achievements"></div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="settings-group">
                     <div class="settings-header">
                         <h5>Advanced settings</h5>
@@ -259,6 +297,9 @@
                         <div class="setting-item">
                             <input type="checkbox" id="setting-additional-bots">
                             <label for="setting-additional-bots">Show additional bots</label>
+                        </div>
+                        <div class="setting-item danger">
+                            <button id="reset-scorecard" class="danger-button">Reset Solo Challenge Scores</button>
                         </div>
                     </div>
                 </div>

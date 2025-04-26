@@ -3,6 +3,113 @@ import { EntangledGame, PLAYERS } from './gameplay.js';
 import { createPlayer, AI_PLAYERS } from './players.js';
 import { GameController } from './game-controller.js';
 
+// Scorecard constants
+const SCORECARD_STORAGE_KEY = 'entangled_scorecard';
+const CHALLENGES = {
+    MAXIMUM_ENTROPY: {
+        id: 'maximum-entropy',
+        levels: [
+            { name: 'Engineer', target: 50 },
+            { name: 'Cryptographer', target: 60 },
+            { name: 'Weaver', target: 65 },
+            { name: 'Master', target: 68 }
+        ]
+    },
+    COLLAPSE_CONTROL: {
+        id: 'collapse-control',
+        levels: [
+            { name: 'Engineer', target: 40, isLowerBetter: true },
+            { name: 'Cryptographer', target: 30, isLowerBetter: true },
+            { name: 'Weaver', target: 20, isLowerBetter: true },
+            { name: 'Master', target: 15, isLowerBetter: true }
+        ]
+    },
+    QUANTUM_UNCERTAINTY: {
+        id: 'quantum-uncertainty',
+        levels: [
+            { name: 'Engineer', target: 0 },
+            { name: 'Cryptographer', target: 10 },
+            { name: 'Weaver', target: 15 },
+            { name: 'Master', target: 20 }
+        ]
+    },
+    QUANTUM_COHERENCE: {
+        id: 'quantum-coherence',
+        levels: [
+            { name: 'Basic tie', target: 0 },
+            { name: 'Perfect tie', target: 0, requiresPerfect: true }
+        ]
+    }
+};
+
+// Scorecard helper functions
+function loadScorecard() {
+    const data = localStorage.getItem(SCORECARD_STORAGE_KEY);
+    return data ? JSON.parse(data) : {
+        maximumEntropy: { best: 0, achievements: [] },
+        collapseControl: { best: Infinity, achievements: [] },
+        quantumUncertainty: { best: 0, achievements: [] },
+        quantumCoherence: { best: 0, perfectTie: false, achievements: [] }
+    };
+}
+
+function saveScorecard(data) {
+    localStorage.setItem(SCORECARD_STORAGE_KEY, JSON.stringify(data));
+}
+
+function updateAchievements(challengeId, score, isGameOver = false, achievements = []) {
+    const challenge = Object.values(CHALLENGES).find(c => c.id === challengeId);
+    if (!challenge) return;
+
+    const achievementsDiv = document.querySelector(`#${challengeId} .achievements`);
+    achievementsDiv.innerHTML = '';
+
+    let nextTargetFound = false;
+    challenge.levels.forEach(level => {
+        const isCompleted = isGameOver && (level.isLowerBetter ?
+            score <= level.target :
+            score >= level.target);
+
+        const achievement = document.createElement('div');
+        achievement.className = `achievement ${isCompleted ? 'completed' : ''} ${!isCompleted && !nextTargetFound ? 'next-target' : ''}`;
+
+        const checkbox = document.createElement('div');
+        checkbox.className = 'achievement-checkbox';
+
+        const label = document.createElement('span');
+        label.textContent = `${level.name} (${level.isLowerBetter ? '<' : ''}${level.target}${level.isLowerBetter ? '' : '+'})`;
+
+        achievement.appendChild(checkbox);
+        achievement.appendChild(label);
+        achievementsDiv.appendChild(achievement);
+
+        if (!isCompleted && !nextTargetFound) {
+            nextTargetFound = true;
+        }
+    });
+
+    // Add existing achievements
+    achievements.forEach(achievement => {
+        const existingAchievement = document.createElement('div');
+        existingAchievement.className = 'achievement completed';
+        existingAchievement.textContent = achievement;
+        achievementsDiv.appendChild(existingAchievement);
+    });
+}
+
+function showNewRecord(challengeId, score) {
+    const bestScoreDiv = document.querySelector(`#${challengeId} .best-score`);
+    const scoreSpan = bestScoreDiv.querySelector('.score');
+
+    scoreSpan.textContent = score;
+    bestScoreDiv.classList.add('new-record');
+
+    // Remove the animation class after it completes
+    setTimeout(() => {
+        bestScoreDiv.classList.remove('new-record');
+    }, 1000);
+}
+
 // Settings management
 const SETTINGS_KEY = 'entangled_settings';
 let gameSettings = {
@@ -1042,6 +1149,124 @@ function updateDisplay() {
     }
 }
 
+function updateScorecard() {
+    if (!game || !game.isGameOver()) return;
+
+    // Check if both players are human
+    const blackPlayerType = document.getElementById('black-player').value;
+    const whitePlayerType = document.getElementById('white-player').value;
+    const isHumanVsHuman = blackPlayerType === 'human' && whitePlayerType === 'human';
+
+    // Skip achievement tracking completely for non-human vs human games
+    if (!isHumanVsHuman) {
+        return;
+    }
+
+    const stats = game.getEndGameStats();
+    if (!stats) return;
+
+    const scorecard = loadScorecard();
+
+    // Maximum Entropy
+    const totalScore = stats.scores.black + stats.scores.white;
+    if (totalScore > scorecard.maximumEntropy.best) {
+        scorecard.maximumEntropy.best = totalScore;
+        showNewRecord('maximum-entropy', totalScore);
+    }
+    // Update achievements (never remove existing ones)
+    CHALLENGES.MAXIMUM_ENTROPY.levels.forEach(level => {
+        if (totalScore >= level.target) {
+            if (!scorecard.maximumEntropy.achievements.includes(level.name)) {
+                scorecard.maximumEntropy.achievements.push(level.name);
+            }
+        }
+    });
+
+    // Collapse Control
+    if (totalScore < scorecard.collapseControl.best) {
+        scorecard.collapseControl.best = totalScore;
+        showNewRecord('collapse-control', totalScore);
+    }
+    // Update achievements
+    CHALLENGES.COLLAPSE_CONTROL.levels.forEach(level => {
+        if (totalScore <= level.target) {
+            if (!scorecard.collapseControl.achievements.includes(level.name)) {
+                scorecard.collapseControl.achievements.push(level.name);
+            }
+        }
+    });
+
+    // Quantum Uncertainty
+    const scoreDiff = Math.abs(stats.scores.black - stats.scores.white);
+    if (scoreDiff > scorecard.quantumUncertainty.best) {
+        scorecard.quantumUncertainty.best = scoreDiff;
+        showNewRecord('quantum-uncertainty', scoreDiff);
+    }
+    // Update achievements
+    CHALLENGES.QUANTUM_UNCERTAINTY.levels.forEach(level => {
+        if (scoreDiff >= level.target) {
+            if (!scorecard.quantumUncertainty.achievements.includes(level.name)) {
+                scorecard.quantumUncertainty.achievements.push(level.name);
+            }
+        }
+    });
+
+    // Quantum Coherence
+    const isTied = stats.scores.black === stats.scores.white;
+    // A perfect tie is only when scores are tied AND the tiebreaker explicitly results in 'TIE'
+    // (not when one player wins in the tiebreaker)
+    const isPerfectTie = isTied &&
+        stats.tiebreaker &&
+        stats.tiebreaker.winner === 'TIE' &&
+        stats.tiebreaker.comparisonData.every(level => level.black.sum === level.white.sum);
+
+    if (isTied && stats.scores.black > scorecard.quantumCoherence.best) {
+        scorecard.quantumCoherence.best = stats.scores.black;
+        scorecard.quantumCoherence.perfectTie = isPerfectTie;
+        showNewRecord('quantum-coherence', `Tied at ${stats.scores.black}${isPerfectTie ? ' (Perfect!)' : ''}`);
+    }
+
+    // Update achievements - only add perfect tie if we have a basic tie first
+    if (isTied && !scorecard.quantumCoherence.achievements.includes('Basic tie')) {
+        scorecard.quantumCoherence.achievements.push('Basic tie');
+    }
+    if (isPerfectTie &&
+        scorecard.quantumCoherence.achievements.includes('Basic tie') &&
+        !scorecard.quantumCoherence.achievements.includes('Perfect tie')) {
+        scorecard.quantumCoherence.achievements.push('Perfect tie');
+    }
+
+    saveScorecard(scorecard);
+
+    // Update display with current game results and all achievements
+    updateAchievements('maximum-entropy', totalScore, true, scorecard.maximumEntropy.achievements);
+    updateAchievements('collapse-control', totalScore, true, scorecard.collapseControl.achievements);
+    updateAchievements('quantum-uncertainty', scoreDiff, true, scorecard.quantumUncertainty.achievements);
+    updateAchievements('quantum-coherence', isTied ? stats.scores.black : 0, true, scorecard.quantumCoherence.achievements);
+}
+
+function initializeScorecard() {
+    const scorecard = loadScorecard();
+
+    // Initialize Maximum Entropy
+    showNewRecord('maximum-entropy', scorecard.maximumEntropy.best);
+    updateAchievements('maximum-entropy', scorecard.maximumEntropy.best, false, scorecard.maximumEntropy.achievements);
+
+    // Initialize Collapse Control
+    showNewRecord('collapse-control', scorecard.collapseControl.best === Infinity ? 0 : scorecard.collapseControl.best);
+    updateAchievements('collapse-control', scorecard.collapseControl.best, false, scorecard.collapseControl.achievements);
+
+    // Initialize Quantum Uncertainty
+    showNewRecord('quantum-uncertainty', scorecard.quantumUncertainty.best);
+    updateAchievements('quantum-uncertainty', scorecard.quantumUncertainty.best, false, scorecard.quantumUncertainty.achievements);
+
+    // Initialize Quantum Coherence
+    showNewRecord('quantum-coherence', scorecard.quantumCoherence.best ?
+        `Tied at ${scorecard.quantumCoherence.best}${scorecard.quantumCoherence.perfectTie ? ' (Perfect!)' : ''}` :
+        'No tie yet');
+    updateAchievements('quantum-coherence', scorecard.quantumCoherence.best, false, scorecard.quantumCoherence.achievements);
+}
+
 function showWinner(winnerData) {
     const existingWinner = document.querySelector('.winner');
     if (existingWinner) {
@@ -1137,6 +1362,9 @@ function showWinner(winnerData) {
             }
         }
     }
+
+    // Update scorecard after showing winner
+    updateScorecard();
 }
 
 function handleCellClick(symbol) {
@@ -1644,6 +1872,25 @@ function enableUI() {
     document.body.style.cursor = 'default';
 }
 
+function resetScorecard() {
+    if (confirm('Are you sure you want to reset all solo challenge scores and achievements? This cannot be undone.')) {
+        localStorage.removeItem(SCORECARD_STORAGE_KEY);
+        initializeScorecard();
+        showToast('Solo challenge scores have been reset');
+    }
+}
+
+function updateScoreCardVisibility() {
+    const blackPlayerType = document.getElementById('black-player').value;
+    const whitePlayerType = document.getElementById('white-player').value;
+    const isHumanVsHuman = blackPlayerType === 'human' && whitePlayerType === 'human';
+
+    const scorecard = document.querySelector('.scorecard');
+    if (scorecard) {
+        scorecard.style.display = isHumanVsHuman ? '' : 'none';
+    }
+}
+
 function init() {
     loadSettings();
     setupCustomBoardHandling();
@@ -1656,6 +1903,19 @@ function init() {
 
     // Set default value for superposition input
     document.getElementById('superposition').value = 'rng,rng,rng,rng';
+
+    // Initialize scorecard
+    initializeScorecard();
+
+    // Add reset scorecard handler
+    document.getElementById('reset-scorecard').addEventListener('click', resetScorecard);
+
+    // Add player type change handlers
+    document.getElementById('black-player').addEventListener('change', updateScoreCardVisibility);
+    document.getElementById('white-player').addEventListener('change', updateScoreCardVisibility);
+
+    // Initial visibility check
+    updateScoreCardVisibility();
 
     // Add event listener for mobile start button
     const mobileStartButton = document.getElementById('mobile-start-game');
