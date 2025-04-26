@@ -73,7 +73,7 @@ body {
     left: var(--spacing-md);
     top: var(--spacing-md);
     bottom: var(--spacing-md);
-    width: 320px;
+    width: 426px;
     transform: translateX(0);
     transition: transform var(--transition-slow) ease;
     z-index: 10;
@@ -86,35 +86,49 @@ body {
 }
 
 .rules h1 {
-    font-size: var(--font-size-xl);
-    margin-bottom: var(--spacing-lg);
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-sm);
+    font-size: calc(var(--font-size-xl) * 2);
+    display: inline-block;
+    width: auto;
+    background: linear-gradient(to right,
+            #ff0000 0%,
+            /* red */
+            #ff6b00 20%,
+            /* orange */
+            #ffa500 40%,
+            /* darker, more saturated yellow */
+            #00ff00 60%,
+            /* green */
+            #008080 80%,
+            /* darker turquoise */
+            #0000ff 100%
+            /* blue */
+        );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    font-weight: bold;
 }
 
 .rules h2 {
     font-size: var(--font-size-lg);
-    margin: var(--spacing-lg) 0 var(--spacing-sm);
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-sm);
+    margin: var(--spacing-xl) 0 var(--spacing-sm);
+    color: #333;
+    font-weight: 600;
+    letter-spacing: -0.02em;
 }
 
 .rules h3 {
-    font-size: calc(var(--font-size-base) * 1.1);
-    margin: var(--spacing-md) 0 var(--spacing-xs);
-    color: var(--color-text);
-    opacity: 0.9;
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-sm);
+    font-size: var(--font-size-base);
+    margin: var(--spacing-lg) 0 var(--spacing-xs);
+    color: #444;
+    font-weight: 500;
 }
 
 .rules p {
     margin-bottom: var(--spacing-md);
-    font-size: var(--font-size-base);
-    line-height: 1.5;
+    line-height: 1.6;
+    color: #555;
+    max-width: 80ch;
 }
 
 .rules .intro {
@@ -190,12 +204,19 @@ body {
     border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
 }
 
+.rules .subtitle {
+    color: #666;
+    font-size: var(--font-size-md);
+    margin-bottom: var(--spacing-lg);
+    font-weight: 600;
+}
+
 /* Game container */
 .game-container {
     flex: 1;
     display: flex;
     gap: var(--spacing-md);
-    margin-left: 320px;
+    margin-left: 426px;
     transition: margin-left var(--transition-slow) ease;
 }
 
