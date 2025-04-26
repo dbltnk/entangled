@@ -12,7 +12,8 @@ let gameSettings = {
     score: true,
     currentPlayer: true,
     icons: true,
-    symbols: false
+    symbols: false,
+    boardConfig: false
 };
 
 let game = null;
@@ -76,15 +77,25 @@ const ICON_MAPPINGS = {
 };
 
 function loadSettings() {
-    const saved = localStorage.getItem(SETTINGS_KEY);
-    if (saved) {
-        gameSettings = { ...gameSettings, ...JSON.parse(saved) };
-    }
+    const settings = JSON.parse(localStorage.getItem('gameSettings') || '{}');
+    gameSettings = {
+        hover: true,
+        groups: true,
+        size: true,
+        score: true,
+        currentPlayer: true,
+        icons: true,
+        symbols: false,
+        boardConfig: false,
+        ...settings
+    };
 
-    // Initialize checkboxes
+    // Apply settings to checkboxes
     Object.entries(gameSettings).forEach(([key, value]) => {
         const checkbox = document.getElementById(`setting-${key}`);
-        if (checkbox) checkbox.checked = value;
+        if (checkbox) {
+            checkbox.checked = value;
+        }
     });
 
     applySettings();
@@ -1659,7 +1670,7 @@ function init() {
         icon.classList.toggle('rotated');
     });
 
-    ['hover', 'groups', 'size', 'score', 'currentPlayer', 'icons', 'symbols'].forEach(setting => {
+    ['hover', 'groups', 'size', 'score', 'currentPlayer', 'icons', 'symbols', 'board-config'].forEach(setting => {
         const checkbox = document.getElementById(`setting-${setting}`);
         if (checkbox) {
             checkbox.addEventListener('change', (e) => {
@@ -1672,6 +1683,45 @@ function init() {
             });
         }
     });
+
+    // Add board config visibility handler
+    const boardConfigCheckbox = document.getElementById('setting-board-config');
+    if (boardConfigCheckbox) {
+        boardConfigCheckbox.addEventListener('change', (e) => {
+            const elements = [
+                'board-size',
+                'board1-select',
+                'custom-board1-btn',
+                'board2-select',
+                'custom-board2-btn',
+                'starting-config',
+                'superposition'
+            ];
+
+            // Hide/show the elements
+            elements.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.parentElement.style.display = e.target.checked ? '' : 'none';
+                }
+            });
+
+            // Hide/show the labels
+            const labels = document.querySelectorAll('.field-label');
+            labels.forEach(label => {
+                if (label.htmlFor === 'board1-select' ||
+                    label.htmlFor === 'board2-select' ||
+                    label.htmlFor === 'board-size' ||
+                    label.htmlFor === 'starting-config' ||
+                    label.htmlFor === 'superposition') {
+                    label.parentElement.style.display = e.target.checked ? '' : 'none';
+                }
+            });
+        });
+
+        // Set initial visibility
+        boardConfigCheckbox.dispatchEvent(new Event('change'));
+    }
 
     // Add swap button handler
     document.getElementById('swap-first-move').addEventListener('click', () => {
