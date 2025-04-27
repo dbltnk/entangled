@@ -66,9 +66,31 @@ function updateAchievements(challengeId, score, isGameOver = false, achievements
 
     let nextTargetFound = false;
     challenge.levels.forEach(level => {
-        const isCompleted = isGameOver && (level.isLowerBetter ?
-            score <= level.target :
-            score >= level.target);
+        let isCompleted = false;
+
+        if (challengeId === 'quantum-coherence') {
+            // For quantum coherence, we need to check the actual game state
+            if (isGameOver && game) {
+                const stats = game.getEndGameStats();
+                const isTied = stats.scores.black === stats.scores.white;
+                const isPerfectTie = isTied &&
+                    stats.tiebreaker &&
+                    stats.tiebreaker.winner === 'TIE' &&
+                    stats.tiebreaker.comparisonData.every(level => level.black.sum === level.white.sum);
+
+                if (level.name === 'Basic tie') {
+                    isCompleted = isTied;
+                } else if (level.name === 'Perfect tie') {
+                    isCompleted = isPerfectTie;
+                }
+            }
+        } else {
+            // For other challenges, use the standard completion check
+            isCompleted = isGameOver && (level.isLowerBetter ?
+                score <= level.target :
+                score >= level.target);
+        }
+
 
         const achievement = document.createElement('div');
         achievement.className = `achievement ${isCompleted ? 'completed' : ''} ${!isCompleted && !nextTargetFound ? 'next-target' : ''}`;
