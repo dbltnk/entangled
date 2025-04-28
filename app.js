@@ -143,8 +143,33 @@ let gameSettings = {
     icons: true,
     symbols: false,
     boardConfig: false,
-    additionalBots: false
+    additionalBots: false,
+    theme: 'system' // Add theme setting with 'system' as default
 };
+
+// Add theme management functions
+function getSystemTheme() {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
+function applyTheme(theme) {
+    const effectiveTheme = theme === 'system' ? getSystemTheme() : theme;
+    document.documentElement.dataset.theme = effectiveTheme === 'dark' ? 'dark' : '';
+
+    // Update checkbox state
+    const themeCheckbox = document.getElementById('setting-theme');
+    if (themeCheckbox) {
+        themeCheckbox.checked = effectiveTheme === 'dark';
+    }
+}
+
+// Add system theme change listener
+const systemThemeQuery = window.matchMedia('(prefers-color-scheme: dark)');
+systemThemeQuery.addListener(() => {
+    if (gameSettings.theme === 'system') {
+        applyTheme('system');
+    }
+});
 
 let game = null;
 let currentRandomBoards = {
@@ -218,6 +243,7 @@ function loadSettings() {
         symbols: false,
         boardConfig: false,
         additionalBots: false,
+        theme: 'system',
         ...settings
     };
 
@@ -225,11 +251,17 @@ function loadSettings() {
     Object.entries(gameSettings).forEach(([key, value]) => {
         const checkbox = document.getElementById(`setting-${key}`);
         if (checkbox) {
-            checkbox.checked = value;
+            if (key === 'theme') {
+                // For theme, we set the checkbox based on effective theme
+                checkbox.checked = (value === 'system' ? getSystemTheme() : value) === 'dark';
+            } else {
+                checkbox.checked = value;
+            }
         }
     });
 
     applySettings();
+    applyTheme(gameSettings.theme);
 }
 
 function saveSettings() {
@@ -1968,6 +2000,16 @@ function init() {
             });
         }
     });
+
+    // Add theme change handler
+    const themeCheckbox = document.getElementById('setting-theme');
+    if (themeCheckbox) {
+        themeCheckbox.addEventListener('change', (e) => {
+            gameSettings.theme = e.target.checked ? 'dark' : 'light';
+            saveSettings();
+            applyTheme(gameSettings.theme);
+        });
+    }
 
     // Add board config visibility handler
     const boardConfigCheckbox = document.getElementById('setting-board-config');
