@@ -571,7 +571,7 @@ class EntangledGame {
         const positions = this.symbolToPosition.get(symbol);
         if (!positions) return this.lastPlacedStone;
 
-        // Get the board and position where the last stone was placed that triggered the collapse
+        // Get the last move that triggered the collapse
         const lastMoveSymbol = this._lastMove;
         if (!lastMoveSymbol || !this.symbolToPosition.has(lastMoveSymbol)) {
             return this.lastPlacedStone;
@@ -579,44 +579,56 @@ class EntangledGame {
 
         const lastMovePos = this.symbolToPosition.get(lastMoveSymbol);
 
-        // Determine which board the last move was on that caused this collapse
-        // In case the stone was placed on both boards, we prioritize board1 for consistency
-        const board1Used = lastMovePos.board1 && this.board1Layout[lastMovePos.board1.row][lastMovePos.board1.col] !== '.' &&
+        // Determine which board the last move was on
+        const board1Used = lastMovePos.board1 &&
+            this.board1Layout[lastMovePos.board1.row][lastMovePos.board1.col] !== '.' &&
             this.board1[lastMovePos.board1.row][lastMovePos.board1.col] === this.lastPlacedStone;
 
-        let blackClusterSize = 0;
-        let whiteClusterSize = 0;
+        let blackCount = 0;
+        let whiteCount = 0;
+        let lastAdjacentColor = null;
 
-        // Check board1 if it was used in the last move
+        // Count adjacent stones on the relevant board
+        const countAdjacentStones = (board, row, col) => {
+            const directions = this.getDirections(board === this.board1 ? this.board1Type : this.board2Type, row);
+
+            for (const [dRow, dCol] of directions) {
+                const nRow = row + dRow;
+                const nCol = col + dCol;
+
+                if (nRow < 0 || nRow >= this.boardSize || nCol < 0 || nCol >= this.boardSize) continue;
+
+                const cell = board[nRow][nCol];
+                if (cell === PLAYERS.BLACK) {
+                    blackCount++;
+                    lastAdjacentColor = PLAYERS.BLACK;
+                } else if (cell === PLAYERS.WHITE) {
+                    whiteCount++;
+                    lastAdjacentColor = PLAYERS.WHITE;
+                }
+            }
+        };
+
         if (board1Used && positions.board1) {
             const { row, col } = positions.board1;
             if (this.board1Layout[row][col] !== '.') {
-                blackClusterSize = this.calculatePotentialClusterSize(this.board1, row, col, PLAYERS.BLACK);
-                whiteClusterSize = this.calculatePotentialClusterSize(this.board1, row, col, PLAYERS.WHITE);
+                countAdjacentStones(this.board1, row, col);
             }
-        }
-        // Otherwise check board2
-        else {
-            const board2Used = lastMovePos.board2 && this.board2Layout[lastMovePos.board2.row][lastMovePos.board2.col] !== '.' &&
-                this.board2[lastMovePos.board2.row][lastMovePos.board2.col] === this.lastPlacedStone;
-
-            if (board2Used && positions.board2) {
-                const { row, col } = positions.board2;
-                if (this.board2Layout[row][col] !== '.') {
-                    blackClusterSize = this.calculatePotentialClusterSize(this.board2, row, col, PLAYERS.BLACK);
-                    whiteClusterSize = this.calculatePotentialClusterSize(this.board2, row, col, PLAYERS.WHITE);
-                }
+        } else if (positions.board2) {
+            const { row, col } = positions.board2;
+            if (this.board2Layout[row][col] !== '.') {
+                countAdjacentStones(this.board2, row, col);
             }
         }
 
-        // Determine optimal color based on the largest potential cluster on the relevant board
-        if (blackClusterSize > whiteClusterSize) {
+        // Use majority rule, with last adjacent stone as tiebreaker
+        if (blackCount > whiteCount) {
             return PLAYERS.BLACK;
-        } else if (whiteClusterSize > blackClusterSize) {
+        } else if (whiteCount > blackCount) {
             return PLAYERS.WHITE;
         } else {
-            // If equal, use the last placed stone's color as tiebreaker
-            return this.lastPlacedStone;
+            // If tied, use last adjacent stone's color
+            return lastAdjacentColor || this.lastPlacedStone;
         }
     }
 
