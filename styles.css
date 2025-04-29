@@ -1527,6 +1527,7 @@ button:disabled {
         height: calc(100vh - 100px);
         /* Account for navigation and status bar */
         padding: var(--spacing-md) var(--spacing-xs);
+        padding-top: 60px !important;
         gap: var(--spacing-md);
     }
 
