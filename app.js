@@ -144,22 +144,17 @@ let gameSettings = {
     symbols: false,
     boardConfig: false,
     additionalBots: false,
-    theme: 'system' // Add theme setting with 'system' as default
+    theme: 'light' // Default to light theme
 };
 
-// Add theme management functions
-function getSystemTheme() {
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-}
-
+// Theme management functions
 function applyTheme(theme) {
-    const effectiveTheme = theme === 'system' ? getSystemTheme() : theme;
-    document.documentElement.dataset.theme = effectiveTheme === 'dark' ? 'dark' : '';
+    document.documentElement.dataset.theme = theme === 'dark' ? 'dark' : '';
 
     // Update checkbox state
     const themeCheckbox = document.getElementById('setting-theme');
     if (themeCheckbox) {
-        themeCheckbox.checked = effectiveTheme === 'dark';
+        themeCheckbox.checked = theme === 'dark';
     }
 }
 
@@ -243,7 +238,7 @@ function loadSettings() {
         symbols: false,
         boardConfig: false,
         additionalBots: false,
-        theme: 'system',
+        theme: 'light',
         ...settings
     };
 
@@ -251,12 +246,7 @@ function loadSettings() {
     Object.entries(gameSettings).forEach(([key, value]) => {
         const checkbox = document.getElementById(`setting-${key}`);
         if (checkbox) {
-            if (key === 'theme') {
-                // For theme, we set the checkbox based on effective theme
-                checkbox.checked = (value === 'system' ? getSystemTheme() : value) === 'dark';
-            } else {
-                checkbox.checked = value;
-            }
+            checkbox.checked = key === 'theme' ? value === 'dark' : value;
         }
     });
 
