@@ -1526,7 +1526,6 @@ button:disabled {
         width: 100%;
         height: calc(100vh - 100px);
         /* Account for navigation and status bar */
-        padding: var(--spacing-md) var(--spacing-xs);
         padding-top: 60px !important;
         gap: var(--spacing-md);
     }
@@ -1766,7 +1765,7 @@ button:disabled {
     /* Optimize board size for very small screens */
     .board[class*="board-"] {
         width: min(calc(100vw - 20px),
-                calc((100vh - 135px) / 2.2)
+                calc((100vh - 220px) / 2.2)
                 /* Adjusted spacing for small phones */
             );
     }
