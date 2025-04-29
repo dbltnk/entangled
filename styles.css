@@ -1546,7 +1546,7 @@ button:disabled {
     /* Make boards equal size and fully visible */
     .board[class*="board-"] {
         width: min(calc(100vw - 40px),
-                calc((100vh - 150px) / 2.2)
+                calc((100vh - 220px) / 2.2)
                 /* Account for navigation, status bar, and gap */
             );
         height: auto;
