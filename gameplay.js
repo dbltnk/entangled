@@ -586,7 +586,6 @@ class EntangledGame {
 
         let blackCount = 0;
         let whiteCount = 0;
-        let lastAdjacentColor = null;
 
         // Count adjacent stones on the relevant board
         const countAdjacentStones = (board, row, col) => {
@@ -601,10 +600,8 @@ class EntangledGame {
                 const cell = board[nRow][nCol];
                 if (cell === PLAYERS.BLACK) {
                     blackCount++;
-                    lastAdjacentColor = PLAYERS.BLACK;
                 } else if (cell === PLAYERS.WHITE) {
                     whiteCount++;
-                    lastAdjacentColor = PLAYERS.WHITE;
                 }
             }
         };
@@ -621,14 +618,14 @@ class EntangledGame {
             }
         }
 
-        // Use majority rule, with last adjacent stone as tiebreaker
+        // Use majority rule, with last placed stone as tiebreaker
         if (blackCount > whiteCount) {
             return PLAYERS.BLACK;
         } else if (whiteCount > blackCount) {
             return PLAYERS.WHITE;
         } else {
-            // If tied, use last adjacent stone's color
-            return lastAdjacentColor || this.lastPlacedStone;
+            // If tied, use the color of the last stone placed in the game
+            return this.lastPlacedStone;
         }
     }
 
