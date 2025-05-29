@@ -1950,9 +1950,9 @@ button:disabled {
 }
 
 .challenge-header {
-    font-size: calc(var(--font-size-sm) * 0.9);
+    font-size: calc(var(--font-size-sm) * 0.95);
     color: var(--theme-text);
-    margin-bottom: calc(var(--spacing-xs) / 2);
+    margin-bottom: 0.5rem;
     display: flex;
     align-items: center;
     gap: var(--spacing-xs);
@@ -1960,13 +1960,16 @@ button:disabled {
 
 .help-icon {
     cursor: help;
-    opacity: 0.6;
-    transition: opacity 0.2s ease;
     position: relative;
-    color: var(--theme-text);
+    color: #1976d2;
+    font-size: 1.1em;
+    font-weight: bold;
+    opacity: 0.85;
+    transition: color 0.2s, opacity 0.2s;
 }
 
 .help-icon:hover {
+    color: #0d47a1;
     opacity: 1;
 }
 
@@ -2013,10 +2016,11 @@ button:disabled {
 }
 
 .best-score {
-    font-size: calc(var(--font-size-sm) * 0.85);
+    font-size: calc(var(--font-size-sm) * 0.95);
     color: var(--theme-text);
-    opacity: 0.8;
-    margin-bottom: calc(var(--spacing-xs) / 2);
+    opacity: 0.85;
+    margin-bottom: 0.2rem;
+    margin-top: 0.2rem;
 }
 
 .best-score.new-record {
@@ -2025,9 +2029,8 @@ button:disabled {
 }
 
 .achievements {
-    display: flex;
-    flex-direction: column;
-    gap: calc(var(--spacing-xs) / 2);
+    margin-bottom: 0.5rem;
+    margin-top: 0.1rem;
 }
 
 .achievement {
@@ -2041,11 +2044,6 @@ button:disabled {
 
 .achievement.completed {
     opacity: 1;
-}
-
-.achievement.next-target {
-    opacity: 0.9;
-    font-weight: 500;
 }
 
 .achievement-checkbox {
@@ -2227,4 +2225,10 @@ body {
 .mobile-game-over-content {
     background: var(--theme-panel-bg);
     color: var(--theme-text);
+}
+
+.challenge-row#quantum-coherence .achievement span {
+    line-height: 1.1;
+    margin: 0;
+    padding: 0;
 }

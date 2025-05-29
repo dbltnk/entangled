@@ -10,7 +10,7 @@ const CHALLENGES = {
         id: 'maximum-entropy',
         levels: [
             { name: 'Engineer', target: 50 },
-            { name: 'Cryptographer', target: 60 },
+            { name: 'Cipher', target: 60 },
             { name: 'Weaver', target: 65 },
             { name: 'Master', target: 68 }
         ]
@@ -19,7 +19,7 @@ const CHALLENGES = {
         id: 'collapse-control',
         levels: [
             { name: 'Engineer', target: 40, isLowerBetter: true },
-            { name: 'Cryptographer', target: 30, isLowerBetter: true },
+            { name: 'Cipher', target: 30, isLowerBetter: true },
             { name: 'Weaver', target: 20, isLowerBetter: true },
             { name: 'Master', target: 15, isLowerBetter: true }
         ]
@@ -28,7 +28,7 @@ const CHALLENGES = {
         id: 'quantum-uncertainty',
         levels: [
             { name: 'Engineer', target: 0 },
-            { name: 'Cryptographer', target: 10 },
+            { name: 'Cipher', target: 10 },
             { name: 'Weaver', target: 15 },
             { name: 'Master', target: 20 }
         ]
@@ -64,7 +64,6 @@ function updateAchievements(challengeId, score, isGameOver = false, achievements
     const achievementsDiv = document.querySelector(`#${challengeId} .achievements`);
     achievementsDiv.innerHTML = '';
 
-    let nextTargetFound = false;
     challenge.levels.forEach(level => {
         let isCompleted = false;
 
@@ -91,32 +90,31 @@ function updateAchievements(challengeId, score, isGameOver = false, achievements
                 score >= level.target);
         }
 
-
         const achievement = document.createElement('div');
-        achievement.className = `achievement ${isCompleted ? 'completed' : ''} ${!isCompleted && !nextTargetFound ? 'next-target' : ''}`;
+        achievement.className = `achievement ${isCompleted ? 'completed' : ''}`;
 
         const checkbox = document.createElement('div');
         checkbox.className = 'achievement-checkbox';
 
         const label = document.createElement('span');
-        label.textContent = `${level.name} (${level.isLowerBetter ? '<' : ''}${level.target}${level.isLowerBetter ? '' : '+'})`;
+        if (challengeId === 'quantum-coherence') {
+            if (level.name === 'Basic tie') {
+                label.textContent = 'Both players are tied';
+            } else if (level.name === 'Perfect tie') {
+                label.textContent = 'All groups are tied';
+            } else {
+                label.textContent = level.name;
+            }
+        } else {
+            label.textContent = `${level.name} (${level.isLowerBetter ? '<' : ''}${level.target}${level.isLowerBetter ? '' : '+'})`;
+        }
 
         achievement.appendChild(checkbox);
         achievement.appendChild(label);
         achievementsDiv.appendChild(achievement);
-
-        if (!isCompleted && !nextTargetFound) {
-            nextTargetFound = true;
-        }
     });
 
-    // Add existing achievements
-    achievements.forEach(achievement => {
-        const existingAchievement = document.createElement('div');
-        existingAchievement.className = 'achievement completed';
-        existingAchievement.textContent = achievement;
-        achievementsDiv.appendChild(existingAchievement);
-    });
+    // No extra text-only completed achievements appended here.
 }
 
 function showNewRecord(challengeId, score) {
