@@ -848,13 +848,9 @@ button:disabled {
 
 /* Settings styles */
 .settings-group {
-    position: fixed;
-    bottom: var(--spacing-md);
-    right: var(--spacing-md);
-    width: 280px;
-    background: var(--theme-panel-bg);
-    padding-top: var(--spacing-sm);
-    margin-bottom: 0;
+    margin-top: var(--spacing-md);
+    padding-top: var(--spacing-md);
+    border-top: 1px solid var(--color-border);
 }
 
 .settings-header {
@@ -880,12 +876,10 @@ button:disabled {
     transition: transform var(--transition-slow);
     transform: rotate(180deg);
     color: var(--theme-text);
-    /* Default to upward arrow */
 }
 
 .toggle-icon.rotated {
     transform: rotate(0deg);
-    /* Rotate to downward when active */
 }
 
 .settings-content {
@@ -896,7 +890,6 @@ button:disabled {
     overflow: hidden;
     border-top: none;
     padding-top: var(--spacing-sm);
-    background: var(--theme-panel-bg);
 }
 
 .settings-content.hidden {
@@ -2180,14 +2173,7 @@ body {
     color: var(--theme-toast-text);
 }
 
-/* Update settings styles */
-.settings-group {
-    background: var(--theme-panel-bg);
-}
 
-.settings-content {
-    background: var(--theme-panel-bg);
-}
 
 /* Update danger button styles */
 .danger-button {
