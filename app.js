@@ -2283,3 +2283,121 @@ function setupMobileGameOverHandlers() {
 }
 
 document.addEventListener('DOMContentLoaded', init);
+
+// --- Tooltip positioning for help icons ---
+function positionHelpTooltip(e) {
+    const icon = e.currentTarget;
+    const tooltipText = icon.getAttribute('data-tooltip');
+    if (!tooltipText) return;
+
+    // Force the ::after to be visible so we can measure it
+    icon.classList.add('tooltip-visible');
+
+    // Find the generated ::after element
+    // We can't access pseudo-elements directly, so we create a hidden div for measurement
+    let tooltipDiv = document.getElementById('help-tooltip-measure');
+    if (!tooltipDiv) {
+        tooltipDiv = document.createElement('div');
+        tooltipDiv.id = 'help-tooltip-measure';
+        tooltipDiv.style.position = 'fixed';
+        tooltipDiv.style.zIndex = '9999';
+        tooltipDiv.style.visibility = 'hidden';
+        tooltipDiv.style.pointerEvents = 'none';
+        tooltipDiv.style.padding = '8px 12px';
+        tooltipDiv.style.background = getComputedStyle(document.documentElement).getPropertyValue('--theme-panel-bg');
+        tooltipDiv.style.color = getComputedStyle(document.documentElement).getPropertyValue('--theme-text');
+        tooltipDiv.style.fontSize = '0.8rem';
+        tooltipDiv.style.borderRadius = '8px';
+        tooltipDiv.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
+        tooltipDiv.style.border = '1px solid ' + getComputedStyle(document.documentElement).getPropertyValue('--theme-border');
+        tooltipDiv.style.boxSizing = 'border-box';
+        tooltipDiv.style.width = 'max(200px, 20vw)';
+        tooltipDiv.style.whiteSpace = 'normal';
+        tooltipDiv.style.textAlign = 'center';
+        document.body.appendChild(tooltipDiv);
+    }
+    tooltipDiv.textContent = tooltipText;
+    tooltipDiv.style.display = 'block';
+
+    // Get icon and tooltip sizes/positions
+    const iconRect = icon.getBoundingClientRect();
+    const tooltipRect = tooltipDiv.getBoundingClientRect();
+    const spacing = 8;
+    let top = iconRect.top - tooltipRect.height - spacing;
+    let left = iconRect.left + (iconRect.width - tooltipRect.width) / 2;
+
+    // If not enough space above, try below
+    if (top < 0) {
+        top = iconRect.bottom + spacing;
+    }
+    // If still not enough space, clamp to top
+    if (top < 0) top = 0;
+
+    // Clamp horizontally
+    if (left < 0) left = spacing;
+    if (left + tooltipRect.width > window.innerWidth) {
+        left = window.innerWidth - tooltipRect.width - spacing;
+    }
+
+    // Set the position for the pseudo-element via CSS variables
+    icon.style.setProperty('--help-tooltip-left', `${left}px`);
+    icon.style.setProperty('--help-tooltip-top', `${top}px`);
+
+    // Now, use a MutationObserver to update the ::after position
+    // But since we can't move ::after, we use a global event to update its position
+    // Instead, we use a global style tag to inject the position for this icon
+    let styleTag = document.getElementById('help-tooltip-style');
+    if (!styleTag) {
+        styleTag = document.createElement('style');
+        styleTag.id = 'help-tooltip-style';
+        document.head.appendChild(styleTag);
+    }
+    // Use a unique selector for this icon
+    const iconId = icon.dataset.helpTooltipId || `help-tooltip-${Math.random().toString(36).slice(2)}`;
+    icon.dataset.helpTooltipId = iconId;
+    styleTag.textContent = `
+      .help-icon[data-help-tooltip-id="${iconId}"].tooltip-visible::after {
+        left: ${left}px !important;
+        top: ${top}px !important;
+      }
+    `;
+
+    // Clean up the measurement div
+    tooltipDiv.style.display = 'none';
+}
+
+function hideHelpTooltip(e) {
+    const icon = e.currentTarget;
+    icon.classList.remove('tooltip-visible');
+    // Remove the injected style for this icon
+    const iconId = icon.dataset.helpTooltipId;
+    if (iconId) {
+        let styleTag = document.getElementById('help-tooltip-style');
+        if (styleTag) {
+            // Only clear the style if it matches this icon
+            // (If you want to support multiple tooltips at once, you'd need a more robust system)
+            styleTag.textContent = '';
+        }
+    }
+    // Remove the CSS variables so ::after doesn't get left/top 0
+    icon.style.removeProperty('--help-tooltip-left');
+    icon.style.removeProperty('--help-tooltip-top');
+}
+
+// Attach handlers to all .help-icon elements
+function setupHelpTooltips() {
+    document.querySelectorAll('.help-icon').forEach(icon => {
+        icon.addEventListener('mouseenter', positionHelpTooltip);
+        icon.addEventListener('mouseleave', hideHelpTooltip);
+        icon.addEventListener('focus', positionHelpTooltip);
+        icon.addEventListener('blur', hideHelpTooltip);
+    });
+}
+
+// Call after DOMContentLoaded and after any dynamic content changes
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupHelpTooltips);
+} else {
+    setupHelpTooltips();
+}
+// If you dynamically add .help-icon elements elsewhere, call setupHelpTooltips() again.

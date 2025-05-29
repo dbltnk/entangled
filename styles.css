@@ -1968,45 +1968,40 @@ button:disabled {
 
 .help-icon::after {
     content: attr(data-tooltip);
-    position: absolute;
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%);
+    position: fixed;
+    /* Will be positioned by JS */
     padding: 8px 12px;
     background: var(--theme-panel-bg);
     color: var(--theme-text);
     font-size: calc(var(--font-size-sm) * 0.8);
     border-radius: var(--radius-sm);
-    z-index: 1000;
+    z-index: 2000;
     pointer-events: none;
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.1s ease, visibility 0.1s ease;
     width: max(200px, 20vw);
-    /* Wider tooltip with minimum width */
     white-space: normal;
-    text-align: center;
+    text-align: left;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
     margin-bottom: 8px;
-    /* Space between tooltip and icon */
     border: 1px solid var(--theme-border);
+    box-sizing: border-box;
+    left: 0;
+    /* default, will be set by JS */
+    top: 0;
+    /* default, will be set by JS */
+    /* Add a class for JS targeting */
+    pointer-events: none;
+    /* Remove transform, left, right from previous version */
 }
 
-.help-icon:hover::after {
+.help-icon.tooltip-visible::after {
     opacity: 1;
     visibility: visible;
 }
 
-/* Adjust mobile tooltip positioning and width */
-@media (max-width: 768px) {
-    .help-icon::after {
-        width: min(280px, 60vw);
-        /* Responsive width for mobile */
-        left: auto;
-        right: 0;
-        transform: none;
-    }
-}
+/* Remove mobile overrides for .help-icon::after */
 
 .best-score {
     font-size: calc(var(--font-size-sm) * 0.95);
