@@ -610,6 +610,19 @@ const BOARD_LAYOUTS = {
             ['Z', 'R', 'N', 'X', '.', '.', '.']
         ]
     },
+    hex_donut_36p_chaos_right_2: {
+        name: "Hex Donut 36p Chaos Right 2",
+        type: "hex",
+        grid: [
+            ['.', '.', '.', 'X', 'G', 'S', 'Q'],
+            ['.', '.', 'L', 'E', '8', '1', '3'],
+            ['.', '5', 'U', 'P', '0', 'B', 'Y'],
+            ['K', 'D', '7', '.', '2', 'J', 'M'],
+            ['T', 'V', 'A', 'O', '9', 'F', '.'],
+            ['4', 'I', 'C', '6', 'H', '.', '.'],
+            ['Z', 'R', 'N', 'W', '.', '.', '.']
+        ]
+    },
     board_evolved_8_23: {
         name: "evolved 8.23",
         type: "rect",
